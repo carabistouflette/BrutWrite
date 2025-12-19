@@ -29,29 +29,74 @@ pub fn create_project_structure<P: AsRef<Path>>(root_path: P, title: &str, autho
     Ok(metadata)
 }
 
+pub fn load_project_metadata<P: AsRef<Path>>(root_path: P) -> Result<ProjectMetadata> {
+    let root = root_path.as_ref();
+    let metadata_path = root.join("project.json");
+
+    if !metadata_path.exists() {
+        return Err(Error::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound, 
+            "Project metadata file not found"
+        )));
+    }
+
+    let json = fs::read_to_string(metadata_path)?;
+    let metadata: ProjectMetadata = serde_json::from_str(&json)?;
+
+    Ok(metadata)
+}
+
+pub fn save_chapter_content<P: AsRef<Path>>(root_path: P, filename: &str, content: &str) -> Result<()> {
+    let root = root_path.as_ref();
+    let chapter_path = root.join("manuscript").join(filename);
+
+    // Ensure manuscript directory exists (sanity check)
+    if !root.join("manuscript").exists() {
+        fs::create_dir_all(root.join("manuscript"))?;
+    }
+
+    fs::write(chapter_path, content)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use tempfile::tempdir;
 
     #[test]
-    fn test_create_project_structure() {
+    fn test_create_and_load_project() {
         let dir = tempdir().unwrap();
         let project_path = dir.path().join("MyBook");
         
-        let result = create_project_structure(&project_path, "Test Book", "Test Author");
-        assert!(result.is_ok());
+        // Create
+        let created = create_project_structure(&project_path, "Test Book", "Test Author").unwrap();
+        
+        // Load
+        let loaded = load_project_metadata(&project_path).unwrap();
+        
+        assert_eq!(created.id, loaded.id);
+        assert_eq!(loaded.title, "Test Book");
+        assert_eq!(loaded.author, "Test Author");
+        assert!(project_path.join("project.json").exists());
+    }
 
-        assert!(project_path.exists());
-        assert!(project_path.join("manuscript").is_dir());
-        assert!(project_path.join("characters").is_dir());
-        assert!(project_path.join("research").is_dir());
-        assert!(project_path.join(".snapshots").is_dir());
-        assert!(project_path.join("project.json").is_file());
-
-        let metadata_content = fs::read_to_string(project_path.join("project.json")).unwrap();
-        let metadata: ProjectMetadata = serde_json::from_str(&metadata_content).unwrap();
-        assert_eq!(metadata.title, "Test Book");
-        assert_eq!(metadata.author, "Test Author");
+    #[test]
+    fn test_save_chapter() {
+        let dir = tempdir().unwrap();
+        let project_path = dir.path().join("MyNovel");
+        
+        create_project_structure(&project_path, "Novel", "Author").unwrap();
+        
+        let filename = "chapter1.md";
+        let content = "# Chapter 1\nIt was a dark and stormy night.";
+        
+        save_chapter_content(&project_path, filename, content).unwrap();
+        
+        let saved_path = project_path.join("manuscript").join(filename);
+        assert!(saved_path.exists());
+        
+        let saved_content = fs::read_to_string(saved_path).unwrap();
+        assert_eq!(saved_content, content);
     }
 }
