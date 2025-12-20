@@ -87,7 +87,11 @@ const deleteItem = (id: string) => {
       </div>
 
       <!-- Recursive Nesting -->
-      <div v-if="element.children" class="pl-3 ml-2 border-l border-stone/30 mt-0.5">
+      <div 
+        v-if="element.children"
+        class="pl-3 ml-2 mt-0.5"
+        :class="{ 'border-l border-stone/30': element.children.length > 0 }"
+      >
         <FileTree 
           v-model="element.children"
           @select="handleSelect" 
