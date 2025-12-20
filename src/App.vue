@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import AppHeader from './components/AppHeader.vue';
 import MainLayout from './components/MainLayout.vue';
+import EditorMain from './components/EditorMain.vue';
+import { useProjectData } from './composables/useProjectData';
+
+const { activeId } = useProjectData();
 </script>
 
 <template>
@@ -10,7 +14,8 @@ import MainLayout from './components/MainLayout.vue';
 
     <!-- Main Content (Sidebar + Editor) -->
     <MainLayout>
-        <div class="h-full flex flex-col justify-center items-center text-ink/60 select-none">
+        <EditorMain v-if="activeId" />
+        <div v-else class="h-full flex flex-col justify-center items-center text-ink/60 select-none">
             <h2 class="text-5xl font-serif font-bold italic tracking-tight mb-2">Start Writing</h2>
             <p class="text-xs font-sans tracking-[0.2em] uppercase text-ink/40 border-t border-accent/30 pt-4 mt-2">Select a chapter from the sidebar</p>
         </div>
