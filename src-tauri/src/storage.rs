@@ -105,11 +105,12 @@ pub fn read_chapter_content<P: AsRef<Path>>(root_path: P, chapter_id: &str) -> R
 
 pub fn save_chapter_content<P: AsRef<Path>>(
     root_path: P,
-    chapter_id: &str,
+    filename: &str,
     content: &str,
 ) -> Result<()> {
     let root = root_path.as_ref();
-    let chapter_path = resolve_chapter_path(root, chapter_id)?;
+    // Direct path construction, bypassing expensive metadata lookup
+    let chapter_path = root.join("manuscript").join(filename);
 
     // Ensure manuscript directory exists (sanity check)
     if !root.join("manuscript").exists() {
@@ -185,7 +186,7 @@ mod tests {
     }
 
     #[test]
-    fn test_save_chapter_by_id() {
+    fn test_save_chapter_by_filename() {
         let dir = tempdir().unwrap();
         let project_path = dir.path().join("MyNovel");
 
@@ -204,11 +205,11 @@ mod tests {
         };
         update_project_manifest(&project_path, manifest).unwrap();
 
-        // Save Content
+        // Save Content using filename directly
         let content = "# Chapter 1\nIt was a dark and stormy night.";
-        save_chapter_content(&project_path, "c1", content).unwrap();
+        save_chapter_content(&project_path, "c1.md", content).unwrap();
 
-        // Read Content
+        // Read Content (read_chapter_content still looks up by ID, which verifies the file exists at the correct path)
         let read_back = read_chapter_content(&project_path, "c1").unwrap();
         assert_eq!(read_back, content);
     }

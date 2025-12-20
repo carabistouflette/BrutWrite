@@ -167,11 +167,11 @@ export function useTiptapEditor(
         }
     };
 
-    const saveChapter = async (projectId: string, chapterId: string) => {
+    const saveChapter = async (projectId: string, filename: string) => {
         if (!editor.value) return;
         try {
             const content = editor.value.getHTML();
-            await projectApi.saveChapter(projectId, chapterId, content);
+            await projectApi.saveChapter(projectId, filename, content);
         } catch (e) {
             console.error('Failed to save chapter:', e);
         }

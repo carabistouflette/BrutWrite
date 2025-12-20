@@ -44,15 +44,16 @@ watch(activeId, async (newId) => {
 
 // Auto-save logic
 let saveInterval: any
-const setupAutoSave = () => {
-    if (saveInterval) clearInterval(saveInterval);
-    const intervalMs = (settings.value.general.autoSaveInterval || 30) * 1000;
-    saveInterval = setInterval(async () => {
-        if (activeId.value && projectId.value) {
-            await saveChapter(projectId.value, activeId.value);
-        }
-    }, intervalMs);
-};
+    const setupAutoSave = () => {
+        if (saveInterval) clearInterval(saveInterval);
+        const intervalMs = (settings.value.general.autoSaveInterval || 30) * 1000;
+        saveInterval = setInterval(async () => {
+            if (activeChapter.value && activeChapter.value.filename && projectId.value) {
+                // Pass filename instead of ID for IO optimization
+                await saveChapter(projectId.value, activeChapter.value.filename);
+            }
+        }, intervalMs);
+    };
 
 watch(() => settings.value.general.autoSaveInterval, setupAutoSave);
 

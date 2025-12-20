@@ -20,8 +20,8 @@ export const projectApi = {
         return invoke<string>('load_chapter_content', { projectId, chapterId });
     },
 
-    saveChapter: async (projectId: string, chapterId: string, content: string): Promise<void> => {
-        return invoke('save_chapter', { projectId, chapterId, content });
+    saveChapter: async (projectId: string, filename: string, content: string): Promise<void> => {
+        return invoke('save_chapter', { projectId, filename, content });
     },
 
     // Character Management
