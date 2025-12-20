@@ -7,7 +7,7 @@ import tippy from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
 
 import { projectApi } from '../api/project';
-import { useProjectData } from './useProjectData';
+import { useCharacters } from './useCharacters';
 import MentionList from '../components/base/MentionList.vue';
 
 export function useTiptapEditor(
@@ -15,7 +15,7 @@ export function useTiptapEditor(
 ) {
     const containerRef = ref<HTMLElement | null>(null);
     const lastWordCount = ref(0);
-    const { characters } = useProjectData();
+    const { characters } = useCharacters();
 
     const editor = useEditor({
         content: '',

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useProjectData } from '../../composables/useProjectData';
+import { useCharacters } from '../../composables/useCharacters';
 import { CharacterRole, type Character } from '../../types';
 import ConfirmationModal from '../base/ConfirmationModal.vue';
 
@@ -10,7 +11,8 @@ const props = defineProps<{
 
 const emit = defineEmits(['close']);
 
-const { characters, saveCharacter, deleteCharacter, projectId } = useProjectData();
+const { projectId } = useProjectData();
+const { characters, saveCharacter, deleteCharacter } = useCharacters();
 
 const selectedId = ref<string | null>(null);
 
@@ -80,7 +82,7 @@ const createCharacter = async () => {
         };
         
         console.log('Sending character to backend:', newChar);
-        await saveCharacter(newChar);
+        await saveCharacter(projectId.value!, newChar);
         console.log('Character saved successfully.');
         
         // Force selection next tick to ensure list is updated
@@ -95,8 +97,8 @@ const createCharacter = async () => {
 };
 
 const saveCurrent = async () => {
-    if (localCharacter.value) {
-        await saveCharacter(localCharacter.value);
+    if (localCharacter.value && projectId.value) {
+        await saveCharacter(projectId.value, localCharacter.value);
         hasChanges.value = false;
     }
 };
@@ -109,8 +111,8 @@ const requestDelete = () => {
 };
 
 const confirmDelete = async () => {
-    if (localCharacter.value) {
-        await deleteCharacter(localCharacter.value.id);
+    if (localCharacter.value && projectId.value) {
+        await deleteCharacter(projectId.value, localCharacter.value.id);
         selectedId.value = null;
         showDeleteConfirm.value = false;
     }

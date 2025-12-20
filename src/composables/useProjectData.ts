@@ -1,6 +1,7 @@
 import { ref, computed, triggerRef } from 'vue';
 import { projectApi } from '../api/project';
-import type { FileNode, Character } from '../types';
+import type { FileNode } from '../types';
+import { useCharacters } from './useCharacters';
 import {
     findNode,
     deleteFromList,
@@ -14,7 +15,6 @@ import {
 const projectData = ref<FileNode[]>([]);
 const activeId = ref<string | undefined>(undefined);
 const projectId = ref<string | undefined>(undefined); // Store active project UUID
-const characters = ref<Character[]>([]);
 
 export function useProjectData() {
 
@@ -40,10 +40,13 @@ export function useProjectData() {
             const metadata = await projectApi.load(path);
             projectId.value = metadata.id;
 
+            // Sync characters to their dedicated store
+            const { setCharacters } = useCharacters();
+            setCharacters(metadata.characters);
+
             localStorage.setItem('last_opened_project_path', path);
 
             projectData.value = reconstructHierarchy(metadata.manifest.chapters);
-            characters.value = metadata.characters;
 
             if (projectData.value.length > 0) {
                 activeId.value = projectData.value[0].id;
@@ -59,7 +62,10 @@ export function useProjectData() {
             const metadata = await projectApi.create(path, name, author);
             projectId.value = metadata.id;
             projectData.value = [];
-            characters.value = [];
+
+            // Reset character store
+            const { setCharacters } = useCharacters();
+            setCharacters([]);
 
             await addChapter();
         } catch (e) {
@@ -122,28 +128,6 @@ export function useProjectData() {
         return findNode(projectData.value, activeId.value);
     });
 
-    const saveCharacter = async (character: Character) => {
-        if (!projectId.value) return;
-        try {
-            const metadata = await projectApi.saveCharacter(projectId.value, character);
-            characters.value = metadata.characters;
-        } catch (e) {
-            console.error('Failed to save character:', e);
-            throw e;
-        }
-    };
-
-    const deleteCharacter = async (characterId: string) => {
-        if (!projectId.value) return;
-        try {
-            const metadata = await projectApi.deleteCharacter(projectId.value, characterId);
-            characters.value = metadata.characters;
-        } catch (e) {
-            console.error('Failed to delete character:', e);
-            throw e;
-        }
-    };
-
     const updateStructure = async (newStructure: FileNode[]) => {
         projectData.value = newStructure;
         await syncManifest();
@@ -154,7 +138,6 @@ export function useProjectData() {
         activeId,
         activeChapter,
         projectId,
-        characters,
         loadProject,
         createProject,
         selectNode,
@@ -162,8 +145,6 @@ export function useProjectData() {
         addSection,
         deleteNode,
         renameNode,
-        saveCharacter,
-        deleteCharacter,
         updateStructure
     };
 }
