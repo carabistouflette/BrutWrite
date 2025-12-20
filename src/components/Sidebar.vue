@@ -27,40 +27,40 @@ const handleSelect = (id: string) => {
 </script>
 
 <template>
-  <div class="flex flex-1 w-full bg-white text-black font-mono overflow-hidden">
+  <div class="flex flex-1 w-full bg-paper text-ink font-sans overflow-hidden">
     <!-- Sidebar -->
-    <aside class="w-64 flex flex-col border-r-4 border-black h-full">
-      <div class="border-b-4 border-black p-4 font-bold text-xl uppercase tracking-tighter">
+    <aside class="w-64 flex flex-col border-r border-stone h-full bg-paper/50 backdrop-blur-sm">
+      <div class="p-6 font-medium text-sm tracking-widest uppercase text-ink/70 select-none">
         BrutWrite
       </div>
       
-      <div class="flex-1 overflow-y-auto p-2">
+      <div class="flex-1 overflow-y-auto px-4 py-2">
         <FileTree 
           v-model="projectData" 
           @select="handleSelect"
         />
       </div>
 
-      <div class="border-t-4 border-black p-4">
-        <!-- Settings or extra controls could go here -->
-        <button class="w-full border-4 border-black p-2 hover:bg-black hover:text-white active:translate-x-1 active:translate-y-1 transition-none font-bold uppercase">
+      <div class="p-4 border-t border-stone/50">
+        <!-- Settings -->
+        <button class="w-full py-2 text-xs font-medium text-ink/50 hover:text-accent transition-colors uppercase tracking-wider text-left">
           Settings
         </button>
       </div>
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col h-full bg-gray-50 relative">
+    <main class="flex-1 flex flex-col h-full bg-white relative">
       <!-- Top Bar / Header -->
-      <div class="border-b-4 border-black p-4 flex justify-between items-center bg-white">
-        <h1 class="font-bold text-lg uppercase">Editor</h1>
+      <div class="h-16 px-8 flex justify-between items-center bg-transparent">
+        <h1 class="font-normal text-sm text-ink/40 uppercase tracking-widest">Editor</h1>
         <div class="space-x-2">
-            <!-- Toolbar placeholder -->
+            <!-- Toolbar -->
         </div>
       </div>
 
       <!-- Editor Canvas -->
-      <div class="flex-1 p-8 overflow-y-auto">
+      <div class="flex-1 px-12 pb-12 overflow-y-auto max-w-3xl mx-auto w-full">
         <slot></slot>
       </div>
     </main>

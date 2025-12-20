@@ -1,35 +1,20 @@
 <script setup lang="ts">
 import Sidebar from './components/Sidebar.vue';
-import { useWindowControls } from './composables/useWindowControls';
-
-const { minimize, toggleMaximize, close } = useWindowControls();
+// Window controls temporarily removed for minimalist design
 </script>
 
 <template>
-  <div class="h-screen w-screen bg-black text-white flex flex-col font-mono border-4 border-white overflow-hidden">
-    <!-- Custom Brutalist Titlebar -->
-    <div data-tauri-drag-region class="h-10 flex items-center justify-between px-4 border-b-4 border-white select-none bg-black text-white">
-      <div class="font-bold tracking-tighter uppercase italic">BrutWrite // v0.1.0</div>
-      <div class="flex h-full">
-        <button @click="minimize" class="h-full px-4 hover:bg-white hover:text-black border-l-4 border-white transition-colors">_</button>
-        <button @click="toggleMaximize" class="h-full px-4 hover:bg-white hover:text-black border-l-4 border-white transition-colors">[]</button>
-        <button @click="close" class="h-full px-4 hover:bg-red-600 hover:text-white border-l-4 border-white transition-colors">X</button>
-      </div>
-    </div>
+  <div class="h-screen w-screen bg-paper text-ink flex flex-col font-sans overflow-hidden relative">
+    <!-- Invisible Titlebar for Dragging -->
+    <div data-tauri-drag-region class="absolute top-0 left-0 w-full h-8 z-50"></div>
 
     <!-- Main Content (Sidebar + Editor) -->
     <Sidebar>
-        <div class="h-full flex flex-col justify-center items-center text-black">
-            <h2 class="text-4xl font-black uppercase">Start Writing</h2>
-            <p class="mt-4 text-sm font-bold">SELECT A CHAPTER FROM THE SIDEBAR</p>
+        <div class="h-full flex flex-col justify-center items-center text-ink opacity-40">
+            <h2 class="text-3xl font-light tracking-wide">Start Writing</h2>
+            <p class="mt-4 text-xs tracking-widest uppercase">Select a chapter</p>
         </div>
     </Sidebar>
-
-    <!-- Minimal Status Bar -->
-    <div class="h-8 border-t-4 border-white bg-black text-white px-4 flex items-center text-sm font-bold justify-between z-10">
-      <div>READY_FOR_MANUSCRIPT</div>
-      <div>0 WORDS // 0% GOAL</div>
-    </div>
   </div>
 </template>
 

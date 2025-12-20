@@ -53,32 +53,33 @@ const addItem = (parentId: string | null) => {
   <VueDraggableNext
     v-model="list"
     group="files"
-    :animation="0" 
+    :animation="200" 
     ghost-class="ghost"
-    class="space-y-2"
+    class="space-y-0.5"
   >
     <div
       v-for="element in list"
       :key="element.id"
-      class="cursor-pointer"
+      class="cursor-pointer select-none"
     >
       <div 
-        class="border-4 border-black p-2 bg-white hover:bg-gray-100 flex justify-between items-center transition-none"
+        class="group flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-stone/50 transition-colors"
         @click.stop="handleSelect(element.id)"
       >
-        <span class="font-bold truncate">{{ element.name }}</span>
+        <span class="text-sm text-ink group-hover:text-ink font-normal truncate">{{ element.name }}</span>
         
-         <!-- Add Button (only for chapters/folders usually, but generic here for now) -->
+         <!-- Add Button (only visible on hover for cleanliness) -->
         <button 
             @click.stop="addItem(element.id)"
-            class="w-6 h-6 flex items-center justify-center border-2 border-black hover:bg-black hover:text-white transition-none"
+            class="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center text-ink/40 hover:text-accent transition-all"
+            title="Add Section"
         >
             +
         </button>
       </div>
 
       <!-- Recursive Nesting -->
-      <div v-if="element.children" class="pl-4 border-l-4 border-black ml-4 mt-2">
+      <div v-if="element.children" class="pl-3 ml-2 border-l border-stone/30 mt-0.5">
         <FileTree 
           v-model="element.children"
           @select="handleSelect" 
@@ -92,6 +93,7 @@ const addItem = (parentId: string | null) => {
 @reference "../style.css";
 
 .ghost {
-  @apply opacity-50 bg-gray-300 border-dashed;
+  opacity: 0.5;
+  background-color: #e5e5e0;
 }
 </style>

@@ -1,13 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  font-family: 'Courier New', monospace;
+  font-family: 'Inter', sans-serif;
+  /* Switch to sans for cleanliness */
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: #000000;
-  background-color: #ffffff;
+  color-scheme: light;
+  color: #1a1a1a;
+  background-color: #f4f4f0;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -19,12 +20,10 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #f4f4f0;
 }
 
-.brut-border {
-  border: 2px solid black;
-}
-
-.brut-shadow {
-  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+/* Minimalist Utilities */
+.soft-transition {
+  transition: all 0.2s ease-in-out;
 }
