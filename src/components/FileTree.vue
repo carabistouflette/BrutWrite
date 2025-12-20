@@ -35,7 +35,7 @@ const list = computed({
 });
 
 const editName = ref('');
-const inputRef = ref<HTMLInputElement | null>(null);
+const inputRef = ref<any>(null);
 
 // Watch for editingId change to focus input
 import { watch, nextTick } from 'vue';
@@ -45,9 +45,8 @@ watch(() => props.editingId, async (newVal) => {
     if (node) {
       editName.value = node.name;
       await nextTick();
-      if (inputRef.value) inputRef.value.focus(); 
-      // Focus logic might need to handle v-for refs which return arrays
-      // But since we render only one input at a time, we can use a function ref or just check the dom
+      const el = Array.isArray(inputRef.value) ? inputRef.value[0] : inputRef.value;
+      if (el && el.focus) el.focus();
     }
   }
 });

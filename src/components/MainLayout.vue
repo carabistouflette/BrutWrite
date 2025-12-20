@@ -2,6 +2,7 @@
 import { ref, nextTick } from 'vue';
 import FileTree from './FileTree.vue';
 import GamificationStatus from './GamificationStatus.vue';
+import ContextMenu from './base/ContextMenu.vue';
 import { useResizable } from '../composables/useResizable';
 import { useProjectData } from '../composables/useProjectData';
 import { useContextMenu } from '../composables/useContextMenu';
@@ -139,37 +140,24 @@ const addChapter = () => {
         </button>
       </div>
 
-       <!-- Context Menu -->
-       <Teleport to="#app">
-         <div 
-           v-if="showMenu"
-           class="context-menu-glass fixed z-[9999] min-w-[180px] py-2 rounded-xl transition-all duration-200"
-           :style="{ 
-             top: `${menuPos.y}px`, 
-             left: `${menuPos.x}px`,
-           }"
-         >
-            <div 
-               @click.stop="addSection" 
-               class="menu-item menu-item-default"
-            >
-              Add Section
-            </div>
-            <div 
-               @click.stop="startRenameTarget" 
-               class="menu-item menu-item-default"
-            >
-              Rename
-            </div>
-            <div class="h-px bg-ink/5 my-1 mx-2"></div>
-            <div 
-               @click.stop="deleteTarget" 
-               class="menu-item menu-item-danger"
-            >
-              Delete
-            </div>
-         </div>
-       </Teleport>
+      <!-- Context Menu -->
+      <ContextMenu 
+        :show="showMenu" 
+        :x="menuPos.x" 
+        :y="menuPos.y" 
+        @close="closeMenu"
+      >
+        <div @click.stop="addSection" class="menu-item menu-item-default">
+          Add Section
+        </div>
+        <div @click.stop="startRenameTarget" class="menu-item menu-item-default">
+          Rename
+        </div>
+        <div class="h-px bg-ink/5 my-1 mx-2"></div>
+        <div @click.stop="deleteTarget" class="menu-item menu-item-danger">
+          Delete
+        </div>
+      </ContextMenu>
 
       <div class="p-4 border-t border-stone/50">
         <!-- Settings -->
