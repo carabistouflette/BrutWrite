@@ -1,0 +1,112 @@
+<script setup lang="ts">
+import { ref } from 'vue';
+import type { FileNode } from '../types';
+
+const props = defineProps<{
+  element: FileNode;
+  isActive: boolean;
+  isHovered: boolean;
+  isEditing: boolean;
+  depth: number;
+  editName: string;
+}>();
+
+const emit = defineEmits<{
+  (e: 'update:editName', value: string): void;
+  (e: 'select', id: string): void;
+  (e: 'context-menu', payload: { e: MouseEvent, id: string }): void;
+  (e: 'delete', id: string): void;
+  (e: 'submit-rename', id: string): void;
+  (e: 'cancel-rename'): void;
+  (e: 'request-rename', id: string): void;
+}>();
+
+const inputRef = ref<HTMLInputElement | null>(null);
+
+defineExpose({
+    focus: () => inputRef.value?.focus()
+});
+</script>
+
+<template>
+  <div 
+    class="group relative flex justify-between items-center py-2 px-3 transition-all duration-300 ease-out active:scale-[0.98]"
+    :class="{ 'active-pop': isActive }"
+    @click.stop="emit('select', element.id)"
+    @contextmenu.prevent="(e) => emit('context-menu', { e, id: element.id })"
+  >
+    <!-- Soft Background Highlight on Hover -->
+    <div 
+      class="absolute inset-0 bg-stone/20 transition-all duration-300 rounded-lg mx-1 -z-0"
+      :class="isHovered && !isActive ? 'opacity-100 scale-[1.02]' : 'opacity-0 scale-100'"
+    ></div>
+
+    <!-- Active Background Block -->
+    <transition
+      enter-active-class="transition-all duration-300 cubic-bezier(0.25, 0.8, 0.25, 1)"
+      enter-from-class="opacity-0 scale-95"
+      enter-to-class="opacity-100 scale-100"
+      leave-active-class="transition-all duration-200 cubic-bezier(0.25, 0.8, 0.25, 1)"
+      leave-from-class="opacity-100 scale-100"
+      leave-to-class="opacity-0 scale-95"
+    >
+      <div 
+         v-if="isActive"
+         class="absolute inset-0 bg-accent/5 border border-accent/30 rounded-lg mx-1 -z-0 shadow-[0_2px_12px_rgba(255,95,31,0.05)]"
+      ></div>
+    </transition>
+
+    <div class="flex items-center gap-3 overflow-hidden z-10 flex-1 min-w-0 pr-8">
+        <template v-if="isEditing">
+            <input
+                ref="inputRef"
+                :value="editName"
+                @input="e => emit('update:editName', (e.target as HTMLInputElement).value)"
+                @blur="emit('submit-rename', element.id)"
+                @keydown.enter="emit('submit-rename', element.id)"
+                @keydown.escape="emit('cancel-rename')"
+                @click.stop
+                class="bg-transparent border-b border-accent text-[14.5px] leading-tight text-ink w-full focus:outline-none"
+            />
+        </template>
+        <span v-else 
+              class="text-[14.5px] leading-tight transition-all duration-500 flex-1 truncate select-none"
+              :class="{ 
+                'font-bold text-ink tracking-tight': depth === 0,
+                'font-medium text-ink/90': depth > 0 && isActive,
+                'font-normal text-ink/40': depth > 0 && !isActive,
+                'translate-x-1.5 text-ink/90': isHovered
+              }"
+              @dblclick.stop="emit('request-rename', element.id)">
+          {{ element.name }}
+        </span>
+    </div>
+    
+    <div 
+      class="transition-all duration-300 flex items-center z-20 absolute right-2"
+      :class="isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-1 pointer-events-none'"
+    >
+        <button 
+            @click.stop="emit('delete', element.id)"
+            class="w-8 h-8 flex items-center justify-center text-ink/20 hover:text-red-500 hover:bg-white border border-transparent hover:border-black/5 rounded-full transition-all duration-200 shadow-none hover:shadow-md hover:scale-110 active:scale-90"
+            title="Delete"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+            </svg>
+        </button>
+    </div>
+  </div>
+</template>
+
+<style scoped lang="postcss">
+@keyframes spring-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+.active-pop {
+  animation: spring-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+</style>
