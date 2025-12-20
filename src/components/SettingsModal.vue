@@ -27,11 +27,11 @@ const tabs = [
   <Teleport to="body">
     <Transition
       enter-active-class="transition duration-300 ease-out"
-      enter-from-class="opacity-0 scale-95 blur-sm"
-      enter-to-class="opacity-100 scale-100 blur-0"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
       leave-active-class="transition duration-200 ease-in"
-      leave-from-class="opacity-100 scale-100 blur-0"
-      leave-to-class="opacity-0 scale-95 blur-sm"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
     >
       <div 
         v-if="show"
@@ -45,7 +45,8 @@ const tabs = [
 
         <!-- Window Container -->
         <div 
-            class="relative w-full max-w-4xl h-[600px] flex bg-paper/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink"
+            class="relative w-full max-w-4xl h-[700px] flex bg-paper/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
+            :class="{ 'modal-exit': !show }"
             style="box-shadow: 
                 0 20px 50px -12px rgba(0, 0, 0, 0.2), 
                 0 0 0 1px rgba(255, 255, 255, 0.4) inset"
@@ -95,12 +96,12 @@ const tabs = [
                 <div class="flex-1 overflow-y-auto px-8 pb-8 custom-scrollbar">
                     <Transition 
                         mode="out-in"
-                        enter-active-class="transition duration-200 ease-out"
-                        enter-from-class="opacity-0 translate-y-2"
-                        enter-to-class="opacity-100 translate-y-0"
+                        enter-active-class="transition duration-300 ease-out"
+                        enter-from-class="opacity-0 translate-x-4"
+                        enter-to-class="opacity-100 translate-x-0"
                         leave-active-class="transition duration-150 ease-in"
-                        leave-from-class="opacity-100 translate-y-0"
-                        leave-to-class="opacity-0 translate-y-2"
+                        leave-from-class="opacity-100 translate-x-0"
+                        leave-to-class="opacity-0 -translate-x-4"
                     >
                         <KeepAlive>
                             <component :is="
@@ -126,10 +127,32 @@ const tabs = [
     background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: rgba(0,0,0,0.1);
+    background-color: var(--color-stone);
     border-radius: 3px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(0,0,0,0.2);
+    background-color: var(--color-ink-rgb);
+    opacity: 0.2;
+}
+
+@keyframes modal-in {
+    from { 
+        opacity: 0; 
+        transform: scale(0.95) translateY(20px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: scale(1) translateY(0); 
+    }
+}
+
+.modal-container {
+    animation: modal-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal-exit {
+    transition: all 0.2s ease-in;
+    opacity: 0;
+    transform: scale(0.98) translateY(10px);
 }
 </style>
