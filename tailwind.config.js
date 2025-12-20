@@ -17,6 +17,8 @@ export default {
             },
             fontFamily: {
                 mono: ['"Courier New"', 'monospace'],
+                sans: ['Inter', 'sans-serif'],
+                serif: ['"Playfair Display"', 'Georgia', 'serif'], // Added for editorial touches
             },
             boxShadow: {
                 'brut': '4px 4px 0px 0px rgba(0,0,0,1)',

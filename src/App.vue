@@ -10,9 +10,9 @@ import Sidebar from './components/Sidebar.vue';
 
     <!-- Main Content (Sidebar + Editor) -->
     <Sidebar>
-        <div class="h-full flex flex-col justify-center items-center text-ink opacity-40">
-            <h2 class="text-3xl font-light tracking-wide">Start Writing</h2>
-            <p class="mt-4 text-xs tracking-widest uppercase">Select a chapter</p>
+        <div class="h-full flex flex-col justify-center items-center text-ink/60 select-none">
+            <h2 class="text-5xl font-serif font-bold italic tracking-tight mb-2">Start Writing</h2>
+            <p class="text-xs font-sans tracking-[0.2em] uppercase text-ink/40 border-t border-accent/30 pt-4 mt-2">Select a chapter from the sidebar</p>
         </div>
     </Sidebar>
   </div>

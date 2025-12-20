@@ -57,7 +57,7 @@ const deleteItem = (id: string) => {
       class="cursor-pointer select-none"
     >
       <div 
-        class="group flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-stone/50 transition-colors"
+        class="group flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-stone/50 transition-all duration-300 ease-out hover:translate-x-1"
         @click.stop="handleSelect(element.id)"
       >
         <div class="flex items-center gap-2 overflow-hidden">

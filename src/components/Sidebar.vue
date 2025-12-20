@@ -54,11 +54,12 @@ const handleDelete = (id: string) => {
 </script>
 
 <template>
-  <div class="flex flex-1 w-full bg-paper text-ink font-sans overflow-hidden">
+  <div class="flex flex-1 w-full bg-paper text-ink font-sans overflow-hidden bg-noise relative">
     <!-- Sidebar -->
-    <aside class="w-64 flex flex-col border-r border-stone h-full bg-paper/50 backdrop-blur-sm">
-      <div class="p-6 font-medium text-sm tracking-widest uppercase text-ink/70 select-none">
+    <aside class="w-64 flex flex-col border-r border-stone/60 h-full bg-paper/80 backdrop-blur-md relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+      <div class="p-6 font-serif italic font-bold text-2xl tracking-tight text-ink select-none relative">
         BrutWrite
+        <span class="absolute -bottom-1 left-6 w-8 h-0.5 bg-accent/60"></span>
       </div>
       
       <div class="flex-1 overflow-y-auto px-4 py-2">
