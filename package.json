@@ -7,11 +7,13 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "preinstall": "npx only-allow pnpm"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.9.1",
     "@tauri-apps/plugin-opener": "^2.0.0",
+    "@tiptap/extension-link": "^3.14.0",
     "@tiptap/pm": "^3.14.0",
     "@tiptap/starter-kit": "^3.14.0",
     "@tiptap/vue-3": "^3.14.0",
@@ -20,6 +22,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/typography": "^0.5.19",
     "@tauri-apps/cli": "^2",
     "@vitejs/plugin-vue": "^6.0.3",
     "autoprefixer": "^10.4.23",
