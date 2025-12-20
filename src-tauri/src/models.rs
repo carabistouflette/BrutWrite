@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -31,6 +31,7 @@ pub struct Manifest {
 #[serde(rename_all = "snake_case")]
 pub struct Chapter {
     pub id: String, // chap-1, chap-2, etc.
+    pub parent_id: Option<String>,
     pub title: String,
     pub filename: String,
     pub order: u32,
