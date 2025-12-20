@@ -14,19 +14,19 @@ export function useProjectData() {
     const syncManifest = async () => {
         if (!projectId.value) return;
 
-        // Flatten tree to Manifest
         const chapters: Chapter[] = [];
         let order = 0;
 
-        const traverse = (nodes: FileNode[]) => {
+        const traverse = (nodes: FileNode[], parentId?: string) => {
             for (const node of nodes) {
                 chapters.push({
                     id: node.id,
+                    parent_id: parentId,
                     title: node.name,
                     filename: node.filename || `${node.id}.md`,
                     order: order++
                 });
-                if (node.children) traverse(node.children);
+                if (node.children) traverse(node.children, node.id);
             }
         };
 
@@ -48,15 +48,33 @@ export function useProjectData() {
             const metadata = await projectApi.load(path);
             projectId.value = metadata.id;
 
-            // Map Manifest -> FileNode[]
-            projectData.value = metadata.manifest.chapters
-                .sort((a, b) => a.order - b.order)
-                .map(c => ({
+            // Map Manifest -> FileNode[] with hierarchy reconstruction
+            const chapters = [...metadata.manifest.chapters].sort((a, b) => a.order - b.order);
+            const nodeMap = new Map<string, FileNode>();
+            const rootNodes: FileNode[] = [];
+
+            // First pass: create all nodes
+            for (const c of chapters) {
+                const node: FileNode = {
                     id: c.id,
                     name: c.title,
                     filename: c.filename,
                     children: []
-                }));
+                };
+                nodeMap.set(c.id, node);
+            }
+
+            // Second pass: link parents/children
+            for (const c of chapters) {
+                const node = nodeMap.get(c.id)!;
+                if (c.parent_id && nodeMap.has(c.parent_id)) {
+                    nodeMap.get(c.parent_id)!.children?.push(node);
+                } else {
+                    rootNodes.push(node);
+                }
+            }
+
+            projectData.value = rootNodes;
 
             if (projectData.value.length > 0) {
                 activeId.value = projectData.value[0].id;

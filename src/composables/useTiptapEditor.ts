@@ -1,7 +1,6 @@
 import { ref } from 'vue';
 import { useEditor } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
 import { projectApi } from '../api/project';
 
 export function useTiptapEditor(
@@ -16,7 +15,6 @@ export function useTiptapEditor(
             StarterKit.configure({
                 heading: { levels: [1, 2, 3] }
             }),
-            Link.configure({ openOnClick: false }),
         ],
         editorProps: {
             attributes: {
