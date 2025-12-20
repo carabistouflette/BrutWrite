@@ -153,6 +153,7 @@ mod tests {
         let manifest = Manifest {
             chapters: vec![Chapter {
                 id: "c1".to_string(),
+                parent_id: None,
                 title: "Ch1".to_string(),
                 filename: "c1.md".to_string(),
                 order: 0,
