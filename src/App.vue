@@ -3,10 +3,11 @@ import { watch, onMounted } from 'vue';
 import AppHeader from './components/AppHeader.vue';
 import MainLayout from './components/MainLayout.vue';
 import EditorMain from './components/EditorMain.vue';
+import WelcomeScreen from './components/WelcomeScreen.vue';
 import { useProjectData } from './composables/useProjectData';
 import { useSettings } from './composables/useSettings';
 
-const { activeId } = useProjectData();
+const { activeId, projectId } = useProjectData();
 const { settings, loadSettings } = useSettings();
 
 // Apply settings to document
@@ -37,6 +38,15 @@ watch(() => settings.value.interface.uiScaling, (scaling) => {
 // Load settings on startup
 onMounted(async () => {
     await loadSettings();
+    
+    // Auto-load last project
+    const lastPath = localStorage.getItem('last_opened_project_path');
+    if (lastPath) {
+        // We use the composable's loadProject directly
+        const { loadProject } = useProjectData();
+        console.log('Auto-loading project from:', lastPath);
+        await loadProject(lastPath);
+    }
 });
 </script>
 
@@ -45,8 +55,11 @@ onMounted(async () => {
     <!-- Cyber-Glass App Header -->
     <AppHeader data-tauri-drag-region />
 
+    <!-- Welcome Screen / Project Loader -->
+    <WelcomeScreen v-if="!projectId" />
+
     <!-- Main Content (Sidebar + Editor) -->
-    <MainLayout>
+    <MainLayout v-else>
         <EditorMain v-if="activeId" />
         <div v-else class="h-full flex flex-col justify-center items-center text-ink/60 select-none">
             <h2 class="text-5xl font-serif font-bold italic tracking-tight mb-2">Start Writing</h2>

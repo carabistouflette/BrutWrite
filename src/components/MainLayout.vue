@@ -11,6 +11,7 @@ import { useProjectData } from '../composables/useProjectData';
 import { useContextMenu } from '../composables/useContextMenu';
 
 import SettingsModal from './SettingsModal.vue';
+import CharacterSheet from './characters/CharacterSheet.vue';
 
 // --- Composables ---
 const { width: sidebarWidth, isResizing, startResize } = useResizable({
@@ -35,6 +36,7 @@ const { showMenu, menuPos, targetNodeId, openMenu, closeMenu } = useContextMenu(
 const editingId = ref<string | null>(null);
 const isAdding = ref(false);
 const showSettings = ref(false);
+const showCharacters = ref(false);
 const sidebarScrollRef = ref<HTMLElement | null>(null);
 
 // --- Event Handlers ---
@@ -142,9 +144,13 @@ const addChapter = () => {
         </div>
       </ContextMenu>
 
-      <SidebarFooter @open-settings="showSettings = true" />
+      <SidebarFooter 
+        @open-settings="showSettings = true" 
+        @open-characters="showCharacters = true"
+      />
       
       <SettingsModal :show="showSettings" @close="showSettings = false" />
+      <CharacterSheet :show="showCharacters" @close="showCharacters = false" />
 
       <!-- Resize Handle -->
       <div 
