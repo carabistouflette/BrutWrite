@@ -9,7 +9,16 @@ export function useContextMenu() {
     const openMenu = (e: MouseEvent, id: string) => {
         e.preventDefault();
         targetNodeId.value = id;
-        menuPos.value = { x: e.clientX, y: e.clientY };
+
+        // Adjust coordinates for UI Scaling
+        // If the document is zoomed, clientX/Y are viewport relative, 
+        // but absolute positioning inside the zoomed element needs to be scaled back.
+        const scale = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale')) || 1);
+
+        menuPos.value = {
+            x: e.clientX / scale,
+            y: e.clientY / scale
+        };
         showMenu.value = true;
     };
 
