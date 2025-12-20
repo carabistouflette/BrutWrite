@@ -14,6 +14,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', value: FileNode[]): void;
   (e: 'select', id: string): void;
+  (e: 'delete', id: string): void;
 }>();
 
 const list = computed({
@@ -26,16 +27,6 @@ const handleSelect = (id: string) => {
 };
 
 const addItem = (parentId: string | null) => {
-    // Determine where to add. If parentId matches an item in our list, we add to its children.
-    // However, since this is recursive, 'list' here IS the children array of the parent context (or root).
-    // The button is rendered ON the item, so we want to add to THAT item's children.
-    
-    // We can't easily modify the prop 'element' children directly if it's not reactive deep down or if we want to emit.
-    // But v-model implies we might be able to.
-    // Actually, the button is inside the v-for.
-    // element.children.push(...)
-    
-    // Let's iterate to find the element (or if we trust the reference 'element' in the template):
     const item = list.value.find((i: FileNode) => i.id === parentId);
     if (item) {
         if (!item.children) item.children = [];
@@ -47,6 +38,9 @@ const addItem = (parentId: string | null) => {
     }
 }
 
+const deleteItem = (id: string) => {
+  emit('delete', id);
+}
 </script>
 
 <template>
@@ -55,7 +49,7 @@ const addItem = (parentId: string | null) => {
     group="files"
     :animation="200" 
     ghost-class="ghost"
-    class="space-y-0.5"
+    class="space-y-0.5 min-h-[10px] pb-2"
   >
     <div
       v-for="element in list"
@@ -66,16 +60,30 @@ const addItem = (parentId: string | null) => {
         class="group flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-stone/50 transition-colors"
         @click.stop="handleSelect(element.id)"
       >
-        <span class="text-sm text-ink group-hover:text-ink font-normal truncate">{{ element.name }}</span>
+        <div class="flex items-center gap-2 overflow-hidden">
+             <!-- Drag Handler Icon (optional, but helps imply drag) -->
+             <!-- <span class="text-stone/50 text-xs">::</span> -->
+            <span class="text-sm text-ink group-hover:text-ink font-normal truncate">{{ element.name }}</span>
+        </div>
         
-         <!-- Add Button (only visible on hover for cleanliness) -->
-        <button 
-            @click.stop="addItem(element.id)"
-            class="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center text-ink/40 hover:text-accent transition-all"
-            title="Add Section"
-        >
-            +
-        </button>
+        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+             <!-- Delete Button -->
+            <button 
+                @click.stop="deleteItem(element.id)"
+                class="w-5 h-5 flex items-center justify-center text-ink/20 hover:text-red-500 transition-colors"
+                title="Delete"
+            >
+                &times;
+            </button>
+             <!-- Add Button -->
+            <button 
+                @click.stop="addItem(element.id)"
+                class="w-5 h-5 flex items-center justify-center text-ink/40 hover:text-accent transition-colors"
+                title="Add Section"
+            >
+                +
+            </button>
+        </div>
       </div>
 
       <!-- Recursive Nesting -->
@@ -83,6 +91,7 @@ const addItem = (parentId: string | null) => {
         <FileTree 
           v-model="element.children"
           @select="handleSelect" 
+          @delete="(id) => emit('delete', id)"
         />
       </div>
     </div>

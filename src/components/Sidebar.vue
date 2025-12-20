@@ -24,6 +24,33 @@ const handleSelect = (id: string) => {
   console.log('Selected item:', id);
   // specific tauri logic will go here
 };
+
+const addChapter = () => {
+  projectData.value.push({
+    id: `chapter-${Date.now()}`,
+    name: 'New Chapter',
+    children: []
+  });
+};
+
+const handleDelete = (id: string) => {
+  // Recursive delete function
+  const deleteFromList = (list: FileNode[]): boolean => {
+    const index = list.findIndex(item => item.id === id);
+    if (index !== -1) {
+      list.splice(index, 1);
+      return true;
+    }
+    for (const item of list) {
+      if (item.children && deleteFromList(item.children)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  
+  deleteFromList(projectData.value);
+};
 </script>
 
 <template>
@@ -38,7 +65,16 @@ const handleSelect = (id: string) => {
         <FileTree 
           v-model="projectData" 
           @select="handleSelect"
+          @delete="handleDelete"
         />
+        
+        <!-- Root Add Button -->
+        <button 
+          @click="addChapter"
+          class="mt-4 w-full py-2 border border-dashed border-stone/50 text-xs text-ink/40 hover:text-accent hover:border-accent/50 transition-colors uppercase tracking-wider flex items-center justify-center gap-2"
+        >
+          <span>+ New Chapter</span>
+        </button>
       </div>
 
       <div class="p-4 border-t border-stone/50">
