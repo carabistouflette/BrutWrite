@@ -1,12 +1,8 @@
 <script setup lang="ts">
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import Sidebar from './components/Sidebar.vue';
+import { useWindowControls } from './composables/useWindowControls';
 
-const appWindow = getCurrentWindow();
-
-const minimize = () => appWindow.minimize();
-const toggleMaximize = () => appWindow.toggleMaximize();
-const close = () => appWindow.close();
+const { minimize, toggleMaximize, close } = useWindowControls();
 </script>
 
 <template>
