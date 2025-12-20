@@ -65,9 +65,6 @@ const handleDelete = (id: string) => {
 <template>
   <div class="flex flex-1 w-full bg-paper text-ink font-sans overflow-hidden bg-noise relative">
     
-    <!-- Background Texture Layer -->
-    <div class="absolute inset-0 bg-grid-dots pointer-events-none z-50 mix-blend-multiply"></div>
-
     <!-- Sidebar -->
     <aside class="w-64 flex flex-col border-r border-stone/60 h-full bg-paper/80 backdrop-blur-md relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
       <div class="p-6 font-serif italic font-bold text-2xl tracking-tight text-ink select-none relative">
