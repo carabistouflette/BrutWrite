@@ -57,8 +57,6 @@ const handleRenameSubmit = (id: string) => {
     emit('cancel-rename');
   }
 };
-
-const hoverId = ref<string | null>(null);
 </script>
 
 <template>
@@ -74,14 +72,11 @@ const hoverId = ref<string | null>(null);
       v-for="element in list"
       :key="element.id"
       class="cursor-pointer select-none group/row"
-      @mouseenter="hoverId = element.id"
-      @mouseleave="hoverId = null"
     >
       <FileTreeItem
         ref="itemRefs"
         :element="element"
         :is-active="isActive(element.id)"
-        :is-hovered="hoverId === element.id"
         :is-editing="editingId === element.id"
         :depth="depth"
         v-model:edit-name="editName"

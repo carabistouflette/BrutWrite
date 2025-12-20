@@ -100,8 +100,17 @@ export function useTiptapEditor(
         // ... (rest of configuration)
         onUpdate: ({ transaction }) => {
             handleScroll();
+            debouncedWordCountUpdate(transaction.doc.textContent);
+        },
+        onSelectionUpdate: () => {
+            handleScroll();
+        }
+    });
 
-            const text = transaction.doc.textContent;
+    let wordCountTimeout: ReturnType<typeof setTimeout>;
+    const debouncedWordCountUpdate = (text: string) => {
+        clearTimeout(wordCountTimeout);
+        wordCountTimeout = setTimeout(() => {
             const newCount = text.trim().length === 0
                 ? 0
                 : text.split(/\s+/).filter(w => w.length > 0).length;
@@ -111,11 +120,8 @@ export function useTiptapEditor(
                 if (onContentChange) onContentChange(delta);
                 lastWordCount.value = newCount;
             }
-        },
-        onSelectionUpdate: () => {
-            handleScroll();
-        }
-    });
+        }, 500); // 500ms debounce
+    };
 
     let lastScrollTime = 0;
     const handleScroll = () => {

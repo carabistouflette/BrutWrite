@@ -5,7 +5,6 @@ import type { FileNode } from '../types';
 const props = defineProps<{
   element: FileNode;
   isActive: boolean;
-  isHovered: boolean;
   isEditing: boolean;
   depth: number;
   editName: string;
@@ -37,8 +36,8 @@ defineExpose({
   >
     <!-- Soft Background Highlight on Hover -->
     <div 
-      class="absolute inset-0 bg-stone/20 transition-all duration-300 rounded-lg mx-1 -z-0"
-      :class="isHovered && !isActive ? 'opacity-100 scale-[1.02]' : 'opacity-0 scale-100'"
+      class="absolute inset-0 bg-stone/20 transition-all duration-300 rounded-lg mx-1 z-0 opacity-0 scale-100 group-hover/row:opacity-100 group-hover/row:scale-[1.02]"
+      :class="{ 'opacity-0! scale-100!': isActive }"
     ></div>
 
     <!-- Active Background Block -->
@@ -52,7 +51,7 @@ defineExpose({
     >
       <div 
          v-if="isActive"
-         class="absolute inset-0 bg-accent/5 border border-accent/30 rounded-lg mx-1 -z-0 shadow-[0_2px_12px_rgba(255,95,31,0.05)]"
+         class="absolute inset-0 bg-accent/5 border border-accent/30 rounded-lg mx-1 z-0 shadow-[0_2px_12px_rgba(255,95,31,0.05)]"
       ></div>
     </transition>
 
@@ -70,12 +69,12 @@ defineExpose({
             />
         </template>
         <span v-else 
-              class="text-[14.5px] leading-tight transition-all duration-500 flex-1 truncate select-none"
+              class="text-[14.5px] leading-tight transition-all duration-500 flex-1 truncate select-none group-hover/row:translate-x-1.5"
               :class="{ 
                 'font-bold text-ink tracking-tight': depth === 0,
                 'font-medium text-ink/90': depth > 0 && isActive,
                 'font-normal text-ink/40': depth > 0 && !isActive,
-                'translate-x-1.5 text-ink/90': isHovered
+                'text-ink/90': isActive /* Ensure text is dark when active */
               }"
               @dblclick.stop="emit('request-rename', element.id)">
           {{ element.name }}
@@ -83,8 +82,7 @@ defineExpose({
     </div>
     
     <div 
-      class="transition-all duration-300 flex items-center z-20 absolute right-2"
-      :class="isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-1 pointer-events-none'"
+      class="transition-all duration-300 flex items-center z-20 absolute right-2 opacity-0 translate-x-1 pointer-events-none group-hover/row:opacity-100 group-hover/row:translate-x-0 group-hover/row:pointer-events-auto"
     >
         <button 
             @click.stop="emit('delete', element.id)"
