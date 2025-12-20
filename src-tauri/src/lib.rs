@@ -40,6 +40,7 @@ pub fn run() {
             commands::update_manifest,
             commands::load_chapter_content,
             commands::save_chapter,
+            commands::delete_chapter,
             commands::save_character,
             commands::delete_character,
             commands::update_project_settings

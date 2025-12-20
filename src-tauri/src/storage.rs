@@ -87,6 +87,16 @@ pub fn update_project_settings<P: AsRef<Path>>(
     Ok(metadata)
 }
 
+pub fn delete_chapter_file<P: AsRef<Path>>(root_path: P, filename: &str) -> Result<()> {
+    let root = root_path.as_ref();
+    let file_path = root.join("manuscript").join(filename);
+
+    if file_path.exists() {
+        fs::remove_file(file_path)?;
+    }
+    Ok(())
+}
+
 /// Helper to find chapter filename from manifest and return full path
 fn resolve_chapter_path<P: AsRef<Path>>(root_path: P, chapter_id: &str) -> Result<PathBuf> {
     let root = root_path.as_ref();

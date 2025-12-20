@@ -114,6 +114,31 @@ export function useProjectData() {
     };
 
     const deleteNode = async (id: string) => {
+        if (!projectId.value) return;
+
+        // Helper to collect all filenames in a subtree
+        const collectFilenames = (node: FileNode, acc: string[]) => {
+            if (node.filename) acc.push(node.filename);
+            if (node.children) {
+                node.children.forEach(child => collectFilenames(child, acc));
+            }
+        };
+
+        const node = findNode(projectData.value, id);
+        if (node) {
+            const filesToDelete: string[] = [];
+            collectFilenames(node, filesToDelete);
+
+            // Delete files from backend
+            for (const filename of filesToDelete) {
+                try {
+                    await projectApi.deleteChapter(projectId.value, filename);
+                } catch (e) {
+                    console.error(`Failed to delete file ${filename}:`, e);
+                }
+            }
+        }
+
         if (deleteFromList(projectData.value, id)) {
             if (activeId.value === id) activeId.value = undefined;
             await syncManifest();

@@ -117,6 +117,23 @@ pub async fn save_chapter(
 }
 
 #[tauri::command]
+pub async fn delete_chapter(
+    state: State<'_, AppState>,
+    project_id: Uuid,
+    filename: String,
+) -> Result<(), String> {
+    let projects = state
+        .open_projects
+        .lock()
+        .map_err(|_| "Failed to lock state")?;
+    let root_path = projects
+        .get(&project_id)
+        .ok_or_else(|| "Project not loaded".to_string())?;
+
+    storage::delete_chapter_file(root_path, &filename).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn save_character(
     state: State<'_, AppState>,
     project_id: Uuid,

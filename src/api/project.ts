@@ -28,6 +28,10 @@ export const projectApi = {
         return invoke('save_chapter', { projectId, filename, content });
     },
 
+    deleteChapter: async (projectId: string, filename: string): Promise<void> => {
+        return invoke('delete_chapter', { projectId, filename });
+    },
+
     // Character Management
     saveCharacter: async (projectId: string, character: Character): Promise<ProjectMetadata> => {
         return invoke<ProjectMetadata>('save_character', { projectId, character });
