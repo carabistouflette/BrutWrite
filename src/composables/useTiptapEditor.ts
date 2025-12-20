@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { useEditor } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
+import Focus from '@tiptap/extension-focus';
 import { projectApi } from '../api/project';
 
 export function useTiptapEditor(
@@ -15,10 +16,15 @@ export function useTiptapEditor(
             StarterKit.configure({
                 heading: { levels: [1, 2, 3] }
             }),
+            Focus.configure({
+                className: 'has-focus',
+                mode: 'all',
+            }),
         ],
         editorProps: {
             attributes: {
                 class: 'prose prose-invert prose-lg max-w-none focus:outline-none min-h-screen p-16',
+                spellcheck: 'false',
             },
         },
         onUpdate: ({ transaction }) => {

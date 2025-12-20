@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { watch, onMounted, onBeforeUnmount } from 'vue'
+import { watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import { EditorContent } from '@tiptap/vue-3'
 import { useProjectData } from '../composables/useProjectData'
 import { useGamification } from '../composables/useGamification'
 import { useTiptapEditor } from '../composables/useTiptapEditor'
+import { useSettings } from '../composables/useSettings'
 
 const { activeId, projectId } = useProjectData()
 const { addWords } = useGamification()
+const { settings } = useSettings()
 
 // --- Editor Logic ---
 const { 
@@ -27,19 +29,26 @@ watch(activeId, async (newId) => {
 
 // Auto-save logic
 let saveInterval: any
-onMounted(() => {
+const setupAutoSave = () => {
+    if (saveInterval) clearInterval(saveInterval);
+    const intervalMs = (settings.value.general.autoSaveInterval || 30) * 1000;
     saveInterval = setInterval(async () => {
         if (activeId.value && projectId.value) {
             await saveChapter(projectId.value, activeId.value);
-            // console.debug(`[Auto-save] Saved ${activeId.value}`);
         }
-    }, 30000)
+    }, intervalMs);
+};
+
+watch(() => settings.value.general.autoSaveInterval, setupAutoSave);
+
+onMounted(() => {
+    setupAutoSave();
     
     // Initial focus
     editor.value?.commands.focus()
     
-    // Silence TS unused warning
-    if (containerRef.value) { console.debug('Editor mounted') }
+    // Silence unused ref warning
+    if (containerRef.value) { /* Ref is used in template */ }
 })
 
 onBeforeUnmount(() => {
@@ -47,18 +56,45 @@ onBeforeUnmount(() => {
     editor.value?.destroy()
 })
 
+const editorStyles = computed(() => {
+    const s = settings.value.editor;
+    return {
+        fontFamily: s.fontFamily === 'serif' ? 'var(--font-serif)' : 
+                    s.fontFamily === 'mono' ? 'var(--font-mono)' : 
+                    'var(--font-sans)',
+        fontSize: `${s.fontSize}px`,
+        lineHeight: s.lineHeight,
+        maxWidth: `${s.maxWidth}px`
+    };
+});
 </script>
 
 <template>
-  <div ref="containerRef" class="h-full w-full overflow-y-auto scroll-smooth bg-transparent relative">
+  <div ref="containerRef" class="h-full w-full overflow-y-auto scroll-smooth bg-transparent relative" :class="{ 'focus-mode': settings.editor.focusMode }">
      <!-- Brutalist Editor Area -->
-     <div class="max-w-3xl mx-auto py-24 min-h-[150vh] cursor-text" @click="editor?.commands.focus()">
+     <div 
+        class="mx-auto py-24 min-h-[150vh] cursor-text transition-all duration-500" 
+        :style="editorStyles"
+        @click="editor?.commands.focus()"
+    >
         <editor-content :editor="editor" />
      </div>
   </div>
 </template>
 
 <style scoped>
+/* Focus Mode */
+:deep(.focus-mode .ProseMirror > *) {
+  opacity: 0.2;
+  transition: opacity 0.5s ease;
+  filter: blur(1px);
+}
+
+:deep(.focus-mode .ProseMirror > *.has-focus) {
+  opacity: 1;
+  filter: blur(0);
+}
+
 /* Custom Scrollbar for Brutalist feel */
 ::-webkit-scrollbar {
   width: 8px;
