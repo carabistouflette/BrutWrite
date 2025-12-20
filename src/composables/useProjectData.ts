@@ -1,6 +1,6 @@
 import { ref, computed, triggerRef } from 'vue';
 import { projectApi } from '../api/project';
-import type { FileNode } from '../types';
+import type { FileNode, ProjectSettings } from '../types';
 import { useCharacters } from './useCharacters';
 import {
     findNode,
@@ -15,6 +15,7 @@ import {
 const projectData = ref<FileNode[]>([]);
 const activeId = ref<string | undefined>(undefined);
 const projectId = ref<string | undefined>(undefined); // Store active project UUID
+const projectSettings = ref<ProjectSettings | null>(null);
 
 export function useProjectData() {
 
@@ -44,6 +45,9 @@ export function useProjectData() {
             const { setCharacters } = useCharacters();
             setCharacters(metadata.characters);
 
+            // Set settings
+            projectSettings.value = metadata.settings;
+
             localStorage.setItem('last_opened_project_path', path);
 
             projectData.value = reconstructHierarchy(metadata.manifest.chapters);
@@ -66,6 +70,8 @@ export function useProjectData() {
             // Reset character store
             const { setCharacters } = useCharacters();
             setCharacters([]);
+
+            projectSettings.value = metadata.settings;
 
             await addChapter();
         } catch (e) {
@@ -133,11 +139,22 @@ export function useProjectData() {
         await syncManifest();
     };
 
+    const updateContextSettings = async (settings: ProjectSettings) => {
+        if (!projectId.value) return;
+        try {
+            const metadata = await projectApi.updateSettings(projectId.value, settings);
+            projectSettings.value = metadata.settings;
+        } catch (e) {
+            console.error('Failed to update project settings:', e);
+        }
+    };
+
     return {
         projectData,
         activeId,
         activeChapter,
         projectId,
+        settings: computed(() => projectSettings.value),
         loadProject,
         createProject,
         selectNode,
@@ -145,6 +162,7 @@ export function useProjectData() {
         addSection,
         deleteNode,
         renameNode,
-        updateStructure
+        updateStructure,
+        updateSettings: updateContextSettings
     };
 }

@@ -65,6 +65,23 @@ pub async fn update_manifest(
 }
 
 #[tauri::command]
+pub async fn update_project_settings(
+    state: State<'_, AppState>,
+    project_id: Uuid,
+    settings: crate::models::ProjectSettings,
+) -> Result<ProjectMetadata, String> {
+    let projects = state
+        .open_projects
+        .lock()
+        .map_err(|_| "Failed to lock state")?;
+    let root_path = projects
+        .get(&project_id)
+        .ok_or_else(|| "Project not loaded".to_string())?;
+
+    storage::update_project_settings(root_path, settings).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn load_chapter_content(
     state: State<'_, AppState>,
     project_id: Uuid,

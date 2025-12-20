@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { ProjectMetadata, Manifest, Character } from '../types';
+import type { ProjectMetadata, Manifest, Character, ProjectSettings } from '../types';
 
 export const projectApi = {
     // Project Management
@@ -13,6 +13,10 @@ export const projectApi = {
 
     updateManifest: async (projectId: string, manifest: Manifest): Promise<ProjectMetadata> => {
         return invoke<ProjectMetadata>('update_manifest', { projectId, manifest });
+    },
+
+    updateSettings: async (projectId: string, settings: ProjectSettings): Promise<ProjectMetadata> => {
+        return invoke<ProjectMetadata>('update_project_settings', { projectId, settings });
     },
 
     // Content Management

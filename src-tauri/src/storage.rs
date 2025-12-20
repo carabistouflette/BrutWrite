@@ -70,6 +70,23 @@ pub fn update_project_manifest<P: AsRef<Path>>(
     Ok(metadata)
 }
 
+pub fn update_project_settings<P: AsRef<Path>>(
+    root_path: P,
+    settings: crate::models::ProjectSettings,
+) -> Result<ProjectMetadata> {
+    let root = root_path.as_ref();
+    let mut metadata = load_project_metadata(root)?;
+
+    metadata.settings = settings;
+    metadata.updated_at = chrono::Utc::now();
+
+    let metadata_path = root.join("project.json");
+    let json = serde_json::to_string_pretty(&metadata)?;
+    fs::write(metadata_path, json)?;
+
+    Ok(metadata)
+}
+
 /// Helper to find chapter filename from manifest and return full path
 fn resolve_chapter_path<P: AsRef<Path>>(root_path: P, chapter_id: &str) -> Result<PathBuf> {
     let root = root_path.as_ref();

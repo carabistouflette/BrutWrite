@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { useSettings } from './useSettings';
+import { useProjectData } from './useProjectData';
 import {
     calculateStreak,
     calculateAverage,
@@ -18,7 +19,7 @@ interface GamificationState {
 }
 
 const DEFAULT_STATE: GamificationState = {
-    projectTarget: 50000,
+    projectTarget: 50000, // Deprecated in local state, kept for migration
     history: [],
     totalProjectWords: 0,
     lastSessionDate: new Date().toISOString().split('T')[0]
@@ -30,6 +31,7 @@ const sessionWords = ref(0); // Volatile session counter
 
 export function useGamification() {
     const { settings } = useSettings();
+    const { settings: projectSettings, updateSettings } = useProjectData();
 
     // Load from local storage
     const loadState = () => {
@@ -86,7 +88,15 @@ export function useGamification() {
         saveState();
     };
 
-    const setProjectTarget = (target: number) => {
+    const setProjectTarget = async (target: number) => {
+        // Update via project settings
+        if (projectSettings.value) {
+            await updateSettings({
+                ...projectSettings.value,
+                word_target: target
+            });
+        }
+        // Fallback for local state (UI compatibility)
         state.value.projectTarget = target;
         saveState();
     };
@@ -100,7 +110,9 @@ export function useGamification() {
     });
 
     const progressProject = computed(() => {
-        return Math.min(100, Math.max(0, (state.value.totalProjectWords / state.value.projectTarget) * 100));
+        // Use project setting if available, else fallback to local state
+        const target = projectSettings.value?.word_target || state.value.projectTarget || 50000;
+        return Math.min(100, Math.max(0, (state.value.totalProjectWords / target) * 100));
     });
 
     const streak = computed(() => calculateStreak(state.value.history));
@@ -114,7 +126,7 @@ export function useGamification() {
 
     return {
         dailyGoal: computed(() => settings.value.general.dailyGoal),
-        projectTarget: computed(() => state.value.projectTarget),
+        projectTarget: computed(() => projectSettings.value?.word_target || state.value.projectTarget),
         totalProjectWords: computed(() => state.value.totalProjectWords),
         todayWords: computed(() => todayStats.value.wordCount),
         history: computed(() => state.value.history),
