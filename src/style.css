@@ -145,3 +145,21 @@ body {
 .dark .context-menu-glass {
   background-color: rgba(0, 0, 0, var(--cyber-glass-opacity)) !important;
 }
+
+/* --- Input Utilities --- */
+
+/* Hide number input spinners */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* Unit input utility */
+.input-with-unit {
+  padding-right: 4rem !important;
+}

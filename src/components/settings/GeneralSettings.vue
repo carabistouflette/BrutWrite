@@ -34,7 +34,7 @@ const { settings } = useSettings();
                     <input 
                         v-model.number="settings.general.dailyGoal"
                         type="number" 
-                        class="w-full bg-white/70 dark:bg-white/5 border border-white dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]"
+                        class="w-full bg-white/70 dark:bg-white/5 border border-white dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] input-with-unit"
                     />
                     <div class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-ink/30 uppercase tracking-tighter">words</div>
                 </div>
@@ -53,7 +53,7 @@ const { settings } = useSettings();
                         v-model.number="settings.general.autoSaveInterval"
                         type="number"
                         min="5" 
-                        class="w-full bg-white/70 dark:bg-white/5 border border-white dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]"
+                        class="w-full bg-white/70 dark:bg-white/5 border border-white dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] input-with-unit"
                     />
                     <div class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-ink/30 uppercase tracking-tighter">sec</div>
                 </div>
