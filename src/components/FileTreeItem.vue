@@ -68,17 +68,23 @@ defineExpose({
                 class="bg-transparent border-b border-accent text-[14.5px] leading-tight text-ink w-full focus:outline-none"
             />
         </template>
-        <span v-else 
-              class="text-[14.5px] leading-tight transition-all duration-500 flex-1 truncate select-none group-hover/row:translate-x-1.5"
-              :class="{ 
-                'font-bold text-ink tracking-tight': depth === 0,
-                'font-medium text-ink/90': depth > 0 && isActive,
-                'font-normal text-ink/40': depth > 0 && !isActive,
-                'text-ink/90': isActive /* Ensure text is dark when active */
-              }"
-              @dblclick.stop="emit('request-rename', element.id)">
-          {{ element.name }}
-        </span>
+        <div v-else class="flex flex-1 items-center min-w-0 gap-2">
+            <span 
+                class="text-[14.5px] leading-tight transition-all duration-500 truncate select-none group-hover/row:translate-x-1.5"
+                :class="{ 
+                    'font-bold text-ink tracking-tight': depth === 0,
+                    'font-medium text-ink/90': depth > 0 && isActive,
+                    'font-normal text-ink/40': depth > 0 && !isActive,
+                    'text-ink/90': isActive
+                }"
+                @dblclick.stop="emit('request-rename', element.id)">
+                {{ element.name }}
+            </span>
+            <span v-if="element.word_count && element.word_count > 0" 
+                  class="text-[10px] bg-stone/50 text-ink/40 px-1.5 rounded-full mt-0.5 group-hover/row:translate-x-1.5 transition-transform duration-500">
+                {{ new Intl.NumberFormat().format(element.word_count) }}
+            </span>
+        </div>
     </div>
     
     <div 

@@ -174,6 +174,17 @@ export function useProjectData() {
         await syncManifest();
     };
 
+    const updateNodeStats = (id: string, wordCount: number) => {
+        const node = findNode(projectData.value, id);
+        if (node) {
+            node.word_count = wordCount;
+            // Trigger reactivity without full array replacement if possible, 
+            // but for deep partial updates to refs, standard Vue reactivity handles it
+            // if we mutate the object directly.
+            triggerRef(projectData);
+        }
+    };
+
     const updateContextSettings = async (settings: ProjectSettings) => {
         if (!projectId.value) return;
         try {
@@ -199,6 +210,7 @@ export function useProjectData() {
         deleteNode,
         renameNode,
         updateStructure,
-        updateSettings: updateContextSettings
+        updateSettings: updateContextSettings,
+        updateNodeStats
     };
 }

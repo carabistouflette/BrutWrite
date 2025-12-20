@@ -8,6 +8,7 @@ import 'tippy.js/dist/tippy.css';
 
 import { projectApi } from '../api/project';
 import { useCharacters } from './useCharacters';
+import { useProjectData } from './useProjectData';
 import MentionList from '../components/base/MentionList.vue';
 
 export function useTiptapEditor(
@@ -17,6 +18,7 @@ export function useTiptapEditor(
     const lastWordCount = ref(0);
     const isDirty = ref(false); // Track if content has changed
     const { characters } = useCharacters();
+    const { updateNodeStats, activeId } = useProjectData();
 
     const editor = useEditor({
         content: '',
@@ -98,7 +100,6 @@ export function useTiptapEditor(
                 spellcheck: 'false',
             },
         },
-        // ... (rest of configuration)
         onUpdate: ({ transaction }) => {
             isDirty.value = true;
             handleScroll();
@@ -183,6 +184,11 @@ export function useTiptapEditor(
             const wordCount = editor.value.storage.characterCount.words();
 
             await projectApi.saveChapter(projectId, filename, content, wordCount);
+
+            // Sync frontend state immediately to prevent stale overwrites on reorder
+            if (activeId.value) {
+                updateNodeStats(activeId.value, wordCount);
+            }
 
             isDirty.value = false; // Reset dirty flag on successful save
             console.debug(`Auto-saved chapter (words: ${wordCount})`);
