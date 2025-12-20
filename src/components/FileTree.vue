@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { VueDraggableNext } from 'vue-draggable-next';
 import { computed } from 'vue';
+import type { FileNode } from '../types';
 
 defineOptions({
   name: 'FileTree'
 });
 
 const props = defineProps<{
-  modelValue: any[]
+  modelValue: FileNode[]
 }>();
 
-const emit = defineEmits(['update:modelValue', 'select']);
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: FileNode[]): void;
+  (e: 'select', id: string): void;
+}>();
 
 const list = computed({
   get: () => props.modelValue,
@@ -32,7 +36,7 @@ const addItem = (parentId: string | null) => {
     // element.children.push(...)
     
     // Let's iterate to find the element (or if we trust the reference 'element' in the template):
-    const item = list.value.find(i => i.id === parentId);
+    const item = list.value.find((i: FileNode) => i.id === parentId);
     if (item) {
         if (!item.children) item.children = [];
         item.children.push({
@@ -84,7 +88,9 @@ const addItem = (parentId: string | null) => {
   </VueDraggableNext>
 </template>
 
-<style scoped>
+<style scoped lang="postcss">
+@reference "../style.css";
+
 .ghost {
   @apply opacity-50 bg-gray-300 border-dashed;
 }

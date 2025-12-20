@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import FileTree from './FileTree.vue';
+import type { FileNode } from '../types';
 
 // Mock data for initial development
-const projectData = ref([
+const projectData = ref<FileNode[]>([
   {
     id: '1',
     name: 'Chapter 1: The Beginning',
