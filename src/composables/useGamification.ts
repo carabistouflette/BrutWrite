@@ -1,5 +1,6 @@
 
 import { ref, computed } from 'vue';
+import { useSettings } from './useSettings';
 
 const STORAGE_KEY = 'brutwrite_gamification';
 
@@ -9,7 +10,6 @@ interface DailyStats {
 }
 
 interface GamificationState {
-    dailyGoal: number;
     projectTarget: number;
     history: DailyStats[];
     totalProjectWords: number; // Snapshot of total words
@@ -17,7 +17,6 @@ interface GamificationState {
 }
 
 const DEFAULT_STATE: GamificationState = {
-    dailyGoal: 500,
     projectTarget: 50000,
     history: [],
     totalProjectWords: 0,
@@ -29,6 +28,7 @@ const state = ref<GamificationState>({ ...DEFAULT_STATE });
 const sessionWords = ref(0); // Volatile session counter
 
 export function useGamification() {
+    const { settings } = useSettings();
 
     // Load from local storage
     const loadState = () => {
@@ -36,7 +36,9 @@ export function useGamification() {
         if (stored) {
             try {
                 const parsed = JSON.parse(stored);
-                state.value = { ...DEFAULT_STATE, ...parsed };
+                // migration for old state removing dailyGoal if exists in stored
+                const { dailyGoal, ...rest } = parsed;
+                state.value = { ...DEFAULT_STATE, ...rest };
             } catch (e) {
                 console.error('Failed to parse gamification data', e);
             }
@@ -83,15 +85,6 @@ export function useGamification() {
         saveState();
     };
 
-    // Update total project words absolute value (useful when loading a chapter)
-    // This is tricky because we don't know the delta unless we track prev length.
-    // We'll rely on `addWords` with delta from the editor.
-
-    const setDailyGoal = (goal: number) => {
-        state.value.dailyGoal = goal;
-        saveState();
-    };
-
     const setProjectTarget = (target: number) => {
         state.value.projectTarget = target;
         saveState();
@@ -104,7 +97,8 @@ export function useGamification() {
     });
 
     const progressDaily = computed(() => {
-        return Math.min(100, Math.max(0, (todayStats.value.wordCount / state.value.dailyGoal) * 100));
+        const goal = settings.value.general.dailyGoal || 500;
+        return Math.min(100, Math.max(0, (todayStats.value.wordCount / goal) * 100));
     });
 
     const progressProject = computed(() => {
@@ -119,18 +113,8 @@ export function useGamification() {
         const today = new Date().toISOString().split('T')[0];
 
         let d = new Date();
-        // Check back up to X days or until break
-
-        // First, check if streak is alive (today or yesterday has activity)
-        // If I haven't written today yet, streak from yesterday is kept.
-        // So if today == 0, we treat it as "current", but don't count it for length unless > 0?
-        // Actually, widespread convention: Streak is "consecutive days YOU WROTE".
-        // If you miss today (so far), your streak is "N days" (from yesterday).
-        // If you assume today is 0, start check from yesterday.
-
         const todayCount = dayMap.get(today) || 0;
         if (todayCount === 0) {
-            // Start check from yesterday
             d.setDate(d.getDate() - 1);
         }
 
@@ -142,7 +126,6 @@ export function useGamification() {
                 currentStreak++;
                 d.setDate(d.getDate() - 1);
             } else {
-                // Gap found
                 break;
             }
         }
@@ -164,7 +147,7 @@ export function useGamification() {
     loadState();
 
     return {
-        dailyGoal: computed(() => state.value.dailyGoal),
+        dailyGoal: computed(() => settings.value.general.dailyGoal),
         projectTarget: computed(() => state.value.projectTarget),
         totalProjectWords: computed(() => state.value.totalProjectWords),
         todayWords: computed(() => todayStats.value.wordCount),
@@ -175,7 +158,6 @@ export function useGamification() {
         averageDaily,
         bestDay,
         addWords,
-        setDailyGoal,
         setProjectTarget
     };
 }

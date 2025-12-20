@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useGamification } from '../../composables/useGamification';
+import { useSettings } from '../../composables/useSettings';
 
 const props = defineProps<{
   show: boolean;
@@ -20,16 +21,17 @@ const {
   history,
   streak,
   bestDay,
-  setDailyGoal,
   setProjectTarget
 } = useGamification();
+
+const { settings } = useSettings();
 
 const isEditing = ref(false);
 const tempDailyGoal = ref(dailyGoal.value);
 const tempProjectTarget = ref(projectTarget.value);
 
 const saveGoals = () => {
-    setDailyGoal(Number(tempDailyGoal.value));
+    settings.value.general.dailyGoal = Number(tempDailyGoal.value);
     setProjectTarget(Number(tempProjectTarget.value));
     isEditing.value = false;
 };
@@ -66,7 +68,7 @@ const chartData = computed(() => {
     >
       <div 
           v-if="show"
-          class="fixed top-20 right-8 w-80 bg-white/80 backdrop-blur-xl border border-stone/20 shadow-2xl rounded-2xl p-6 z-[100] text-ink"
+          class="fixed top-20 right-8 w-80 bg-paper/90 backdrop-blur-xl border border-stone/20 shadow-2xl rounded-2xl p-6 z-100 text-ink"
       >
           <!-- Header -->
           <div class="flex justify-between items-center mb-6">
@@ -162,6 +164,6 @@ const chartData = computed(() => {
       </div>
     </Transition>
     <!-- Backdrop -->
-    <div v-if="show" @click="emit('close')" class="fixed inset-0 z-[90]"></div>
+    <div v-if="show" @click="emit('close')" class="fixed inset-0 z-90"></div>
   </Teleport>
 </template>
