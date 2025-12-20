@@ -15,6 +15,7 @@ export interface EditorSettings {
 export interface InterfaceSettings {
     theme: 'light' | 'dark' | 'system';
     cyberGlassIntensity: number; // 0-100 scale for blur/transparency effects
+    uiScaling: number; // 80 to 120 percentage
 }
 
 export interface AppSettings {
@@ -39,5 +40,6 @@ export const defaultSettings: AppSettings = {
     interface: {
         theme: 'light',
         cyberGlassIntensity: 50,
+        uiScaling: 100,
     },
 };

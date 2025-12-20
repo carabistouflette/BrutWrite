@@ -27,6 +27,13 @@ watch(() => settings.value.interface.cyberGlassIntensity, (intensity) => {
     document.documentElement.style.setProperty('--cyber-glass-opacity', `${opacity}`);
 }, { immediate: true });
 
+watch(() => settings.value.interface.uiScaling, (scaling) => {
+    const scale = scaling / 100;
+    document.documentElement.style.setProperty('--ui-scale', `${scale}`);
+    // Using zoom for global UI scaling if supported, otherwise scale
+    (document.documentElement.style as any).zoom = scale;
+}, { immediate: true });
+
 // Load settings on startup
 onMounted(async () => {
     await loadSettings();
