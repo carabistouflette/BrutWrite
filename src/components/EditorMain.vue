@@ -1,14 +1,29 @@
 <script setup lang="ts">
-import { watch, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import { EditorContent } from '@tiptap/vue-3'
 import { useProjectData } from '../composables/useProjectData'
 import { useGamification } from '../composables/useGamification'
 import { useTiptapEditor } from '../composables/useTiptapEditor'
 import { useSettings } from '../composables/useSettings'
 
-const { activeId, projectId } = useProjectData()
+const { activeId, activeChapter, projectId, renameNode } = useProjectData()
 const { addWords } = useGamification()
 const { settings } = useSettings()
+
+// --- Title Logic ---
+const activeChapterName = ref('');
+
+watch(activeChapter, (chapter) => {
+    if (chapter) {
+        activeChapterName.value = chapter.name;
+    }
+}, { immediate: true });
+
+const handleRename = async () => {
+    if (activeId.value && activeChapterName.value !== activeChapter.value?.name) {
+        await renameNode(activeId.value, activeChapterName.value);
+    }
+};
 
 // --- Editor Logic ---
 const { 
@@ -75,8 +90,19 @@ const editorStyles = computed(() => {
      <div 
         class="mx-auto py-24 min-h-[150vh] cursor-text transition-all duration-500" 
         :style="editorStyles"
-        @click="editor?.commands.focus()"
     >
+        <!-- Chapter Title Overlay -->
+        <div v-if="activeChapter" class="mb-16 group relative">
+            <input 
+                v-model="activeChapterName"
+                @blur="handleRename"
+                @keyup.enter="handleRename"
+                class="w-full bg-transparent border-none outline-none text-5xl font-serif font-black text-ink/90 placeholder:text-ink/10 transition-all focus:text-accent selection:bg-accent/20"
+                placeholder="Chapter Title"
+            />
+            <div class="absolute -bottom-4 left-0 w-12 h-1 bg-accent/20 group-focus-within:w-24 group-focus-within:bg-accent transition-all duration-500"></div>
+        </div>
+
         <editor-content :editor="editor" />
      </div>
   </div>
