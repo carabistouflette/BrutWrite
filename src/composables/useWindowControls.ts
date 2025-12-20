@@ -2,8 +2,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 
 export function useWindowControls() {
     // Check if running in Tauri environment
-    // @ts-ignore
-    const isTauri = !!(window.__TAURI_INTERNALS__);
+    const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
     const minimize = () => {
         if (isTauri) {
