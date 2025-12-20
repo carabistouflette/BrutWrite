@@ -29,7 +29,8 @@ const {
   addChapter: addChapterLogic, 
   addSection: addSectionLogic, 
   deleteNode: handleDelete,
-  renameNode: handleRenameLogic
+  renameNode: handleRenameLogic,
+  updateStructure
 } = useProjectData();
 
 const { showMenu, menuPos, targetNodeId, openMenu, closeMenu } = useContextMenu();
@@ -113,7 +114,8 @@ const addChapter = () => {
       
       <div ref="sidebarScrollRef" class="flex-1 overflow-y-auto px-3 py-2 scroll-smooth">
           <FileTree 
-            v-model="projectData" 
+            :model-value="projectData"
+            @update:model-value="updateStructure" 
             :active-id="activeId"
             :editing-id="editingId"
             @select="handleSelect"

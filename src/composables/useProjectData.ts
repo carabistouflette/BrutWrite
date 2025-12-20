@@ -144,6 +144,11 @@ export function useProjectData() {
         }
     };
 
+    const updateStructure = async (newStructure: FileNode[]) => {
+        projectData.value = newStructure;
+        await syncManifest();
+    };
+
     return {
         projectData,
         activeId,
@@ -158,6 +163,7 @@ export function useProjectData() {
         deleteNode,
         renameNode,
         saveCharacter,
-        deleteCharacter
+        deleteCharacter,
+        updateStructure
     };
 }
