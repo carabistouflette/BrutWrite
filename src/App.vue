@@ -1,10 +1,36 @@
 <script setup lang="ts">
+import { watch, onMounted } from 'vue';
 import AppHeader from './components/AppHeader.vue';
 import MainLayout from './components/MainLayout.vue';
 import EditorMain from './components/EditorMain.vue';
 import { useProjectData } from './composables/useProjectData';
+import { useSettings } from './composables/useSettings';
 
 const { activeId } = useProjectData();
+const { settings, loadSettings } = useSettings();
+
+// Apply settings to document
+watch(() => settings.value.interface.theme, (newTheme) => {
+    document.documentElement.classList.remove('light', 'dark');
+    if (newTheme === 'system') {
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.add(isDark ? 'dark' : 'light');
+    } else {
+        document.documentElement.classList.add(newTheme);
+    }
+}, { immediate: true });
+
+watch(() => settings.value.interface.cyberGlassIntensity, (intensity) => {
+    const blur = (intensity / 100) * 40; // max 40px
+    const opacity = 0.1 + (intensity / 100) * 0.5; // range 0.1 - 0.6
+    document.documentElement.style.setProperty('--cyber-glass-blur', `${blur}px`);
+    document.documentElement.style.setProperty('--cyber-glass-opacity', `${opacity}`);
+}, { immediate: true });
+
+// Load settings on startup
+onMounted(async () => {
+    await loadSettings();
+});
 </script>
 
 <template>

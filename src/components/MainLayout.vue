@@ -10,6 +10,8 @@ import { useResizable } from '../composables/useResizable';
 import { useProjectData } from '../composables/useProjectData';
 import { useContextMenu } from '../composables/useContextMenu';
 
+import SettingsModal from './SettingsModal.vue';
+
 // --- Composables ---
 const { width: sidebarWidth, isResizing, startResize } = useResizable({
   initialWidth: 256,
@@ -32,6 +34,7 @@ const { showMenu, menuPos, targetNodeId, openMenu, closeMenu } = useContextMenu(
 // --- Local State ---
 const editingId = ref<string | null>(null);
 const isAdding = ref(false);
+const showSettings = ref(false);
 const sidebarScrollRef = ref<HTMLElement | null>(null);
 
 // --- Event Handlers ---
@@ -99,7 +102,7 @@ const addChapter = () => {
     
     <!-- Sidebar -->
     <aside 
-        class="flex flex-col border-r border-stone/60 h-full bg-white/40 backdrop-blur-xl relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] group"
+        class="flex flex-col border-r border-stone/60 h-full cyber-glass relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] group"
         :style="{ width: `${sidebarWidth}px` }"
     >
       <AppLogo />
@@ -139,7 +142,9 @@ const addChapter = () => {
         </div>
       </ContextMenu>
 
-      <SidebarFooter />
+      <SidebarFooter @open-settings="showSettings = true" />
+      
+      <SettingsModal :show="showSettings" @close="showSettings = false" />
 
       <!-- Resize Handle -->
       <div 
@@ -150,7 +155,7 @@ const addChapter = () => {
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col h-full bg-white relative">
+    <main class="flex-1 flex flex-col h-full bg-transparent relative">
       <!-- Top Bar / Header -->
       <div class="h-16 px-8 flex justify-between items-center bg-transparent">
         <h1 class="font-normal text-sm text-ink/40 uppercase tracking-widest">Editor</h1>
