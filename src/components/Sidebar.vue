@@ -20,17 +20,23 @@ const projectData = ref<FileNode[]>([
   }
 ]);
 
+const activeId = ref<string | undefined>(undefined);
+
 const handleSelect = (id: string) => {
+  activeId.value = id;
   console.log('Selected item:', id);
   // specific tauri logic will go here
 };
 
 const addChapter = () => {
+  const newId = `chapter-${Date.now()}`;
   projectData.value.push({
-    id: `chapter-${Date.now()}`,
+    id: newId,
     name: 'New Chapter',
     children: []
   });
+  // Auto-select new chapter
+  activeId.value = newId;
 };
 
 const handleDelete = (id: string) => {
@@ -50,11 +56,18 @@ const handleDelete = (id: string) => {
   };
   
   deleteFromList(projectData.value);
+  if (activeId.value === id) {
+    activeId.value = undefined;
+  }
 };
 </script>
 
 <template>
   <div class="flex flex-1 w-full bg-paper text-ink font-sans overflow-hidden bg-noise relative">
+    
+    <!-- Background Texture Layer -->
+    <div class="absolute inset-0 bg-grid-dots pointer-events-none z-0"></div>
+
     <!-- Sidebar -->
     <aside class="w-64 flex flex-col border-r border-stone/60 h-full bg-paper/80 backdrop-blur-md relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
       <div class="p-6 font-serif italic font-bold text-2xl tracking-tight text-ink select-none relative">
@@ -65,6 +78,7 @@ const handleDelete = (id: string) => {
       <div class="flex-1 overflow-y-auto px-4 py-2">
         <FileTree 
           v-model="projectData" 
+          :active-id="activeId"
           @select="handleSelect"
           @delete="handleDelete"
         />
