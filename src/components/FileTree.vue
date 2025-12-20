@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { VueDraggableNext } from 'vue-draggable-next';
-import { computed, ref } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import type { FileNode } from '../types';
+import FileTreeItem from './FileTreeItem.vue';
 
 defineOptions({
   name: 'FileTree'
@@ -16,8 +17,6 @@ const props = withDefaults(defineProps<{
   depth: 0,
   editingId: null
 });
-
-const isActive = (id: string) => id === props.activeId;
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: FileNode[]): void;
@@ -35,18 +34,18 @@ const list = computed({
 });
 
 const editName = ref('');
-const inputRef = ref<any>(null);
+const itemRefs = ref<any[]>([]);
 
-// Watch for editingId change to focus input
-import { watch, nextTick } from 'vue';
+const isActive = (id: string) => id === props.activeId;
+
 watch(() => props.editingId, async (newVal) => {
   if (newVal) {
     const node = props.modelValue.find(n => n.id === newVal);
     if (node) {
       editName.value = node.name;
       await nextTick();
-      const el = Array.isArray(inputRef.value) ? inputRef.value[0] : inputRef.value;
-      if (el && el.focus) el.focus();
+      const item = itemRefs.value.find((ref: any) => ref?.element?.id === newVal);
+      if (item && item.focus) item.focus();
     }
   }
 });
@@ -59,19 +58,7 @@ const handleRenameSubmit = (id: string) => {
   }
 };
 
-const handleRenameCancel = () => {
-    emit('cancel-rename');
-}
-
 const hoverId = ref<string | null>(null);
-
-const handleSelect = (id: string) => {
-  emit('select', id);
-};
-
-const deleteItem = (id: string) => {
-  emit('delete', id);
-}
 </script>
 
 <template>
@@ -91,74 +78,21 @@ const deleteItem = (id: string) => {
       @mouseenter="hoverId = element.id"
       @mouseleave="hoverId = null"
     >
-      <div 
-        class="group relative flex justify-between items-center py-2 px-3 transition-all duration-300 ease-out active:scale-[0.98]"
-        :class="{ 'active-pop': isActive(element.id) }"
-        @click.stop="handleSelect(element.id)"
-        @contextmenu.prevent="(e) => emit('context-menu', { e, id: element.id })"
-      >
-        <!-- Soft Background Highlight on Hover with scaling -->
-        <div 
-          class="absolute inset-0 bg-stone/20 transition-all duration-300 rounded-lg mx-1 -z-0"
-          :class="hoverId === element.id && !isActive(element.id) ? 'opacity-100 scale-[1.02]' : 'opacity-0 scale-100'"
-        ></div>
-
-        <!-- Active Background Block (Smooth Animated Frame) -->
-        <transition
-          enter-active-class="transition-all duration-300 cubic-bezier(0.25, 0.8, 0.25, 1)"
-          enter-from-class="opacity-0 scale-95"
-          enter-to-class="opacity-100 scale-100"
-          leave-active-class="transition-all duration-200 cubic-bezier(0.25, 0.8, 0.25, 1)"
-          leave-from-class="opacity-100 scale-100"
-          leave-to-class="opacity-0 scale-95"
-        >
-          <div 
-             v-if="isActive(element.id)"
-             class="absolute inset-0 bg-accent/5 border border-accent/30 rounded-lg mx-1 -z-0 shadow-[0_2px_12px_rgba(255,95,31,0.05)]"
-          ></div>
-        </transition>
-
-        <div class="flex items-center gap-3 overflow-hidden z-10 flex-1 min-w-0 pr-8">
-            <template v-if="editingId === element.id">
-                <input
-                    ref="inputRef"
-                    v-model="editName"
-                    @blur="handleRenameSubmit(element.id)"
-                    @keydown.enter="handleRenameSubmit(element.id)"
-                    @keydown.escape="handleRenameCancel"
-                    @click.stop
-                    class="bg-transparent border-b border-accent text-[14.5px] leading-tight text-ink w-full focus:outline-none"
-                />
-            </template>
-            <span v-else 
-                  class="text-[14.5px] leading-tight transition-all duration-500 flex-1 truncate select-none"
-                  :class="{ 
-                    'font-bold text-ink tracking-tight': depth === 0,
-                    'font-medium text-ink/90': depth > 0 && isActive(element.id),
-                    'font-normal text-ink/40': depth > 0 && !isActive(element.id),
-                    'translate-x-1.5 text-ink/90': hoverId === element.id
-                  }"
-                  @dblclick.stop="emit('request-rename', element.id)">
-              {{ element.name }}
-            </span>
-        </div>
-        
-        <div 
-          class="transition-all duration-300 flex items-center z-20 absolute right-2"
-          :class="hoverId === element.id ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-1 pointer-events-none'"
-        >
-             <!-- Elegant Delete Button with pop effect -->
-            <button 
-                @click.stop="deleteItem(element.id)"
-                class="w-8 h-8 flex items-center justify-center text-ink/20 hover:text-red-500 hover:bg-white border border-transparent hover:border-black/5 rounded-full transition-all duration-200 shadow-none hover:shadow-md hover:scale-110 active:scale-90"
-                title="Delete"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-                </svg>
-            </button>
-        </div>
-      </div>
+      <FileTreeItem
+        ref="itemRefs"
+        :element="element"
+        :is-active="isActive(element.id)"
+        :is-hovered="hoverId === element.id"
+        :is-editing="editingId === element.id"
+        :depth="depth"
+        v-model:edit-name="editName"
+        @select="(id) => emit('select', id)"
+        @context-menu="(p) => emit('context-menu', p)"
+        @delete="(id) => emit('delete', id)"
+        @submit-rename="handleRenameSubmit"
+        @cancel-rename="emit('cancel-rename')"
+        @request-rename="(id) => emit('request-rename', id)"
+      />
 
       <!-- Recursive Nesting -->
       <transition
@@ -175,11 +109,11 @@ const deleteItem = (id: string) => {
             :active-id="activeId"
             :editing-id="editingId"
             :depth="depth + 1"
-            @select="handleSelect" 
+            @select="(id) => emit('select', id)" 
             @delete="(id) => emit('delete', id)"
-            @context-menu="(payload) => emit('context-menu', payload)"
+            @context-menu="(p) => emit('context-menu', p)"
             @request-rename="(id) => emit('request-rename', id)"
-            @submit-rename="(payload) => emit('submit-rename', payload)"
+            @submit-rename="(p) => emit('submit-rename', p)"
             @cancel-rename="emit('cancel-rename')"
           />
         </div>
