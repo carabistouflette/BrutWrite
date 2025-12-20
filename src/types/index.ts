@@ -12,7 +12,6 @@ export interface ProjectMetadata {
 export interface ProjectSettings {
     daily_target: number;
     word_target: number;
-    theme: string;
 }
 
 export interface Manifest {

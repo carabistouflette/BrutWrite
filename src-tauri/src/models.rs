@@ -22,7 +22,6 @@ pub struct ProjectSettings {
     pub daily_target: u32,
     #[serde(default = "default_word_target")]
     pub word_target: u32,
-    pub theme: String,
 }
 
 fn default_word_target() -> u32 {
@@ -89,7 +88,6 @@ impl Default for ProjectSettings {
         Self {
             daily_target: 2000,
             word_target: default_word_target(),
-            theme: "brutalist-dark".to_string(),
         }
     }
 }
