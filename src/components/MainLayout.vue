@@ -3,6 +3,9 @@ import { ref, nextTick } from 'vue';
 import FileTree from './FileTree.vue';
 import GamificationStatus from './GamificationStatus.vue';
 import ContextMenu from './base/ContextMenu.vue';
+import AppLogo from './AppLogo.vue';
+import SidebarFooter from './SidebarFooter.vue';
+import AddChapterButton from './AddChapterButton.vue';
 import { useResizable } from '../composables/useResizable';
 import { useProjectData } from '../composables/useProjectData';
 import { useContextMenu } from '../composables/useContextMenu';
@@ -99,10 +102,7 @@ const addChapter = () => {
         class="flex flex-col border-r border-stone/60 h-full bg-white/40 backdrop-blur-xl relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] group"
         :style="{ width: `${sidebarWidth}px` }"
     >
-      <div class="p-6 font-serif italic font-bold text-2xl tracking-tight text-ink select-none relative group/logo cursor-default">
-        <span class="inline-block transition-transform duration-500 group-hover/logo:scale-105 group-hover/logo:-rotate-1">BrutWrite</span>
-        <span class="absolute -bottom-1 left-6 w-8 h-0.5 bg-accent/60 transition-all duration-500 group-hover/logo:w-16 group-hover/logo:bg-accent"></span>
-      </div>
+      <AppLogo />
       
       <div ref="sidebarScrollRef" class="flex-1 overflow-y-auto px-3 py-2 scroll-smooth">
           <FileTree 
@@ -117,27 +117,7 @@ const addChapter = () => {
             @cancel-rename="handleRenameCancel"
           />
         
-        <!-- Root Add Button (Clean Glass Design) -->
-        <button 
-          @click="addChapter"
-          class="group relative w-full overflow-hidden rounded-xl border px-4 py-3 mt-8 transition-all duration-500 hover:shadow-sm active:scale-[0.98]"
-          :class="isAdding ? 'border-accent/40 bg-accent/5 ring-1 ring-accent/20' : 'border-stone/30 bg-white/5 hover:border-stone/50 hover:bg-white/10'"
-        >
-          <!-- Subtle Shimmer (Reduced opacity) -->
-          <div class="absolute inset-0 -translate-x-[150%] skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[150%]"></div>
-          
-          <div class="relative flex items-center justify-center gap-3">
-             <!-- Icon: High contrast instead of neon glow -->
-            <div class="flex h-5 w-5 items-center justify-center rounded-md bg-stone/20 text-ink/40 transition-all duration-300 group-hover:bg-ink group-hover:text-white group-hover:rotate-90">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-            </div>
-            
-            <span class="text-[11px] font-bold uppercase tracking-[0.2em] text-ink/40 transition-all duration-300 group-hover:text-ink group-hover:tracking-[0.25em]">New Chapter</span>
-          </div>
-        </button>
+        <AddChapterButton :is-adding="isAdding" @click="addChapter" />
       </div>
 
       <!-- Context Menu -->
@@ -159,12 +139,7 @@ const addChapter = () => {
         </div>
       </ContextMenu>
 
-      <div class="p-4 border-t border-stone/50">
-        <!-- Settings -->
-        <button class="w-full py-2 text-xs font-medium text-ink/50 hover:text-accent transition-colors uppercase tracking-wider text-left">
-          Settings
-        </button>
-      </div>
+      <SidebarFooter />
 
       <!-- Resize Handle -->
       <div 
