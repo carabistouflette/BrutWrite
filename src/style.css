@@ -5,10 +5,13 @@
   --color-brut-black: #000000;
   --color-brut-white: #FFFFFF;
   --color-brut-gray: #CCCCCC;
-  --color-ink: #1a1a1a;
-  --color-ink-rgb: 26, 26, 26;
-  --color-paper: #f4f4f0;
-  --color-stone: #e5e5e0;
+
+  /* Dynamic references */
+  --color-ink: var(--ink);
+  --color-ink-rgb: var(--ink-rgb);
+  --color-paper: var(--paper);
+  --color-stone: var(--stone);
+
   --color-accent: #ff5f1f;
   --color-accent-rgb: 255, 95, 31;
   --color-glass: rgba(255, 255, 255, 0.4);
@@ -22,19 +25,32 @@
 }
 
 :root {
+  /* Light Mode Palette */
+  --paper: #f4f4f0;
+  --ink: #1a1a1a;
+  --ink-rgb: 26, 26, 26;
+  --stone: #e5e5e0;
+
   font-family: 'Inter', sans-serif;
-  /* Switch to sans for cleanliness */
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light;
-  color: #1a1a1a;
-  background-color: #f4f4f0;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Cyber-Glass Defaults */
+  --cyber-glass-blur: 20px;
+  --cyber-glass-opacity: 0.15;
+}
+
+/* Deep Dark Mode Palette */
+.dark {
+  --paper: #0a0a0a;
+  /* True Deep Dark */
+  --ink: #ededed;
+  --ink-rgb: 237, 237, 237;
+  --stone: #262626;
+
+  color-scheme: dark;
 }
 
 body {
@@ -46,6 +62,7 @@ body {
   color: var(--color-ink);
   -webkit-user-select: none;
   user-select: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Custom scrollbar for brutalist feel */
@@ -105,11 +122,26 @@ body {
   transform: translateY(0);
 }
 
+/* Global Cyber-Glass Effect */
+.cyber-glass {
+  background-color: rgba(255, 255, 255, var(--cyber-glass-opacity)) !important;
+  backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%) !important;
+}
+
+.dark .cyber-glass {
+  background-color: rgba(0, 0, 0, var(--cyber-glass-opacity)) !important;
+}
+
 /* Global Context Menu Glass Effect */
 .context-menu-glass {
-  background-color: rgba(255, 255, 255, 0.15) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.2) !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background-color: rgba(255, 255, 255, var(--cyber-glass-opacity)) !important;
+  backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%) !important;
+}
+
+.dark .context-menu-glass {
+  background-color: rgba(0, 0, 0, var(--cyber-glass-opacity)) !important;
 }
