@@ -27,7 +27,7 @@ export function useSettings() {
 
             } else {
                 // First time: save default settings
-                await saveSettings();
+                await saveSettings(true);
             }
         } catch (err) {
             console.error('Failed to load settings:', err);
@@ -58,7 +58,21 @@ export function useSettings() {
         return result;
     }
 
-    const saveSettings = async () => {
+    let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const saveSettings = async (immediate = false) => {
+        if (!immediate) {
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(async () => {
+                await performSave();
+                saveTimeout = null;
+            }, 1000); // 1 second debounce
+            return;
+        }
+        await performSave();
+    };
+
+    const performSave = async () => {
         try {
             // Ensure the directory exists (mkdir -p behavior)
             await mkdir('', { baseDir: BaseDirectory.AppConfig, recursive: true });
