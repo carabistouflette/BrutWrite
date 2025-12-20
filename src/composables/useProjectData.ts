@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref, computed, triggerRef } from 'vue';
 import { projectApi } from '../api/project';
 import type { FileNode, Manifest, Chapter } from '../types';
 
@@ -174,9 +174,9 @@ export function useProjectData() {
         };
 
         if (findAndRename(projectData.value)) {
-            // Force a top-level reactivity update to notify all observers 
-            // (like the Sidebar/FileTree) that a deep property has changed.
-            projectData.value = [...projectData.value];
+            // Use triggerRef to force a reactivity update on children components 
+            // (like the Sidebar/FileTree) without replacing the underlying array reference.
+            triggerRef(projectData);
             await syncManifest();
         }
     };

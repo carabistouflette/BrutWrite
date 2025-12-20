@@ -64,12 +64,11 @@ const hoverId = ref<string | null>(null);
 <template>
   <VueDraggableNext
     v-model="list"
-    tag="transition-group"
-    :component-data="{ tag: 'div', name: 'list' }"
     group="files"
     :animation="200" 
     ghost-class="ghost"
     class="min-h-[10px] relative block"
+    tag="div"
   >
     <div
       v-for="element in list"
