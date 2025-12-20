@@ -14,14 +14,12 @@ const STORAGE_KEY = 'brutwrite_gamification';
 interface GamificationState {
     projectTarget: number;
     history: DailyStats[];
-    totalProjectWords: number; // Snapshot of total words
     lastSessionDate: string;
 }
 
 const DEFAULT_STATE: GamificationState = {
     projectTarget: 50000, // Deprecated in local state, kept for migration
     history: [],
-    totalProjectWords: 0,
     lastSessionDate: new Date().toISOString().split('T')[0]
 };
 
@@ -31,7 +29,7 @@ const sessionWords = ref(0); // Volatile session counter
 
 export function useGamification() {
     const { settings } = useSettings();
-    const { settings: projectSettings, updateSettings } = useProjectData();
+    const { settings: projectSettings, updateSettings, totalWords } = useProjectData();
 
     // Load from local storage
     const loadState = () => {
@@ -73,7 +71,6 @@ export function useGamification() {
 
         if (historyIndex >= 0) {
             state.value.history[historyIndex].wordCount += delta;
-            // Prevent negative history for a day (unless we want to allow it?)
             if (state.value.history[historyIndex].wordCount < 0) {
                 state.value.history[historyIndex].wordCount = 0;
             }
@@ -81,10 +78,7 @@ export function useGamification() {
             state.value.history.push({ date: today, wordCount: Math.max(0, delta) });
         }
 
-        // 3. Update total project words (Global counter)
-        state.value.totalProjectWords += delta;
-        if (state.value.totalProjectWords < 0) state.value.totalProjectWords = 0;
-
+        // Note: Total project words are now calculated via useProjectData from recursive nodes
         saveState();
     };
 
@@ -112,7 +106,8 @@ export function useGamification() {
     const progressProject = computed(() => {
         // Use project setting if available, else fallback to local state
         const target = projectSettings.value?.word_target || state.value.projectTarget || 50000;
-        return Math.min(100, Math.max(0, (state.value.totalProjectWords / target) * 100));
+        const current = totalWords.value || 0;
+        return Math.min(100, Math.max(0, (current / target) * 100));
     });
 
     const streak = computed(() => calculateStreak(state.value.history));
@@ -127,7 +122,7 @@ export function useGamification() {
     return {
         dailyGoal: computed(() => settings.value.general.dailyGoal),
         projectTarget: computed(() => projectSettings.value?.word_target || state.value.projectTarget),
-        totalProjectWords: computed(() => state.value.totalProjectWords),
+        totalProjectWords: computed(() => totalWords.value || 0),
         todayWords: computed(() => todayStats.value.wordCount),
         history: computed(() => state.value.history),
         progressDaily,

@@ -159,6 +159,16 @@ export function useProjectData() {
         return findNode(projectData.value, activeId.value);
     });
 
+    const totalWords = computed(() => {
+        const countWords = (nodes: FileNode[]): number => {
+            return nodes.reduce((sum, node) => {
+                const childSum = node.children ? countWords(node.children) : 0;
+                return sum + (node.word_count || 0) + childSum;
+            }, 0);
+        };
+        return countWords(projectData.value);
+    });
+
     const updateStructure = async (newStructure: FileNode[]) => {
         projectData.value = newStructure;
         await syncManifest();
@@ -180,6 +190,7 @@ export function useProjectData() {
         activeChapter,
         projectId,
         settings: computed(() => projectSettings.value),
+        totalWords,
         loadProject,
         createProject,
         selectNode,

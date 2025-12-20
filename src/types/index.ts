@@ -23,6 +23,7 @@ export interface Chapter {
     parent_id?: string;
     title: string;
     filename: string;
+    word_count: number;
     order: number;
 }
 
@@ -60,6 +61,7 @@ export interface FileNode {
     children?: FileNode[];
     // Link to backend data
     filename?: string;
+    word_count?: number;
 }
 
 export interface DailyStats {

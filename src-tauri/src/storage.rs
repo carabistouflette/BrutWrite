@@ -134,17 +134,45 @@ pub fn save_chapter_content<P: AsRef<Path>>(
     root_path: P,
     filename: &str,
     content: &str,
+    word_count: u32,
 ) -> Result<()> {
     let root = root_path.as_ref();
-    // Direct path construction, bypassing expensive metadata lookup
+    // Direct path construction
     let chapter_path = root.join("manuscript").join(filename);
 
-    // Ensure manuscript directory exists (sanity check)
+    // Ensure manuscript directory exists
     if !root.join("manuscript").exists() {
         fs::create_dir_all(root.join("manuscript"))?;
     }
 
+    // 1. Write content
     fs::write(chapter_path, content)?;
+
+    // 2. Update Manifest Word Count
+    // Optimization: We could debounce this or optimize loading, but for now safe persistence is priority
+    let mut metadata = load_project_metadata(root)?;
+    let mut changed = false;
+
+    if let Some(chapter) = metadata
+        .manifest
+        .chapters
+        .iter_mut()
+        .find(|c| c.filename == filename)
+    {
+        if chapter.word_count != word_count {
+            chapter.word_count = word_count;
+            changed = true;
+        }
+    }
+
+    // 3. Save metadata if changed
+    if changed {
+        metadata.updated_at = chrono::Utc::now();
+        let metadata_path = root.join("project.json");
+        let json = serde_json::to_string_pretty(&metadata)?;
+        fs::write(metadata_path, json)?;
+    }
+
     Ok(())
 }
 
@@ -227,6 +255,7 @@ mod tests {
                 parent_id: None,
                 title: "Ch1".to_string(),
                 filename: "c1.md".to_string(),
+                word_count: 0,
                 order: 0,
             }],
         };
@@ -234,7 +263,8 @@ mod tests {
 
         // Save Content using filename directly
         let content = "# Chapter 1\nIt was a dark and stormy night.";
-        save_chapter_content(&project_path, "c1.md", content).unwrap();
+        let word_count = 7;
+        save_chapter_content(&project_path, "c1.md", content, word_count).unwrap();
 
         // Read Content (read_chapter_content still looks up by ID, which verifies the file exists at the correct path)
         let read_back = read_chapter_content(&project_path, "c1").unwrap();

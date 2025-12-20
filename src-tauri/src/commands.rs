@@ -104,6 +104,7 @@ pub async fn save_chapter(
     project_id: Uuid,
     filename: String,
     content: String,
+    word_count: u32,
 ) -> Result<(), String> {
     let projects = state
         .open_projects
@@ -113,7 +114,8 @@ pub async fn save_chapter(
         .get(&project_id)
         .ok_or_else(|| "Project not loaded".to_string())?;
 
-    storage::save_chapter_content(root_path, &filename, &content).map_err(|e| e.to_string())
+    storage::save_chapter_content(root_path, &filename, &content, word_count)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

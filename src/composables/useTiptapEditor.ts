@@ -180,9 +180,12 @@ export function useTiptapEditor(
 
         try {
             const content = editor.value.getHTML();
-            await projectApi.saveChapter(projectId, filename, content);
+            const wordCount = editor.value.storage.characterCount.words();
+
+            await projectApi.saveChapter(projectId, filename, content, wordCount);
+
             isDirty.value = false; // Reset dirty flag on successful save
-            console.debug('Auto-saved chapter (content changed)');
+            console.debug(`Auto-saved chapter (words: ${wordCount})`);
         } catch (e) {
             console.error('Failed to save chapter:', e);
         }

@@ -24,8 +24,8 @@ export const projectApi = {
         return invoke<string>('load_chapter_content', { projectId, chapterId });
     },
 
-    saveChapter: async (projectId: string, filename: string, content: string): Promise<void> => {
-        return invoke('save_chapter', { projectId, filename, content });
+    saveChapter: async (projectId: string, filename: string, content: string, wordCount: number): Promise<void> => {
+        return invoke('save_chapter', { projectId, filename, content, wordCount });
     },
 
     deleteChapter: async (projectId: string, filename: string): Promise<void> => {

@@ -41,6 +41,8 @@ pub struct Chapter {
     pub parent_id: Option<String>,
     pub title: String,
     pub filename: String,
+    #[serde(default)]
+    pub word_count: u32,
     pub order: u32,
 }
 
