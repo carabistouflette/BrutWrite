@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, nextTick } from 'vue';
 import FileTree from './FileTree.vue';
+import GamificationStatus from './GamificationStatus.vue';
 import { useResizable } from '../composables/useResizable';
 import { useProjectData } from '../composables/useProjectData';
+import { useContextMenu } from '../composables/useContextMenu';
 
-// --- Logic Extraction ---
+// --- Composables ---
 const { width: sidebarWidth, isResizing, startResize } = useResizable({
   initialWidth: 256,
   minWidth: 200,
@@ -21,8 +23,16 @@ const {
   renameNode: handleRenameLogic
 } = useProjectData();
 
-const editingId = ref<string | null>(null);
+const { showMenu, menuPos, targetNodeId, openMenu, closeMenu } = useContextMenu();
 
+// --- Local State ---
+const editingId = ref<string | null>(null);
+const isAdding = ref(false);
+const sidebarScrollRef = ref<HTMLElement | null>(null);
+
+// --- Event Handlers ---
+
+// Rename Logic
 const handleRenameRequest = (id: string) => {
   editingId.value = id;
 };
@@ -36,67 +46,13 @@ const handleRenameCancel = () => {
     editingId.value = null;
 };
 
-// --- UI / Interaction Props ---
-const isAdding = ref(false);
-
-// Note: sidebarScrollRef wasn't in original MainLayout but it's good UX, I'll add the ref too.
-const sidebarScrollRef = ref<HTMLElement | null>(null);
-
-// --- Context Menu Logic ---
-const showMenu = ref(false);
-const menuPos = ref({ x: 0, y: 0 });
-const targetNodeId = ref<string | null>(null);
-
-const handleContextMenu = ({ e, id }: { e: MouseEvent, id: string }) => {
-  e.preventDefault();
-  targetNodeId.value = id;
-  menuPos.value = { x: e.clientX, y: e.clientY };
-  showMenu.value = true;
-};
-
-const closeMenu = () => {
-  showMenu.value = false;
-};
-
-// Wrappers for UI interactions
-const addSection = () => {
-  if (targetNodeId.value) {
-    addSectionLogic(targetNodeId.value);
-  }
-  closeMenu();
-};
-
+// Context Menu Interface
 const startRenameTarget = () => {
     if (targetNodeId.value) {
         handleRenameRequest(targetNodeId.value);
     }
     closeMenu();
 }
-
-const addChapter = () => {
-  addChapterLogic();
-
-  // Trigger feedback animation
-  isAdding.value = true;
-  setTimeout(() => {
-    isAdding.value = false;
-  }, 600);
-  
-  // Scroll to bottom logic if the element exists
-  nextTick(() => {
-    // We need to attach the ref to the scroll container in template if not already there
-    if (sidebarScrollRef.value) {
-        sidebarScrollRef.value.scrollTo({
-            top: sidebarScrollRef.value.scrollHeight,
-            behavior: 'smooth'
-        });
-    } else {
-        // Fallback or try to find it if ref not attached yet
-        const el = document.querySelector('aside > div.overflow-y-auto');
-        if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-    }
-  });
-};
 
 const deleteTarget = () => {
   if (targetNodeId.value) {
@@ -105,13 +61,33 @@ const deleteTarget = () => {
   closeMenu();
 };
 
-// Close menu on click elsewhere
-onMounted(() => {
-  document.addEventListener('click', closeMenu);
-});
-onUnmounted(() => {
-  document.removeEventListener('click', closeMenu);
-});
+const addSection = () => {
+  if (targetNodeId.value) {
+    addSectionLogic(targetNodeId.value);
+  }
+  closeMenu();
+};
+
+const handleContextMenu = ({ e, id }: { e: MouseEvent, id: string }) => {
+    openMenu(e, id);
+};
+
+// Add Chapter Animation & Scroll
+const addChapter = () => {
+  addChapterLogic();
+
+  isAdding.value = true;
+  setTimeout(() => isAdding.value = false, 600);
+  
+  nextTick(() => {
+    if (sidebarScrollRef.value) {
+        sidebarScrollRef.value.scrollTo({
+            top: sidebarScrollRef.value.scrollHeight,
+            behavior: 'smooth'
+        });
+    }
+  });
+};
 </script>
 
 <template>
@@ -215,7 +191,8 @@ onUnmounted(() => {
       <!-- Top Bar / Header -->
       <div class="h-16 px-8 flex justify-between items-center bg-transparent">
         <h1 class="font-normal text-sm text-ink/40 uppercase tracking-widest">Editor</h1>
-        <div class="space-x-2">
+        <div class="space-x-2 flex items-center">
+            <GamificationStatus />
             <!-- Toolbar -->
         </div>
       </div>
