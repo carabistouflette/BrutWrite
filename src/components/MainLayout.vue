@@ -221,7 +221,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Editor Canvas -->
-      <div class="flex-1 px-12 pb-12 overflow-y-auto max-w-3xl mx-auto w-full">
+      <div class="flex-1 w-full overflow-hidden relative">
         <slot></slot>
       </div>
     </main>
