@@ -60,35 +60,41 @@ const deleteItem = (id: string) => {
       class="cursor-pointer select-none"
     >
       <div 
-        class="group flex justify-between items-center py-1.5 px-2 rounded-md transition-all duration-300 ease-out hover:translate-x-1"
+        class="group hover-trigger relative flex justify-between items-center py-1.5 px-2 rounded-md transition-all duration-300 ease-out hover:translate-x-1 animate-enter"
         :class="{ 'bg-stone/50': !isActive(element.id), 'bg-accent/10 text-accent font-medium': isActive(element.id) }"
         @click.stop="handleSelect(element.id)"
       >
-        <div class="flex items-center gap-2 overflow-hidden">
-             <!-- Drag Handler Icon (optional, but helps imply drag) -->
-             <!-- <span class="text-stone/50 text-xs">::</span> -->
-            <span class="text-sm font-normal truncate transition-colors"
-                  :class="{ 'text-ink': !isActive(element.id), 'text-accent': isActive(element.id) }">
+        <!-- Custom Ink Bleed Background on Hover (Pseudo-element approach via absolute div) -->
+        <div class="absolute inset-0 bg-stone/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-md -z-10 mix-blend-multiply"></div>
+
+        <div class="flex items-center gap-3 overflow-hidden z-10">
+             <!-- Dynamic Marker -->
+             <span class="w-1 h-1 rounded-full bg-accent transition-all duration-300"
+                   :class="{ 'opacity-100 scale-100': isActive(element.id), 'opacity-0 scale-0 group-hover:opacity-40 group-hover:scale-100': !isActive(element.id) }">
+             </span>
+
+            <span class="text-sm font-normal truncate transition-all duration-300"
+                  :class="{ 'text-ink': !isActive(element.id), 'text-accent translate-x-1': isActive(element.id) }">
               {{ element.name }}
             </span>
         </div>
         
-        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
+        <div class="flex items-center gap-1 z-10">
              <!-- Delete Button -->
             <button 
                 @click.stop="deleteItem(element.id)"
-                class="w-5 h-5 flex items-center justify-center text-ink/20 hover:text-red-500 transition-transform hover:scale-110 active:scale-95"
+                class="hover-target w-6 h-6 flex items-center justify-center text-ink/30 hover:text-red-500 rounded-full hover:bg-white/50 transition-all duration-300 stagger-1"
                 title="Delete"
             >
-                &times;
+                <span class="transform scale-75">&times;</span>
             </button>
              <!-- Add Button -->
             <button 
                 @click.stop="addItem(element.id)"
-                class="w-5 h-5 flex items-center justify-center text-ink/40 hover:text-accent transition-transform hover:scale-110 hover:rotate-90 active:scale-95"
+                class="hover-target w-6 h-6 flex items-center justify-center text-ink/40 hover:text-accent rounded-full hover:bg-white/50 transition-all duration-300 stagger-2"
                 title="Add Section"
             >
-                +
+                <span class="transform scale-75">+</span>
             </button>
         </div>
       </div>
