@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { ProjectMetadata, Manifest } from '../types';
+import type { ProjectMetadata, Manifest, Character } from '../types';
 
 export const projectApi = {
     // Project Management
@@ -22,5 +22,14 @@ export const projectApi = {
 
     saveChapter: async (projectId: string, chapterId: string, content: string): Promise<void> => {
         return invoke('save_chapter', { projectId, chapterId, content });
+    },
+
+    // Character Management
+    saveCharacter: async (projectId: string, character: Character): Promise<ProjectMetadata> => {
+        return invoke<ProjectMetadata>('save_character', { projectId, character });
+    },
+
+    deleteCharacter: async (projectId: string, characterId: string): Promise<ProjectMetadata> => {
+        return invoke<ProjectMetadata>('delete_character', { projectId, characterId });
     }
 };
