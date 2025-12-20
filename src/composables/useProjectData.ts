@@ -1,95 +1,171 @@
 import { ref } from 'vue';
-import type { FileNode } from '../types';
+import { projectApi } from '../api/project';
+import type { FileNode, Manifest, Chapter } from '../types';
 
-// Mock initial data
-const INITIAL_DATA: FileNode[] = [
-    {
-        id: '1',
-        name: 'Chapter 1: The Beginning',
-        children: [
-            { id: '1-1', name: 'Section 1.1: Intro' },
-            { id: '1-2', name: 'Section 1.2: The Incident' }
-        ]
-    },
-    {
-        id: '2',
-        name: 'Chapter 2: The Middle',
-        children: []
-    }
-];
-
-// Singleton state (simple store pattern)
-const projectData = ref<FileNode[]>(INITIAL_DATA);
+// Singleton state
+const projectData = ref<FileNode[]>([]);
 const activeId = ref<string | undefined>(undefined);
+const projectId = ref<string | undefined>(undefined); // Store active project UUID
 
 export function useProjectData() {
 
-    // Helper to find a node by ID and its parent list
-    const findNodeAndParent = (list: FileNode[], id: string): { node: FileNode | null, parentList: FileNode[] | null, index: number } => {
-        const index = list.findIndex(item => item.id === id);
-        if (index !== -1) {
-            return { node: list[index], parentList: list, index };
-        }
-        for (const item of list) {
-            if (item.children) {
-                const result = findNodeAndParent(item.children, id);
-                if (result.node) return result;
+    // --- Backend Sync Helpers ---
+
+    const syncManifest = async () => {
+        if (!projectId.value) return;
+
+        // Flatten tree to Manifest
+        const chapters: Chapter[] = [];
+        let order = 0;
+
+        const traverse = (nodes: FileNode[]) => {
+            for (const node of nodes) {
+                chapters.push({
+                    id: node.id,
+                    title: node.name,
+                    filename: node.filename || `${node.id}.md`,
+                    order: order++
+                });
+                if (node.children) traverse(node.children);
             }
+        };
+
+        traverse(projectData.value);
+        const manifest: Manifest = { chapters };
+
+        try {
+            await projectApi.updateManifest(projectId.value, manifest);
+            console.debug('Manifest synced');
+        } catch (e) {
+            console.error('Failed to sync manifest:', e);
         }
-        return { node: null, parentList: null, index: -1 };
     };
+
+    // --- Actions ---
+
+    const loadProject = async (path: string) => {
+        try {
+            const metadata = await projectApi.load(path);
+            projectId.value = metadata.id;
+
+            // Map Manifest -> FileNode[]
+            projectData.value = metadata.manifest.chapters
+                .sort((a, b) => a.order - b.order)
+                .map(c => ({
+                    id: c.id,
+                    name: c.title,
+                    filename: c.filename,
+                    children: []
+                }));
+
+            if (projectData.value.length > 0) {
+                activeId.value = projectData.value[0].id;
+            }
+        } catch (e) {
+            console.error('Failed to load project:', e);
+        }
+    };
+
+    const createProject = async (path: string, name: string, author: string) => {
+        try {
+            const metadata = await projectApi.create(path, name, author);
+            projectId.value = metadata.id;
+            projectData.value = [];
+
+            await addChapter();
+        } catch (e) {
+            console.error('Failed to create project:', e);
+        }
+    }
 
     const selectNode = (id: string) => {
         activeId.value = id;
     };
 
-    const addChapter = () => {
+    const addChapter = async () => {
         const newId = `chapter-${Date.now()}`;
-        projectData.value.push({
+        const newNode: FileNode = {
             id: newId,
             name: 'New Chapter',
+            filename: `${newId}.md`,
             children: []
-        });
+        };
+
+        projectData.value.push(newNode);
         activeId.value = newId;
+
+        await syncManifest();
         return newId;
     };
 
-    const addSection = (parentId: string) => {
-        const { node } = findNodeAndParent(projectData.value, parentId);
-        if (node) {
-            if (!node.children) node.children = [];
-            const newId = `${parentId}-${Date.now()}`;
-            node.children.push({
-                id: newId,
-                name: 'New Section',
-                children: []
-            });
-            // Optionally select the new section?
-            // activeId.value = newId; 
+    const addSection = async (parentId: string) => {
+        const findAndAdd = (nodes: FileNode[]): boolean => {
+            const index = nodes.findIndex(n => n.id === parentId);
+            if (index !== -1) {
+                if (!nodes[index].children) nodes[index].children = [];
+                const newId = `sec-${Date.now()}`;
+                nodes[index].children!.push({
+                    id: newId,
+                    name: 'New Section',
+                    filename: `${newId}.md`,
+                    children: []
+                });
+                return true;
+            }
+            for (const node of nodes) {
+                if (node.children && findAndAdd(node.children)) return true;
+            }
+            return false;
+        }
+
+        if (findAndAdd(projectData.value)) {
+            await syncManifest();
         }
     };
 
-    const deleteNode = (id: string) => {
-        const { parentList, index } = findNodeAndParent(projectData.value, id);
-        if (parentList && index !== -1) {
-            parentList.splice(index, 1);
-        }
+    const deleteNode = async (id: string) => {
+        const deleteFromList = (nodes: FileNode[]): boolean => {
+            const index = nodes.findIndex(n => n.id === id);
+            if (index !== -1) {
+                nodes.splice(index, 1);
+                return true;
+            }
+            for (const node of nodes) {
+                if (node.children && deleteFromList(node.children)) return true;
+            }
+            return false;
+        };
 
-        if (activeId.value === id) {
-            activeId.value = undefined;
+        if (deleteFromList(projectData.value)) {
+            if (activeId.value === id) activeId.value = undefined;
+            await syncManifest();
         }
     };
 
-    const renameNode = (id: string, newName: string) => {
-        const { node } = findNodeAndParent(projectData.value, id);
-        if (node) {
-            node.name = newName;
+    const renameNode = async (id: string, newName: string) => {
+        const findAndRename = (nodes: FileNode[]) => {
+            const node = nodes.find(n => n.id === id);
+            if (node) {
+                node.name = newName;
+                return true;
+            }
+            for (const n of nodes) {
+                if (n.children && findAndRename(n.children)) return true;
+            }
+            return false;
+        };
+
+        if (findAndRename(projectData.value)) {
+            await syncManifest();
         }
     };
 
     return {
         projectData,
         activeId,
+        projectId,
+        loadProject,
+        createProject,
         selectNode,
         addChapter,
         addSection,
