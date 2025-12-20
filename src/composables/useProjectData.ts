@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { projectApi } from '../api/project';
 import type { FileNode, Manifest, Chapter } from '../types';
 
@@ -178,9 +178,27 @@ export function useProjectData() {
         }
     };
 
+    const activeChapter = computed(() => {
+        if (!activeId.value) return undefined;
+
+        const findNode = (nodes: FileNode[]): FileNode | undefined => {
+            for (const node of nodes) {
+                if (node.id === activeId.value) return node;
+                if (node.children) {
+                    const found = findNode(node.children);
+                    if (found) return found;
+                }
+            }
+            return undefined;
+        };
+
+        return findNode(projectData.value);
+    });
+
     return {
         projectData,
         activeId,
+        activeChapter,
         projectId,
         loadProject,
         createProject,
