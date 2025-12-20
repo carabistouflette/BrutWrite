@@ -117,7 +117,12 @@ export function useTiptapEditor(
         }
     });
 
+    let lastScrollTime = 0;
     const handleScroll = () => {
+        const now = Date.now();
+        if (now - lastScrollTime < 20) return; // Throttle to ~50fps
+        lastScrollTime = now;
+
         requestAnimationFrame(() => {
             if (!editor.value || !containerRef.value) return;
 

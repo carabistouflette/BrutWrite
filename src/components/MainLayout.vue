@@ -10,8 +10,10 @@ import { useResizable } from '../composables/useResizable';
 import { useProjectData } from '../composables/useProjectData';
 import { useContextMenu } from '../composables/useContextMenu';
 
-import SettingsModal from './SettingsModal.vue';
-import CharacterSheet from './characters/CharacterSheet.vue';
+import { defineAsyncComponent } from 'vue';
+
+const SettingsModal = defineAsyncComponent(() => import('./SettingsModal.vue'));
+const CharacterSheet = defineAsyncComponent(() => import('./characters/CharacterSheet.vue'));
 
 // --- Composables ---
 const { width: sidebarWidth, isResizing, startResize } = useResizable({
