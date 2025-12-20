@@ -12,7 +12,8 @@ export function useResizable({ initialWidth, minWidth, maxWidth }: UseResizableO
 
     const handleResize = (e: MouseEvent) => {
         if (isResizing.value) {
-            width.value = Math.max(minWidth, Math.min(e.clientX, maxWidth));
+            const scale = (parseFloat(document.documentElement.style.getPropertyValue('--ui-scale')) || 1);
+            width.value = Math.max(minWidth, Math.min(e.clientX / scale, maxWidth));
         }
     };
 
