@@ -120,6 +120,49 @@ pub fn save_chapter_content<P: AsRef<Path>>(
     Ok(())
 }
 
+pub fn save_character<P: AsRef<Path>>(
+    root_path: P,
+    character: crate::models::Character,
+) -> Result<ProjectMetadata> {
+    let root = root_path.as_ref();
+    let mut metadata = load_project_metadata(root)?;
+
+    if let Some(idx) = metadata
+        .characters
+        .iter()
+        .position(|c| c.id == character.id)
+    {
+        metadata.characters[idx] = character;
+    } else {
+        metadata.characters.push(character);
+    }
+
+    metadata.updated_at = chrono::Utc::now();
+
+    let metadata_path = root.join("project.json");
+    let json = serde_json::to_string_pretty(&metadata)?;
+    fs::write(metadata_path, json)?;
+
+    Ok(metadata)
+}
+
+pub fn delete_character<P: AsRef<Path>>(
+    root_path: P,
+    character_id: uuid::Uuid,
+) -> Result<ProjectMetadata> {
+    let root = root_path.as_ref();
+    let mut metadata = load_project_metadata(root)?;
+
+    metadata.characters.retain(|c| c.id != character_id);
+    metadata.updated_at = chrono::Utc::now();
+
+    let metadata_path = root.join("project.json");
+    let json = serde_json::to_string_pretty(&metadata)?;
+    fs::write(metadata_path, json)?;
+
+    Ok(metadata)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,5 +211,36 @@ mod tests {
         // Read Content
         let read_back = read_chapter_content(&project_path, "c1").unwrap();
         assert_eq!(read_back, content);
+    }
+    #[test]
+    fn test_save_character_and_load() {
+        let dir = tempdir().unwrap();
+        let project_path = dir.path().join("CharTest");
+
+        // Create
+        create_project_structure(&project_path, "Char Book", "Me").unwrap();
+
+        // Save Character
+        let char_id = uuid::Uuid::new_v4();
+        let character = crate::models::Character {
+            id: char_id,
+            name: "Hero".to_string(),
+            role: crate::models::CharacterRole::Protagonist,
+            archetype: "".to_string(),
+            description: "A brave hero".to_string(),
+            engine: Default::default(),
+            physical_features: "".to_string(),
+            traits: vec![],
+            arc: "".to_string(),
+            notes: "".to_string(),
+        };
+
+        save_character(&project_path, character.clone()).unwrap();
+
+        // Load and Verify
+        let loaded = load_project_metadata(&project_path).unwrap();
+        assert_eq!(loaded.characters.len(), 1);
+        assert_eq!(loaded.characters[0].name, "Hero");
+        assert_eq!(loaded.characters[0].id, char_id);
     }
 }

@@ -98,3 +98,37 @@ pub async fn save_chapter(
 
     storage::save_chapter_content(root_path, &chapter_id, &content).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn save_character(
+    state: State<'_, AppState>,
+    project_id: Uuid,
+    character: crate::models::Character,
+) -> Result<ProjectMetadata, String> {
+    let projects = state
+        .open_projects
+        .lock()
+        .map_err(|_| "Failed to lock state")?;
+    let root_path = projects
+        .get(&project_id)
+        .ok_or_else(|| "Project not loaded".to_string())?;
+
+    storage::save_character(root_path, character).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_character(
+    state: State<'_, AppState>,
+    project_id: Uuid,
+    character_id: Uuid,
+) -> Result<ProjectMetadata, String> {
+    let projects = state
+        .open_projects
+        .lock()
+        .map_err(|_| "Failed to lock state")?;
+    let root_path = projects
+        .get(&project_id)
+        .ok_or_else(|| "Project not loaded".to_string())?;
+
+    storage::delete_character(root_path, character_id).map_err(|e| e.to_string())
+}
