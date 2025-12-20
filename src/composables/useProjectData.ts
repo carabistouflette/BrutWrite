@@ -174,6 +174,9 @@ export function useProjectData() {
         };
 
         if (findAndRename(projectData.value)) {
+            // Force a top-level reactivity update to notify all observers 
+            // (like the Sidebar/FileTree) that a deep property has changed.
+            projectData.value = [...projectData.value];
             await syncManifest();
         }
     };
