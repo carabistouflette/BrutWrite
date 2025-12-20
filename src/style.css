@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
 
+/**
+ * --- Design System Tokens ---
+ */
 @theme {
   --color-brut-black: #000000;
   --color-brut-white: #FFFFFF;
@@ -45,7 +48,6 @@
 /* Deep Dark Mode Palette */
 .dark {
   --paper: #0a0a0a;
-  /* True Deep Dark */
   --ink: #ededed;
   --ink-rgb: 237, 237, 237;
   --stone: #262626;
@@ -53,6 +55,9 @@
   color-scheme: dark;
 }
 
+/**
+ * --- Base Styles ---
+ */
 body {
   margin: 0;
   min-width: 320px;
@@ -84,7 +89,9 @@ body {
   background: var(--color-brut-gray);
 }
 
-/* Motion & Animation */
+/**
+ * --- Animations ---
+ */
 @keyframes slide-up-spring {
   0% {
     transform: translateY(10px) scale(0.98);
@@ -111,6 +118,11 @@ body {
   transition-delay: 50ms;
 }
 
+/**
+ * --- Global Effects & Utilities ---
+ */
+
+/* Interaction triggers */
 .hover-trigger .hover-target {
   opacity: 0;
   transform: translateY(4px);
@@ -146,7 +158,9 @@ body {
   background-color: rgba(0, 0, 0, var(--cyber-glass-opacity)) !important;
 }
 
-/* --- Input Utilities --- */
+/**
+ * --- Forms & Inputs ---
+ */
 
 /* Hide number input spinners */
 input::-webkit-outer-spin-button,

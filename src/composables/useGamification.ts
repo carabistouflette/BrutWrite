@@ -1,13 +1,14 @@
-
 import { ref, computed } from 'vue';
 import { useSettings } from './useSettings';
+import {
+    calculateStreak,
+    calculateAverage,
+    getBestDay,
+    getTodayStats
+} from '../utils/stats';
+import type { DailyStats } from '../utils/stats';
 
 const STORAGE_KEY = 'brutwrite_gamification';
-
-interface DailyStats {
-    date: string;
-    wordCount: number;
-}
 
 interface GamificationState {
     projectTarget: number;
@@ -91,10 +92,7 @@ export function useGamification() {
     };
 
     // Computed
-    const todayStats = computed(() => {
-        const today = new Date().toISOString().split('T')[0];
-        return state.value.history.find(h => h.date === today) || { date: today, wordCount: 0 };
-    });
+    const todayStats = computed(() => getTodayStats(state.value.history));
 
     const progressDaily = computed(() => {
         const goal = settings.value.general.dailyGoal || 500;
@@ -105,43 +103,11 @@ export function useGamification() {
         return Math.min(100, Math.max(0, (state.value.totalProjectWords / state.value.projectTarget) * 100));
     });
 
-    // Streak calculation
-    const streak = computed(() => {
-        // Current streak: consecutive days with > 0 words ending at today (or yesterday if today is 0)
-        let currentStreak = 0;
-        const dayMap = new Map(state.value.history.map(h => [h.date, h.wordCount]));
-        const today = new Date().toISOString().split('T')[0];
+    const streak = computed(() => calculateStreak(state.value.history));
 
-        let d = new Date();
-        const todayCount = dayMap.get(today) || 0;
-        if (todayCount === 0) {
-            d.setDate(d.getDate() - 1);
-        }
+    const averageDaily = computed(() => calculateAverage(state.value.history));
 
-        while (true) {
-            const dateStr = d.toISOString().split('T')[0];
-            const count = dayMap.get(dateStr) || 0;
-
-            if (count > 0) {
-                currentStreak++;
-                d.setDate(d.getDate() - 1);
-            } else {
-                break;
-            }
-        }
-        return currentStreak;
-    });
-
-    const averageDaily = computed(() => {
-        if (state.value.history.length === 0) return 0;
-        const total = state.value.history.reduce((acc, curr) => acc + curr.wordCount, 0);
-        return Math.round(total / state.value.history.length);
-    });
-
-    const bestDay = computed(() => {
-        if (state.value.history.length === 0) return 0;
-        return Math.max(...state.value.history.map(h => h.wordCount));
-    });
+    const bestDay = computed(() => getBestDay(state.value.history));
 
     // Init
     loadState();

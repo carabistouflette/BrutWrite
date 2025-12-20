@@ -1,6 +1,14 @@
 import { ref, computed, triggerRef } from 'vue';
 import { projectApi } from '../api/project';
-import type { FileNode, Manifest, Chapter } from '../types';
+import type { FileNode } from '../types';
+import {
+    findNode,
+    deleteFromList,
+    findAndAdd,
+    findAndRename,
+    reconstructHierarchy,
+    projectToManifest
+} from '../utils/tree';
 
 // Singleton state
 const projectData = ref<FileNode[]>([]);
@@ -14,24 +22,7 @@ export function useProjectData() {
     const syncManifest = async () => {
         if (!projectId.value) return;
 
-        const chapters: Chapter[] = [];
-        let order = 0;
-
-        const traverse = (nodes: FileNode[], parentId?: string) => {
-            for (const node of nodes) {
-                chapters.push({
-                    id: node.id,
-                    parent_id: parentId,
-                    title: node.name,
-                    filename: node.filename || `${node.id}.md`,
-                    order: order++
-                });
-                if (node.children) traverse(node.children, node.id);
-            }
-        };
-
-        traverse(projectData.value);
-        const manifest: Manifest = { chapters };
+        const manifest = projectToManifest(projectData.value);
 
         try {
             await projectApi.updateManifest(projectId.value, manifest);
@@ -48,33 +39,7 @@ export function useProjectData() {
             const metadata = await projectApi.load(path);
             projectId.value = metadata.id;
 
-            // Map Manifest -> FileNode[] with hierarchy reconstruction
-            const chapters = [...metadata.manifest.chapters].sort((a, b) => a.order - b.order);
-            const nodeMap = new Map<string, FileNode>();
-            const rootNodes: FileNode[] = [];
-
-            // First pass: create all nodes
-            for (const c of chapters) {
-                const node: FileNode = {
-                    id: c.id,
-                    name: c.title,
-                    filename: c.filename,
-                    children: []
-                };
-                nodeMap.set(c.id, node);
-            }
-
-            // Second pass: link parents/children
-            for (const c of chapters) {
-                const node = nodeMap.get(c.id)!;
-                if (c.parent_id && nodeMap.has(c.parent_id)) {
-                    nodeMap.get(c.parent_id)!.children?.push(node);
-                } else {
-                    rootNodes.push(node);
-                }
-            }
-
-            projectData.value = rootNodes;
+            projectData.value = reconstructHierarchy(metadata.manifest.chapters);
 
             if (projectData.value.length > 0) {
                 activeId.value = projectData.value[0].id;
@@ -117,63 +82,28 @@ export function useProjectData() {
     };
 
     const addSection = async (parentId: string) => {
-        const findAndAdd = (nodes: FileNode[]): boolean => {
-            const index = nodes.findIndex(n => n.id === parentId);
-            if (index !== -1) {
-                if (!nodes[index].children) nodes[index].children = [];
-                const newId = `sec-${Date.now()}`;
-                nodes[index].children!.push({
-                    id: newId,
-                    name: 'New Section',
-                    filename: `${newId}.md`,
-                    children: []
-                });
-                return true;
-            }
-            for (const node of nodes) {
-                if (node.children && findAndAdd(node.children)) return true;
-            }
-            return false;
-        }
+        const newId = `sec-${Date.now()}`;
+        const newNode: FileNode = {
+            id: newId,
+            name: 'New Section',
+            filename: `${newId}.md`,
+            children: []
+        };
 
-        if (findAndAdd(projectData.value)) {
+        if (findAndAdd(projectData.value, parentId, newNode)) {
             await syncManifest();
         }
     };
 
     const deleteNode = async (id: string) => {
-        const deleteFromList = (nodes: FileNode[]): boolean => {
-            const index = nodes.findIndex(n => n.id === id);
-            if (index !== -1) {
-                nodes.splice(index, 1);
-                return true;
-            }
-            for (const node of nodes) {
-                if (node.children && deleteFromList(node.children)) return true;
-            }
-            return false;
-        };
-
-        if (deleteFromList(projectData.value)) {
+        if (deleteFromList(projectData.value, id)) {
             if (activeId.value === id) activeId.value = undefined;
             await syncManifest();
         }
     };
 
     const renameNode = async (id: string, newName: string) => {
-        const findAndRename = (nodes: FileNode[]) => {
-            const node = nodes.find(n => n.id === id);
-            if (node) {
-                node.name = newName;
-                return true;
-            }
-            for (const n of nodes) {
-                if (n.children && findAndRename(n.children)) return true;
-            }
-            return false;
-        };
-
-        if (findAndRename(projectData.value)) {
+        if (findAndRename(projectData.value, id, newName)) {
             // Use triggerRef to force a reactivity update on children components 
             // (like the Sidebar/FileTree) without replacing the underlying array reference.
             triggerRef(projectData);
@@ -183,19 +113,7 @@ export function useProjectData() {
 
     const activeChapter = computed(() => {
         if (!activeId.value) return undefined;
-
-        const findNode = (nodes: FileNode[]): FileNode | undefined => {
-            for (const node of nodes) {
-                if (node.id === activeId.value) return node;
-                if (node.children) {
-                    const found = findNode(node.children);
-                    if (found) return found;
-                }
-            }
-            return undefined;
-        };
-
-        return findNode(projectData.value);
+        return findNode(projectData.value, activeId.value);
     });
 
     return {
