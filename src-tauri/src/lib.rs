@@ -10,12 +10,14 @@ use uuid::Uuid;
 
 pub struct AppState {
     pub open_projects: Mutex<HashMap<Uuid, PathBuf>>,
+    pub project_cache: Mutex<HashMap<Uuid, models::ProjectMetadata>>,
 }
 
 impl AppState {
     pub fn new() -> Self {
         Self {
             open_projects: Mutex::new(HashMap::new()),
+            project_cache: Mutex::new(HashMap::new()),
         }
     }
 }

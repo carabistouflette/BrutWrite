@@ -97,10 +97,13 @@ pub fn delete_chapter_file<P: AsRef<Path>>(root_path: P, filename: &str) -> Resu
     Ok(())
 }
 
-/// Helper to find chapter filename from manifest and return full path
-fn resolve_chapter_path<P: AsRef<Path>>(root_path: P, chapter_id: &str) -> Result<PathBuf> {
+/// Helper to find chapter filename from metadata and return full path
+pub fn resolve_chapter_path<P: AsRef<Path>>(
+    root_path: P,
+    metadata: &ProjectMetadata,
+    chapter_id: &str,
+) -> Result<PathBuf> {
     let root = root_path.as_ref();
-    let metadata = load_project_metadata(root)?;
 
     let filename = metadata
         .manifest
@@ -119,8 +122,12 @@ fn resolve_chapter_path<P: AsRef<Path>>(root_path: P, chapter_id: &str) -> Resul
     }
 }
 
-pub fn read_chapter_content<P: AsRef<Path>>(root_path: P, chapter_id: &str) -> Result<String> {
-    let chapter_path = resolve_chapter_path(root_path, chapter_id)?;
+pub fn read_chapter_content<P: AsRef<Path>>(
+    root_path: P,
+    metadata: &ProjectMetadata,
+    chapter_id: &str,
+) -> Result<String> {
+    let chapter_path = resolve_chapter_path(root_path, metadata, chapter_id)?;
 
     if !chapter_path.exists() {
         return Ok(String::new());
@@ -132,48 +139,42 @@ pub fn read_chapter_content<P: AsRef<Path>>(root_path: P, chapter_id: &str) -> R
 
 pub fn save_chapter_content<P: AsRef<Path>>(
     root_path: P,
-    filename: &str,
+    chapter_id: &str,
     content: &str,
-    word_count: u32,
-) -> Result<()> {
+) -> Result<ProjectMetadata> {
     let root = root_path.as_ref();
-    // Direct path construction
-    let chapter_path = root.join("manuscript").join(filename);
+    let mut metadata = load_project_metadata(root)?;
+    let chapter_path = resolve_chapter_path(root, &metadata, chapter_id)?;
 
     // Ensure manuscript directory exists
-    if !root.join("manuscript").exists() {
-        fs::create_dir_all(root.join("manuscript"))?;
+    let manuscript_dir = root.join("manuscript");
+    if !manuscript_dir.exists() {
+        fs::create_dir_all(&manuscript_dir)?;
     }
 
     // 1. Write content
-    fs::write(chapter_path, content)?;
+    fs::write(&chapter_path, content)?;
 
-    // 2. Update Manifest Word Count
-    // Optimization: We could debounce this or optimize loading, but for now safe persistence is priority
-    let mut metadata = load_project_metadata(root)?;
-    let mut changed = false;
+    // 2. Calculate word count server-side
+    let word_count = content.split_whitespace().count() as u32;
 
+    // 3. Update Manifest Word Count
     if let Some(chapter) = metadata
         .manifest
         .chapters
         .iter_mut()
-        .find(|c| c.filename == filename)
+        .find(|c| c.id == chapter_id)
     {
-        if chapter.word_count != word_count {
-            chapter.word_count = word_count;
-            changed = true;
-        }
+        chapter.word_count = word_count;
     }
 
-    // 3. Save metadata if changed
-    if changed {
-        metadata.updated_at = chrono::Utc::now();
-        let metadata_path = root.join("project.json");
-        let json = serde_json::to_string_pretty(&metadata)?;
-        fs::write(metadata_path, json)?;
-    }
+    // 4. Save metadata
+    metadata.updated_at = chrono::Utc::now();
+    let metadata_path = root.join("project.json");
+    let json = serde_json::to_string_pretty(&metadata)?;
+    fs::write(metadata_path, json)?;
 
-    Ok(())
+    Ok(metadata)
 }
 
 pub fn save_character<P: AsRef<Path>>(
@@ -261,24 +262,22 @@ mod tests {
         };
         update_project_manifest(&project_path, manifest).unwrap();
 
-        // Save Content using filename directly
+        // Save Content using chapter_id
         let content = "# Chapter 1\nIt was a dark and stormy night.";
-        let word_count = 7;
-        save_chapter_content(&project_path, "c1.md", content, word_count).unwrap();
+        let updated_meta = save_chapter_content(&project_path, "c1", content).unwrap();
 
         // Read Content
-        let read_back = read_chapter_content(&project_path, "c1").unwrap();
+        let read_back = read_chapter_content(&project_path, &updated_meta, "c1").unwrap();
         assert_eq!(read_back, content);
 
         // Verify Manifest Match
-        let updated_meta = load_project_metadata(&project_path).unwrap();
         let chapter = updated_meta
             .manifest
             .chapters
             .iter()
             .find(|c| c.id == "c1")
             .unwrap();
-        assert_eq!(chapter.word_count, 7);
+        assert_eq!(chapter.word_count, 10);
     }
     #[test]
     fn test_save_character_and_load() {

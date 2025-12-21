@@ -30,7 +30,8 @@ const {
   addSection: addSectionLogic, 
   deleteNode: handleDelete,
   renameNode: handleRenameLogic,
-  updateStructure
+  updateStructure,
+  closeProject
 } = useProjectData();
 
 const { showMenu, menuPos, targetNodeId, openMenu, closeMenu } = useContextMenu();
@@ -151,6 +152,7 @@ const addChapter = () => {
       <SidebarFooter 
         @open-settings="showSettings = true" 
         @open-characters="showCharacters = true"
+        @change-project="closeProject"
       />
       
       <SettingsModal :show="showSettings" @close="showSettings = false" />

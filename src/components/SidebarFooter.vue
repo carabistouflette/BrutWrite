@@ -1,5 +1,16 @@
 <template>
   <div class="p-4 border-t border-stone/50 space-y-1">
+    <!-- Change Project -->
+    <button 
+      @click="$emit('change-project')"
+      class="w-full py-2 text-xs font-medium text-ink/50 hover:text-accent transition-colors uppercase tracking-wider text-left flex items-center gap-2"
+    >
+        <svg class="w-4 h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+        Change Project
+    </button>
+
     <!-- Characters -->
     <button 
       @click="$emit('open-characters')"
@@ -25,5 +36,5 @@
 </template>
 
 <script setup lang="ts">
-const emit = defineEmits(['open-settings', 'open-characters']);
+const emit = defineEmits(['open-settings', 'open-characters', 'change-project']);
 </script>

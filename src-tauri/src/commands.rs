@@ -24,8 +24,14 @@ pub async fn create_project(
     let mut projects = state
         .open_projects
         .lock()
-        .map_err(|_| "Failed to lock state")?;
+        .map_err(|_| "Failed to lock projects")?;
     projects.insert(metadata.id, root_path);
+
+    let mut cache = state
+        .project_cache
+        .lock()
+        .map_err(|_| "Failed to lock cache")?;
+    cache.insert(metadata.id, metadata.clone());
 
     Ok(metadata)
 }
@@ -41,8 +47,14 @@ pub async fn load_project(
     let mut projects = state
         .open_projects
         .lock()
-        .map_err(|_| "Failed to lock state")?;
+        .map_err(|_| "Failed to lock projects")?;
     projects.insert(metadata.id, root_path);
+
+    let mut cache = state
+        .project_cache
+        .lock()
+        .map_err(|_| "Failed to lock cache")?;
+    cache.insert(metadata.id, metadata.clone());
 
     Ok(metadata)
 }
@@ -56,12 +68,21 @@ pub async fn update_manifest(
     let projects = state
         .open_projects
         .lock()
-        .map_err(|_| "Failed to lock state")?;
+        .map_err(|_| "Failed to lock projects")?;
     let root_path = projects
         .get(&project_id)
         .ok_or_else(|| "Project not loaded".to_string())?;
 
-    storage::update_project_manifest(root_path, manifest).map_err(|e| e.to_string())
+    let metadata =
+        storage::update_project_manifest(root_path, manifest).map_err(|e| e.to_string())?;
+
+    let mut cache = state
+        .project_cache
+        .lock()
+        .map_err(|_| "Failed to lock cache")?;
+    cache.insert(project_id, metadata.clone());
+
+    Ok(metadata)
 }
 
 #[tauri::command]
@@ -73,12 +94,21 @@ pub async fn update_project_settings(
     let projects = state
         .open_projects
         .lock()
-        .map_err(|_| "Failed to lock state")?;
+        .map_err(|_| "Failed to lock projects")?;
     let root_path = projects
         .get(&project_id)
         .ok_or_else(|| "Project not loaded".to_string())?;
 
-    storage::update_project_settings(root_path, settings).map_err(|e| e.to_string())
+    let metadata =
+        storage::update_project_settings(root_path, settings).map_err(|e| e.to_string())?;
+
+    let mut cache = state
+        .project_cache
+        .lock()
+        .map_err(|_| "Failed to lock cache")?;
+    cache.insert(project_id, metadata.clone());
+
+    Ok(metadata)
 }
 
 #[tauri::command]
@@ -87,35 +117,55 @@ pub async fn load_chapter_content(
     project_id: Uuid,
     chapter_id: String,
 ) -> Result<String, String> {
-    let projects = state
-        .open_projects
-        .lock()
-        .map_err(|_| "Failed to lock state")?;
-    let root_path = projects
-        .get(&project_id)
-        .ok_or_else(|| "Project not loaded".to_string())?;
+    let (root_path, metadata) = {
+        let projects = state
+            .open_projects
+            .lock()
+            .map_err(|_| "Failed to lock projects")?;
+        let cache = state
+            .project_cache
+            .lock()
+            .map_err(|_| "Failed to lock cache")?;
 
-    storage::read_chapter_content(root_path, &chapter_id).map_err(|e| e.to_string())
+        let root = projects
+            .get(&project_id)
+            .ok_or_else(|| "Project not loaded".to_string())?
+            .clone();
+        let meta = cache
+            .get(&project_id)
+            .ok_or_else(|| "Metadata not in cache".to_string())?
+            .clone();
+        (root, meta)
+    };
+
+    storage::read_chapter_content(root_path, &metadata, &chapter_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn save_chapter(
     state: State<'_, AppState>,
     project_id: Uuid,
-    filename: String,
+    chapter_id: String,
     content: String,
-    word_count: u32,
-) -> Result<(), String> {
+) -> Result<ProjectMetadata, String> {
     let projects = state
         .open_projects
         .lock()
-        .map_err(|_| "Failed to lock state")?;
+        .map_err(|_| "Failed to lock projects")?;
     let root_path = projects
         .get(&project_id)
         .ok_or_else(|| "Project not loaded".to_string())?;
 
-    storage::save_chapter_content(root_path, &filename, &content, word_count)
-        .map_err(|e| e.to_string())
+    let metadata = storage::save_chapter_content(root_path, &chapter_id, &content)
+        .map_err(|e| e.to_string())?;
+
+    let mut cache = state
+        .project_cache
+        .lock()
+        .map_err(|_| "Failed to lock cache")?;
+    cache.insert(project_id, metadata.clone());
+
+    Ok(metadata)
 }
 
 #[tauri::command]
@@ -127,7 +177,7 @@ pub async fn delete_chapter(
     let projects = state
         .open_projects
         .lock()
-        .map_err(|_| "Failed to lock state")?;
+        .map_err(|_| "Failed to lock projects")?;
     let root_path = projects
         .get(&project_id)
         .ok_or_else(|| "Project not loaded".to_string())?;
@@ -144,12 +194,20 @@ pub async fn save_character(
     let projects = state
         .open_projects
         .lock()
-        .map_err(|_| "Failed to lock state")?;
+        .map_err(|_| "Failed to lock projects")?;
     let root_path = projects
         .get(&project_id)
         .ok_or_else(|| "Project not loaded".to_string())?;
 
-    storage::save_character(root_path, character).map_err(|e| e.to_string())
+    let metadata = storage::save_character(root_path, character).map_err(|e| e.to_string())?;
+
+    let mut cache = state
+        .project_cache
+        .lock()
+        .map_err(|_| "Failed to lock cache")?;
+    cache.insert(project_id, metadata.clone());
+
+    Ok(metadata)
 }
 
 #[tauri::command]
@@ -161,10 +219,18 @@ pub async fn delete_character(
     let projects = state
         .open_projects
         .lock()
-        .map_err(|_| "Failed to lock state")?;
+        .map_err(|_| "Failed to lock projects")?;
     let root_path = projects
         .get(&project_id)
         .ok_or_else(|| "Project not loaded".to_string())?;
 
-    storage::delete_character(root_path, character_id).map_err(|e| e.to_string())
+    let metadata = storage::delete_character(root_path, character_id).map_err(|e| e.to_string())?;
+
+    let mut cache = state
+        .project_cache
+        .lock()
+        .map_err(|_| "Failed to lock cache")?;
+    cache.insert(project_id, metadata.clone());
+
+    Ok(metadata)
 }

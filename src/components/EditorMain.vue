@@ -48,9 +48,8 @@ let saveInterval: any
         if (saveInterval) clearInterval(saveInterval);
         const intervalMs = (settings.value.general.autoSaveInterval || 30) * 1000;
         saveInterval = setInterval(async () => {
-            if (activeChapter.value && activeChapter.value.filename && projectId.value) {
-                // Pass filename instead of ID for IO optimization
-                await saveChapter(projectId.value, activeChapter.value.filename);
+            if (activeId.value && projectId.value) {
+                await saveChapter(projectId.value, activeId.value);
             }
         }, intervalMs);
     };

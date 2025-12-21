@@ -195,6 +195,21 @@ export function useProjectData() {
         }
     };
 
+    const closeProject = () => {
+        // Clear all project state
+        projectId.value = undefined;
+        projectData.value = [];
+        activeId.value = undefined;
+        projectSettings.value = null;
+
+        // Clear character store
+        const { setCharacters } = useCharacters();
+        setCharacters([]);
+
+        // Remove last opened project from localStorage
+        localStorage.removeItem('last_opened_project_path');
+    };
+
     return {
         projectData,
         activeId,
@@ -211,6 +226,7 @@ export function useProjectData() {
         renameNode,
         updateStructure,
         updateSettings: updateContextSettings,
-        updateNodeStats
+        updateNodeStats,
+        closeProject
     };
 }

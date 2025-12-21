@@ -171,7 +171,7 @@ export function useTiptapEditor(
         }
     };
 
-    const saveChapter = async (projectId: string, filename: string) => {
+    const saveChapter = async (projectId: string, chapterId: string) => {
         if (!editor.value) return;
 
         // Optimization: Don't save if nothing changed
@@ -181,17 +181,18 @@ export function useTiptapEditor(
 
         try {
             const content = editor.value.getHTML();
-            const wordCount = editor.value.storage.characterCount.words();
+            const metadata = await projectApi.saveChapter(projectId, chapterId, content);
 
-            await projectApi.saveChapter(projectId, filename, content, wordCount);
-
-            // Sync frontend state immediately to prevent stale overwrites on reorder
+            // Sync frontend state from the metadata returned by backend
             if (activeId.value) {
-                updateNodeStats(activeId.value, wordCount);
+                const chapter = metadata.manifest.chapters.find(c => c.id === chapterId);
+                if (chapter) {
+                    updateNodeStats(chapterId, chapter.word_count);
+                }
             }
 
             isDirty.value = false; // Reset dirty flag on successful save
-            console.debug(`Auto-saved chapter (words: ${wordCount})`);
+            console.debug(`Auto-saved chapter ${chapterId}`);
         } catch (e) {
             console.error('Failed to save chapter:', e);
         }
