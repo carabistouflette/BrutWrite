@@ -104,15 +104,14 @@ const popoverStyle = computed(() => ({
     </div>
 </template>
 
-<style scoped>
 .scene-popover {
     position: fixed;
     z-index: 1000;
     width: 260px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
+    background: #111111; /* Darker than bg-primary */
+    border: 1px solid #333;
     border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     overflow: hidden;
     pointer-events: none;
     animation: popover-in 0.15s ease-out;
@@ -135,15 +134,15 @@ const popoverStyle = computed(() => ({
     justify-content: space-between;
     gap: 12px;
     padding: 12px 14px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
+    background: #000000; /* Pitch black header */
+    border-bottom: 1px solid #333;
 }
 
 .scene-title {
     margin: 0;
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: #ffffff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -164,6 +163,7 @@ const popoverStyle = computed(() => ({
     display: flex;
     flex-direction: column;
     gap: 6px;
+    background: #111111;
 }
 
 .stat-row {
@@ -174,13 +174,13 @@ const popoverStyle = computed(() => ({
 
 .stat-label {
     font-size: 0.75rem;
-    color: var(--text-tertiary);
+    color: #888;
 }
 
 .stat-value {
     font-size: 0.813rem;
     font-weight: 500;
-    color: var(--text-primary);
+    color: #eee;
 }
 
 .time-delta {
@@ -193,8 +193,8 @@ const popoverStyle = computed(() => ({
 }
 
 .popover-warnings {
-    background: rgba(239, 68, 68, 0.1);
-    border-top: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.05);
+    border-top: 1px solid rgba(239, 68, 68, 0.2);
     padding: 10px 14px;
     display: flex;
     flex-direction: column;
@@ -215,4 +215,3 @@ const popoverStyle = computed(() => ({
     height: 14px;
     stroke: var(--color-danger);
 }
-</style>

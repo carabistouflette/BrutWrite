@@ -490,10 +490,10 @@ async function handleExport(format: 'png' | 'pdf') {
     flex: 1;
     overflow: hidden;
     /* Data Grid Background */
-    background-color: var(--color-paper);
+    background-color: #050505; /* Almost black */
     background-image: 
-        linear-gradient(color-mix(in srgb, var(--color-stone), transparent 60%) 1px, transparent 1px),
-        linear-gradient(90deg, color-mix(in srgb, var(--color-stone), transparent 60%) 1px, transparent 1px);
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     background-size: 50px 50px;
 }
 

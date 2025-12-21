@@ -121,8 +121,8 @@ const emit = defineEmits<{
     align-items: center;
     gap: 24px;
     padding: 10px 16px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
+    background: #000000; /* Pitch black */
+    border-bottom: 1px solid #333;
 }
 
 .controls-group {
@@ -136,7 +136,7 @@ const emit = defineEmits<{
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--text-tertiary);
+    color: #666;
     margin-right: 6px;
 }
 

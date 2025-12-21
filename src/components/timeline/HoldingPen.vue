@@ -70,12 +70,12 @@ function handleDragStart(event: DragEvent, scene: Chapter) {
     width: 220px;
     min-width: 200px;
     max-width: 280px;
-    background: var(--bg-secondary); /* Keep as is, it matches sidebar */
-    border-right: 1px solid var(--border-color);
+    background: #111111; /* Dark background */
+    border-right: 1px solid #333;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    z-index: 20; /* Ensure it stays above canvas elements if they overlap slightly */
+    z-index: 20;
 }
 
 .holding-pen-header {
@@ -83,8 +83,8 @@ function handleDragStart(event: DragEvent, scene: Chapter) {
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--border-color);
-    background: var(--bg-tertiary);
+    border-bottom: 1px solid #333;
+    background: #000000; /* Pitch black header */
 }
 
 .holding-pen-title {
@@ -93,7 +93,7 @@ function handleDragStart(event: DragEvent, scene: Chapter) {
     gap: 8px;
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: #ffffff;
     margin: 0;
 }
 
@@ -153,8 +153,8 @@ function handleDragStart(event: DragEvent, scene: Chapter) {
     align-items: center;
     justify-content: space-between;
     padding: 8px 10px; /* Reduced padding */
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
+    background: #1a1a1a;
+    border: 1px solid #333;
     border-radius: 6px;
     cursor: grab;
     transition: all 0.15s ease;
