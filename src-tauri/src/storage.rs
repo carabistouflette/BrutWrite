@@ -54,37 +54,20 @@ pub fn update_project_manifest<P: AsRef<Path>>(
     root_path: P,
     manifest: Manifest,
 ) -> Result<ProjectMetadata> {
-    let root = root_path.as_ref();
-    // 1. Load existing to preserve other metadata
-    let mut metadata = load_project_metadata(root)?;
-
-    // 2. Update manifest
-    metadata.manifest = manifest;
-    metadata.updated_at = chrono::Utc::now(); // Update timestamp
-
-    // 3. Save
-    let metadata_path = root.join("project.json");
-    let json = serde_json::to_string_pretty(&metadata)?;
-    fs::write(metadata_path, json)?;
-
-    Ok(metadata)
+    modify_metadata(root_path, |metadata| {
+        metadata.manifest = manifest;
+        Ok(())
+    })
 }
 
 pub fn update_project_settings<P: AsRef<Path>>(
     root_path: P,
     settings: crate::models::ProjectSettings,
 ) -> Result<ProjectMetadata> {
-    let root = root_path.as_ref();
-    let mut metadata = load_project_metadata(root)?;
-
-    metadata.settings = settings;
-    metadata.updated_at = chrono::Utc::now();
-
-    let metadata_path = root.join("project.json");
-    let json = serde_json::to_string_pretty(&metadata)?;
-    fs::write(metadata_path, json)?;
-
-    Ok(metadata)
+    modify_metadata(root_path, |metadata| {
+        metadata.settings = settings;
+        Ok(())
+    })
 }
 
 pub fn delete_chapter_file<P: AsRef<Path>>(root_path: P, filename: &str) -> Result<()> {
@@ -95,6 +78,23 @@ pub fn delete_chapter_file<P: AsRef<Path>>(root_path: P, filename: &str) -> Resu
         fs::remove_file(file_path)?;
     }
     Ok(())
+}
+
+/// Internal helper to load, modify, and save project metadata in one go.
+fn modify_metadata<P, F>(root_path: P, modifier: F) -> Result<ProjectMetadata>
+where
+    P: AsRef<Path>,
+    F: FnOnce(&mut ProjectMetadata) -> Result<()>,
+{
+    let root = root_path.as_ref();
+    let mut metadata = load_project_metadata(root)?;
+
+    modifier(&mut metadata)?;
+
+    metadata.updated_at = chrono::Utc::now();
+    save_project_metadata(root, &metadata)?;
+
+    Ok(metadata)
 }
 
 /// Helper to find chapter filename from metadata and return full path
@@ -115,10 +115,7 @@ pub fn resolve_chapter_path<P: AsRef<Path>>(
     if let Some(fname) = filename {
         Ok(root.join("manuscript").join(fname))
     } else {
-        Err(Error::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Chapter {} not found in manifest", chapter_id),
-        )))
+        Err(Error::ChapterNotFound(chapter_id.to_string()))
     }
 }
 
@@ -143,81 +140,68 @@ pub fn save_chapter_content<P: AsRef<Path>>(
     content: &str,
 ) -> Result<ProjectMetadata> {
     let root = root_path.as_ref();
-    let mut metadata = load_project_metadata(root)?;
-    let chapter_path = resolve_chapter_path(root, &metadata, chapter_id)?;
 
-    // Ensure manuscript directory exists
-    let manuscript_dir = root.join("manuscript");
-    if !manuscript_dir.exists() {
-        fs::create_dir_all(&manuscript_dir)?;
-    }
+    modify_metadata(root, |metadata| {
+        let chapter_path = resolve_chapter_path(root, metadata, chapter_id)?;
 
-    // 1. Write content
-    fs::write(&chapter_path, content)?;
+        // Ensure manuscript directory exists
+        let manuscript_dir = root.join("manuscript");
+        if !manuscript_dir.exists() {
+            fs::create_dir_all(&manuscript_dir)?;
+        }
 
-    // 2. Calculate word count server-side
-    let word_count = content.split_whitespace().count() as u32;
+        // 1. Write content
+        fs::write(&chapter_path, content)?;
 
-    // 3. Update Manifest Word Count
-    if let Some(chapter) = metadata
-        .manifest
-        .chapters
-        .iter_mut()
-        .find(|c| c.id == chapter_id)
-    {
-        chapter.word_count = word_count;
-    }
+        // 2. Calculate word count server-side
+        let word_count = content.split_whitespace().count() as u32;
 
-    // 4. Save metadata
-    metadata.updated_at = chrono::Utc::now();
-    let metadata_path = root.join("project.json");
-    let json = serde_json::to_string_pretty(&metadata)?;
-    fs::write(metadata_path, json)?;
-
-    Ok(metadata)
+        // 3. Update Manifest Word Count
+        if let Some(chapter) = metadata
+            .manifest
+            .chapters
+            .iter_mut()
+            .find(|c| c.id == chapter_id)
+        {
+            chapter.word_count = word_count;
+            Ok(())
+        } else {
+            Err(Error::ChapterNotFound(chapter_id.to_string()))
+        }
+    })
 }
 
 pub fn save_character<P: AsRef<Path>>(
     root_path: P,
     character: crate::models::Character,
 ) -> Result<ProjectMetadata> {
-    let root = root_path.as_ref();
-    let mut metadata = load_project_metadata(root)?;
-
-    if let Some(idx) = metadata
-        .characters
-        .iter()
-        .position(|c| c.id == character.id)
-    {
-        metadata.characters[idx] = character;
-    } else {
-        metadata.characters.push(character);
-    }
-
-    metadata.updated_at = chrono::Utc::now();
-
-    let metadata_path = root.join("project.json");
-    let json = serde_json::to_string_pretty(&metadata)?;
-    fs::write(metadata_path, json)?;
-
-    Ok(metadata)
+    modify_metadata(root_path, |metadata| {
+        if let Some(idx) = metadata
+            .characters
+            .iter()
+            .position(|c| c.id == character.id)
+        {
+            metadata.characters[idx] = character;
+        } else {
+            metadata.characters.push(character);
+        }
+        Ok(())
+    })
 }
 
 pub fn delete_character<P: AsRef<Path>>(
     root_path: P,
     character_id: uuid::Uuid,
 ) -> Result<ProjectMetadata> {
-    let root = root_path.as_ref();
-    let mut metadata = load_project_metadata(root)?;
+    modify_metadata(root_path, |metadata| {
+        let initial_len = metadata.characters.len();
+        metadata.characters.retain(|c| c.id != character_id);
 
-    metadata.characters.retain(|c| c.id != character_id);
-    metadata.updated_at = chrono::Utc::now();
-
-    let metadata_path = root.join("project.json");
-    let json = serde_json::to_string_pretty(&metadata)?;
-    fs::write(metadata_path, json)?;
-
-    Ok(metadata)
+        if metadata.characters.len() == initial_len {
+            return Err(Error::CharacterNotFound(character_id.to_string()));
+        }
+        Ok(())
+    })
 }
 
 pub fn save_project_metadata<P: AsRef<Path>>(
@@ -234,15 +218,10 @@ pub fn update_plotlines<P: AsRef<Path>>(
     root_path: P,
     plotlines: Vec<crate::models::Plotline>,
 ) -> Result<ProjectMetadata> {
-    let root = root_path.as_ref();
-    let mut metadata = load_project_metadata(root)?;
-
-    metadata.plotlines = plotlines;
-    metadata.updated_at = chrono::Utc::now();
-
-    save_project_metadata(root, &metadata)?;
-
-    Ok(metadata)
+    modify_metadata(root_path, |metadata| {
+        metadata.plotlines = plotlines;
+        Ok(())
+    })
 }
 
 pub fn create_chapter_node<P: AsRef<Path>>(
@@ -251,61 +230,55 @@ pub fn create_chapter_node<P: AsRef<Path>>(
     name: String,
 ) -> Result<ProjectMetadata> {
     let root = root_path.as_ref();
-    let mut metadata = load_project_metadata(root)?;
 
-    // 1. Generate ID and Filename
-    let new_id = format!("chapter-{}", uuid::Uuid::new_v4());
-    let filename = format!("{}.md", new_id);
+    modify_metadata(root, |metadata| {
+        // 1. Generate ID and Filename
+        let new_id = format!("chapter-{}", uuid::Uuid::new_v4());
+        let filename = format!("{}.md", new_id);
 
-    // 2. Calculate Order (last child + 1)
-    let siblings: Vec<&crate::models::Chapter> = metadata
-        .manifest
-        .chapters
-        .iter()
-        .filter(|c| c.parent_id == parent_id)
-        .collect();
+        // 2. Calculate Order (last child + 1)
+        let siblings: Vec<&crate::models::Chapter> = metadata
+            .manifest
+            .chapters
+            .iter()
+            .filter(|c| c.parent_id == parent_id)
+            .collect();
 
-    let max_order = siblings.iter().map(|c| c.order).max().unwrap_or(0);
-    // If there are siblings, order is next. If no siblings, start at 0.
-    let new_order = if siblings.is_empty() {
-        0
-    } else {
-        max_order + 1
-    };
+        let max_order = siblings.iter().map(|c| c.order).max().unwrap_or(0);
+        let new_order = if siblings.is_empty() {
+            0
+        } else {
+            max_order + 1
+        };
 
-    // 3. Create Chapter Object
-    let new_chapter = crate::models::Chapter {
-        id: new_id.clone(),
-        parent_id,
-        title: name,
-        filename: filename.clone(),
-        word_count: 0,
-        order: new_order,
-        chronological_date: None,
-        abstract_timeframe: None,
-        duration: None,
-        plotline_tag: None,
-        depends_on: None,
-        pov_character_id: None,
-    };
+        // 3. Create Chapter Object
+        let new_chapter = crate::models::Chapter {
+            id: new_id.clone(),
+            parent_id,
+            title: name,
+            filename: filename.clone(),
+            word_count: 0,
+            order: new_order,
+            chronological_date: None,
+            abstract_timeframe: None,
+            duration: None,
+            plotline_tag: None,
+            depends_on: None,
+            pov_character_id: None,
+        };
 
-    // 4. Create File
-    let manuscript_dir = root.join("manuscript");
-    if !manuscript_dir.exists() {
-        fs::create_dir_all(&manuscript_dir)?;
-    }
-    let file_path = manuscript_dir.join(&filename);
-    fs::write(&file_path, "")?;
+        // 4. Create File
+        let manuscript_dir = root.join("manuscript");
+        if !manuscript_dir.exists() {
+            fs::create_dir_all(&manuscript_dir)?;
+        }
+        let file_path = manuscript_dir.join(&filename);
+        fs::write(&file_path, "")?;
 
-    // 5. Update Metadata
-    metadata.manifest.chapters.push(new_chapter);
-    metadata.updated_at = chrono::Utc::now();
-
-    let metadata_path = root.join("project.json");
-    let json = serde_json::to_string_pretty(&metadata)?;
-    fs::write(metadata_path, json)?;
-
-    Ok(metadata)
+        // 5. Update Metadata
+        metadata.manifest.chapters.push(new_chapter);
+        Ok(())
+    })
 }
 
 #[cfg(test)]
