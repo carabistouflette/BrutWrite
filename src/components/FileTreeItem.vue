@@ -1,3 +1,7 @@
+<script lang="ts">
+const numberFormatter = new Intl.NumberFormat();
+</script>
+
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { FileNode } from '../types';
@@ -21,7 +25,7 @@ const emit = defineEmits<{
 }>();
 
 const inputRef = ref<HTMLInputElement | null>(null);
-const numberFormatter = new Intl.NumberFormat();
+
 
 defineExpose({
     focus: () => inputRef.value?.focus()
