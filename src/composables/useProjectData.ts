@@ -37,6 +37,16 @@ export function useProjectData() {
 
     // --- Actions ---
 
+    // Debounce helper for syncing manifest to avoid excessive IPC/IO
+    let syncTimeout: ReturnType<typeof setTimeout> | null = null;
+    const syncManifestDebounced = () => {
+        if (syncTimeout) clearTimeout(syncTimeout);
+        syncTimeout = setTimeout(() => {
+            syncManifest();
+            syncTimeout = null;
+        }, 1000);
+    };
+
     const updateRecentProjects = (path: string) => {
         const recentStr = localStorage.getItem('recent_projects') || '[]';
         let recent: string[] = JSON.parse(recentStr);
@@ -170,8 +180,9 @@ export function useProjectData() {
 
     const renameNode = async (id: string, newName: string) => {
         if (findAndRename(projectData.value, id, newName)) {
-            triggerRef(projectData);
-            await syncManifest();
+            // Note: triggerRef is not needed here as nested name change is captured by granular reactivity
+            // and we don't want to rebuild the entire nodeMap if structure hasn't changed.
+            await syncManifestDebounced();
         }
     };
 
@@ -208,9 +219,9 @@ export function useProjectData() {
 
     const updateNodeStats = (id: string, wordCount: number) => {
         const node = nodeMap.value.get(id);
-        if (node) {
+        if (node && node.word_count !== wordCount) {
             node.word_count = wordCount;
-            triggerRef(projectData);
+            // No triggerRef - totalWords computed will re-run automatically because it tracks node.word_count
         }
     };
 
@@ -219,13 +230,17 @@ export function useProjectData() {
         if (node) {
             // Only allow temporal updates here
             const allowed = ['chronological_date', 'abstract_timeframe', 'duration', 'plotline_tag', 'depends_on', 'pov_character_id'];
+            let changed = false;
             allowed.forEach(key => {
-                if (key in updates) {
+                if (key in updates && (node as any)[key] !== (updates as any)[key]) {
                     (node as any)[key] = (updates as any)[key];
+                    changed = true;
                 }
             });
-            triggerRef(projectData);
-            await syncManifest();
+
+            if (changed) {
+                await syncManifestDebounced();
+            }
         }
     };
 
