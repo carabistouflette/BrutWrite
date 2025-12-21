@@ -29,13 +29,21 @@ const emit = defineEmits<{
   (e: 'cancel-rename'): void;
 }>();
 
+const localList = ref<FileNode[]>([...props.modelValue]);
+
+watch(() => props.modelValue, (newVal) => {
+  localList.value = [...newVal];
+});
+
 const handleUpdate = (newList: FileNode[]) => {
+  localList.value = newList;
   emit('update:modelValue', newList);
 };
 
 const handleNestedUpdate = (index: number, newChildren: FileNode[]) => {
-  const updatedList = [...props.modelValue];
+  const updatedList = [...localList.value];
   updatedList[index] = { ...updatedList[index], children: newChildren };
+  localList.value = updatedList;
   emit('update:modelValue', updatedList);
 };
 
@@ -68,7 +76,7 @@ const handleRenameSubmit = (id: string) => {
 
 <template>
   <VueDraggableNext
-    :model-value="props.modelValue"
+    :model-value="localList"
     @update:model-value="handleUpdate"
     group="files"
     :animation="200" 
@@ -81,7 +89,7 @@ const handleRenameSubmit = (id: string) => {
     @end="setDragging(false)"
   >
     <div
-      v-for="(element, index) in props.modelValue"
+      v-for="(element, index) in localList"
       :key="element.id"
       class="cursor-pointer select-none group/row"
     >
