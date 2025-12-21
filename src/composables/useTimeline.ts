@@ -11,14 +11,11 @@ import type { Chapter, Plotline, ParadoxWarning } from '../types';
 export function useTimeline() {
     const { activeId, selectNode, plotlines, updatePlotlines, updateNodeTemporal, flatNodes } = useProjectData();
 
-    // Flatten all chapters/scenes from the tree (Optimized: uses pre-flattened list from project store)
-    const allChapters = computed<Chapter[]>(() => {
-        return flatNodes.value.map((node, idx) => ({
+    // Extract only temporal metadata for efficient paradox detection tracking
+    const scenesTemporalData = computed(() => {
+        return flatNodes.value.map(node => ({
             id: node.id,
-            title: node.name || 'Untitled',
-            filename: node.filename || '',
-            word_count: node.word_count || 0,
-            order: idx, // Note: idx here is manuscript global order which is usually what timeline wants
+            title: node.name,
             chronological_date: node.chronological_date,
             abstract_timeframe: node.abstract_timeframe,
             duration: node.duration,
@@ -28,23 +25,46 @@ export function useTimeline() {
         }));
     });
 
+    const allChapters = computed<Chapter[]>(() => {
+        return flatNodes.value.map((node, idx) => ({
+            id: node.id,
+            parent_id: undefined, // Nodes don't store parent_id directly in children array, but reconstructed hierarchy uses it. 
+                                  // For the flat list, we and reconstruct if needed, but usually not required for timeline.
+            title: node.name || 'Untitled',
+            filename: node.filename || '',
+            word_count: node.word_count || 0,
+            order: idx,
+            chronological_date: node.chronological_date,
+            abstract_timeframe: node.abstract_timeframe,
+            duration: node.duration,
+            plotline_tag: node.plotline_tag,
+            depends_on: node.depends_on,
+            pov_character_id: node.pov_character_id,
+        })) as Chapter[];
+    });
+
     // Scenes that have temporal data (for timeline)
+    // Optimized: Does not include word_count to avoid re-renders on every keypress
     const assignedScenes = computed(() =>
-        allChapters.value.filter(c => c.chronological_date || c.abstract_timeframe)
+        scenesTemporalData.value.filter(c => c.chronological_date || c.abstract_timeframe)
     );
 
     // Scenes without temporal data (for holding pen)
+    // Needs word_count for the UI
     const unassignedScenes = computed(() =>
         allChapters.value.filter(c => !c.chronological_date && !c.abstract_timeframe)
     );
 
-    // Paradox detection
+    // Paradox detection - now only re-runs if temporal metadata changes
     const paradoxWarnings = computed<ParadoxWarning[]>(() => {
         const warnings: ParadoxWarning[] = [];
+        const activeScenes = assignedScenes.value;
+
+        if (activeScenes.length === 0) return [];
 
         // 1. Simultaneous presence detection
-        const byTime = new Map<string, Chapter[]>();
-        assignedScenes.value.forEach(scene => {
+        const byTime = new Map<string, any[]>();
+        activeScenes.forEach(scene => {
             const timeKey = scene.chronological_date || scene.abstract_timeframe || '';
             if (timeKey) {
                 if (!byTime.has(timeKey)) byTime.set(timeKey, []);
@@ -54,7 +74,7 @@ export function useTimeline() {
 
         byTime.forEach((scenes, timeKey) => {
             if (scenes.length > 1) {
-                const povGroups = new Map<string, Chapter[]>();
+                const povGroups = new Map<string, any[]>();
                 scenes.forEach(s => {
                     if (s.pov_character_id) {
                         if (!povGroups.has(s.pov_character_id)) povGroups.set(s.pov_character_id, []);
@@ -63,9 +83,6 @@ export function useTimeline() {
                 });
                 povGroups.forEach((povScenes, povId) => {
                     if (povScenes.length > 1) {
-                        // Only warn if they aren't the exact same scene (unlikely but possible with weird data)
-                        // and if they are in arguably "different" locations? 
-                        // Realistically just being in two scenes at once is the warning.
                         warnings.push({
                             type: 'simultaneous_presence',
                             sceneIds: povScenes.map(s => s.id),
@@ -77,10 +94,10 @@ export function useTimeline() {
         });
 
         // 2. Causality violation detection
-        const sceneMap = new Map<string, Chapter>();
-        assignedScenes.value.forEach(s => sceneMap.set(s.id, s));
+        const sceneMap = new Map<string, any>();
+        activeScenes.forEach(s => sceneMap.set(s.id, s));
 
-        const chronoSorted = [...assignedScenes.value].sort((a, b) => {
+        const chronoSorted = [...activeScenes].sort((a, b) => {
             const aTime = a.chronological_date || a.abstract_timeframe || '';
             const bTime = b.chronological_date || b.abstract_timeframe || '';
             return aTime.localeCompare(bTime);
@@ -108,10 +125,6 @@ export function useTimeline() {
         for (let i = 1; i < chronoSorted.length; i++) {
             const prev = chronoSorted[i - 1];
             const curr = chronoSorted[i];
-            
-            // Only check gaps between scenes on the SAME plotline? 
-            // Or general gaps? The request mentioned "continuity threshold".
-            // Let's check general global gaps for now.
             
             const gap = computeTimeGap(prev.chronological_date, curr.chronological_date);
             // Threshold: 3 years (~1095 days)
@@ -198,7 +211,7 @@ export function useTimeline() {
         // Return pairs of scene IDs in reading order (manuscript order)
         // Only include scenes that are ASSIGNED to the timeline.
         const assignedIds = new Set(assignedScenes.value.map(s => s.id));
-        const ordered = allChapters.value.filter(c => assignedIds.has(c.id));
+        const ordered = allChapters.value.filter((c: any) => assignedIds.has(c.id));
         
         const pairs: { from: string; to: string; isFlashback: boolean }[] = [];
 
