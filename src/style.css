@@ -1,13 +1,13 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap");
 
 /**
  * --- Design System Tokens ---
  */
 @theme {
   --color-brut-black: #000000;
-  --color-brut-white: #FFFFFF;
-  --color-brut-gray: #CCCCCC;
+  --color-brut-white: #ffffff;
+  --color-brut-gray: #cccccc;
 
   /* Dynamic references */
   --color-ink: var(--ink);
@@ -34,7 +34,20 @@
   --ink-rgb: 26, 26, 26;
   --stone: #e5e5e0;
 
-  font-family: 'Inter', sans-serif;
+  /* Semantic mappings */
+  --bg-primary: var(--paper);
+  --bg-secondary: #ffffff; /* Modal bg needs to be distinct from paper/stone? Or stick to stone? Let's use Paper for main, Stone for secondary */
+  --bg-secondary: var(--stone);
+  --bg-tertiary: #d6d6d0; /* Darker stone */
+
+  --text-primary: var(--ink);
+  --text-secondary: #4a4a4a;
+  --text-tertiary: #7a7a7a;
+
+  --border-color: #d1d1d1;
+  --color-danger: #ef4444;
+
+  font-family: "Inter", sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -50,7 +63,18 @@
   --paper: #0a0a0a;
   --ink: #ededed;
   --ink-rgb: 237, 237, 237;
-  --stone: #262626;
+  --stone: #1f1f1f;
+
+  --bg-primary: var(--paper);
+  --bg-secondary: var(--stone);
+  --bg-tertiary: #2e2e2e;
+
+  --text-primary: var(--ink);
+  --text-secondary: #a3a3a3;
+  --text-tertiary: #666666;
+
+  --border-color: #333333;
+  --color-danger: #ef4444;
 
   color-scheme: dark;
 }
@@ -115,7 +139,8 @@ body {
 }
 
 .animate-enter {
-  animation: slide-up-spring 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation: slide-up-spring 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)
+    forwards;
 }
 
 .stagger-1 {
@@ -175,7 +200,7 @@ input::-webkit-inner-spin-button {
   margin: 0;
 }
 
-input[type=number] {
+input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
