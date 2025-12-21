@@ -7,6 +7,7 @@ import { useTiptapEditor } from '../composables/useTiptapEditor'
 import { useSettings } from '../composables/useSettings'
 
 const { activeId, activeChapter, projectId, renameNode } = useProjectData()
+const currentProjectId = projectId.value; // Capture the ID for use in unmount/cleanup
 const { addWords } = useGamification()
 const { settings } = useSettings()
 
@@ -36,11 +37,22 @@ const {
 )
 
 // Watch Active ID to reload content
-watch(activeId, async (newId) => {
-    if (newId && projectId.value) {
-       await loadChapter(projectId.value, newId);
+watch(activeId, async (newId, oldId) => {
+    // 1. Save old chapter if it exists and has changes
+    if (oldId && currentProjectId) {
+        await saveChapter(currentProjectId, oldId);
     }
-})
+
+    // 2. Load new chapter
+    if (newId && currentProjectId) {
+       await loadChapter(currentProjectId, newId);
+       
+       // Focus editor after load to ensure seamless writing experience
+       setTimeout(() => {
+           editor.value?.commands.focus();
+       }, 50);
+    }
+}, { immediate: true });
 
 // Auto-save logic
 let saveInterval: any
@@ -48,8 +60,8 @@ let saveInterval: any
         if (saveInterval) clearInterval(saveInterval);
         const intervalMs = (settings.value.general.autoSaveInterval || 30) * 1000;
         saveInterval = setInterval(async () => {
-            if (activeId.value && projectId.value) {
-                await saveChapter(projectId.value, activeId.value);
+            if (activeId.value && currentProjectId) {
+                await saveChapter(currentProjectId, activeId.value);
             }
         }, intervalMs);
     };
@@ -66,8 +78,14 @@ onMounted(() => {
     if (containerRef.value) { /* Ref is used in template */ }
 })
 
-onBeforeUnmount(() => {
+onBeforeUnmount(async () => {
     clearInterval(saveInterval)
+    
+    // Final save on unmount if there are changes
+    if (activeId.value && currentProjectId) {
+        await saveChapter(currentProjectId, activeId.value);
+    }
+    
     editor.value?.destroy()
 })
 
