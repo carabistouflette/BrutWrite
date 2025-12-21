@@ -34,7 +34,6 @@
   --ink-rgb: 26, 26, 26;
   --stone: #e5e5e0;
 
-  font-size: calc(100% * var(--ui-scale, 1));
   font-family: 'Inter', sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -59,10 +58,15 @@
 /**
  * --- Base Styles ---
  */
+html,
 body {
+  height: 100%;
   margin: 0;
+}
+
+body {
   min-width: 320px;
-  min-height: 100vh;
+  height: 100vh;
   background-color: var(--color-paper);
   overflow: hidden;
   color: var(--color-ink);

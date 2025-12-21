@@ -53,12 +53,12 @@ onMounted(async () => {
 
 <template>
   <div 
-    class="h-screen w-screen bg-paper text-ink flex flex-col font-sans overflow-hidden relative"
+    class="bg-paper text-ink flex flex-col font-sans overflow-hidden relative"
     :style="{ 
       transform: `scale(${settings.interface.uiScaling / 100})`,
       transformOrigin: 'top left',
-      width: `${100 / (settings.interface.uiScaling / 100)}%`,
-      height: `${100 / (settings.interface.uiScaling / 100)}%`
+      width: `${100 / (settings.interface.uiScaling / 100)}vw`,
+      height: `${100 / (settings.interface.uiScaling / 100)}vh`
     }"
   >
     <!-- Cyber-Glass App Header -->

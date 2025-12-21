@@ -106,7 +106,7 @@ const addChapter = () => {
 </script>
 
 <template>
-  <div class="flex flex-1 w-full text-ink font-sans overflow-hidden relative">
+  <div class="flex flex-1 w-full h-full text-ink font-sans overflow-hidden relative">
     
     <!-- Sidebar -->
     <aside 
@@ -152,6 +152,7 @@ const addChapter = () => {
       </ContextMenu>
 
       <SidebarFooter 
+        class="mt-auto"
         @open-settings="showSettings = true" 
         @open-characters="showCharacters = true"
         @open-timeline="showTimeline = !showTimeline"
