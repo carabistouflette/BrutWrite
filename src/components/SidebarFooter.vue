@@ -22,6 +22,17 @@
         Characters
     </button>
 
+    <!-- Timeline -->
+    <button 
+      @click="$emit('open-timeline')"
+      class="w-full py-2 text-xs font-medium text-ink/50 hover:text-accent transition-colors uppercase tracking-wider text-left flex items-center gap-2"
+    >
+        <svg class="w-4 h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        Timeline
+    </button>
+
     <!-- Settings -->
     <button 
       @click="$emit('open-settings')"
@@ -36,5 +47,5 @@
 </template>
 
 <script setup lang="ts">
-const emit = defineEmits(['open-settings', 'open-characters', 'change-project']);
+const emit = defineEmits(['open-settings', 'open-characters', 'open-timeline', 'change-project']);
 </script>

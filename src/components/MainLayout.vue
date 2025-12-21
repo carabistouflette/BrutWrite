@@ -14,6 +14,7 @@ import { defineAsyncComponent } from 'vue';
 
 const SettingsModal = defineAsyncComponent(() => import('./SettingsModal.vue'));
 const CharacterSheet = defineAsyncComponent(() => import('./characters/CharacterSheet.vue'));
+const TimelineView = defineAsyncComponent(() => import('./timeline/Timeline.vue'));
 
 // --- Composables ---
 const { width: sidebarWidth, isResizing, startResize } = useResizable({
@@ -41,6 +42,7 @@ const editingId = ref<string | null>(null);
 const isAdding = ref(false);
 const showSettings = ref(false);
 const showCharacters = ref(false);
+const showTimeline = ref(false);
 const sidebarScrollRef = ref<HTMLElement | null>(null);
 
 // --- Event Handlers ---
@@ -152,6 +154,7 @@ const addChapter = () => {
       <SidebarFooter 
         @open-settings="showSettings = true" 
         @open-characters="showCharacters = true"
+        @open-timeline="showTimeline = !showTimeline"
         @change-project="closeProject"
       />
       
@@ -177,9 +180,10 @@ const addChapter = () => {
         </div>
       </div>
 
-      <!-- Editor Canvas -->
+      <!-- Editor Canvas or Timeline View -->
       <div class="flex-1 w-full overflow-hidden relative">
-        <slot></slot>
+        <TimelineView v-if="showTimeline" />
+        <slot v-else></slot>
       </div>
     </main>
   </div>
