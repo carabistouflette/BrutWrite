@@ -48,7 +48,11 @@ const handleNestedUpdate = (index: number, newChildren: FileNode[]) => {
 };
 
 const editName = ref('');
-const itemRefs = ref<any[]>([]);
+const itemRefs = new Map<string, any>();
+const setItemRef = (el: any, id: string) => {
+  if (el) itemRefs.set(id, el);
+  else itemRefs.delete(id);
+};
 const { isDragging, setDragging } = useDragState();
 
 const isActive = (id: string) => id === props.activeId;
@@ -59,7 +63,7 @@ watch(() => props.editingId, async (newVal) => {
     if (node) {
       editName.value = node.name;
       await nextTick();
-      const item = itemRefs.value.find((ref: any) => ref?.element?.id === newVal);
+      const item = itemRefs.get(newVal);
       if (item && item.focus) item.focus();
     }
   }
@@ -94,7 +98,7 @@ const handleRenameSubmit = (id: string) => {
       class="cursor-pointer select-none group/row"
     >
       <FileTreeItem
-        ref="itemRefs"
+        :ref="(el) => setItemRef(el, element.id)"
         :element="element"
         :is-active="isActive(element.id)"
         :is-editing="editingId === element.id"
