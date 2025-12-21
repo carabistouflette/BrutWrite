@@ -36,13 +36,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
-            commands::greet,
             commands::create_project,
             commands::load_project,
             commands::update_manifest,
             commands::load_chapter_content,
             commands::save_chapter,
-            commands::delete_chapter,
+            commands::delete_node,
             commands::save_character,
             commands::delete_character,
             commands::update_project_settings,

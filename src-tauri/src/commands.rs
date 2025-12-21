@@ -6,11 +6,6 @@ use tauri::State;
 use uuid::Uuid;
 
 #[tauri::command]
-pub fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-#[tauri::command]
 pub async fn create_project(
     state: State<'_, AppState>,
     path: String,
@@ -247,20 +242,59 @@ pub async fn save_chapter(
 }
 
 #[tauri::command]
-pub async fn delete_chapter(
+pub async fn delete_node(
     state: State<'_, AppState>,
     project_id: Uuid,
-    filename: String,
-) -> Result<(), String> {
-    let projects = state
-        .open_projects
-        .lock()
-        .map_err(|_| "Failed to lock projects")?;
-    let root_path = projects
-        .get(&project_id)
-        .ok_or_else(|| "Project not loaded".to_string())?;
+    id: String,
+    filenames_to_delete: Vec<String>,
+) -> Result<ProjectMetadata, String> {
+    let root_path = {
+        let projects = state
+            .open_projects
+            .lock()
+            .map_err(|_| "Failed to lock projects")?;
+        projects
+            .get(&project_id)
+            .cloned()
+            .ok_or_else(|| "Project not loaded".to_string())?
+    };
 
-    storage::delete_chapter_file(root_path, &filename).map_err(|e| e.to_string())
+    let mut cache = state
+        .project_cache
+        .lock()
+        .map_err(|_| "Failed to lock cache")?;
+    let mut metadata = cache
+        .get(&project_id)
+        .cloned()
+        .ok_or_else(|| "Metadata not in cache".to_string())?;
+
+    // 1. Delete files from disk
+    for filename in filenames_to_delete {
+        let file_path = root_path.join("manuscript").join(filename);
+        if file_path.exists() {
+            std::fs::remove_file(file_path).map_err(|e| e.to_string())?;
+        }
+    }
+
+    // 2. Remove from manifest
+    metadata
+        .manifest
+        .chapters
+        .retain(|c| c.id != id && c.parent_id != Some(id.clone()));
+
+    // Note: This only handles one level deep if parent_id is used.
+    // In a real tree we'd need a recursive removal from the flat list,
+    // but the frontend sends the exact list of filenames to delete anyway.
+    // The flat manifest list just needs to be filtered.
+    metadata.manifest.chapters.retain(|c| c.id != id);
+
+    metadata.updated_at = chrono::Utc::now();
+
+    // 3. Save and Cache
+    storage::save_project_metadata(&root_path, &metadata).map_err(|e| e.to_string())?;
+    cache.insert(project_id, metadata.clone());
+
+    Ok(metadata)
 }
 
 #[tauri::command]
