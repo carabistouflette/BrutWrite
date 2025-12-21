@@ -167,8 +167,8 @@ const handleChangeProject = async () => {
         @change-project="handleChangeProject"
       />
       
-      <SettingsModal :show="showSettings" @close="showSettings = false" />
-      <CharacterSheet :show="showCharacters" @close="showCharacters = false" />
+      <SettingsModal v-if="showSettings" :show="showSettings" @close="showSettings = false" />
+      <CharacterSheet v-if="showCharacters" :show="showCharacters" @close="showCharacters = false" />
 
       <!-- Resize Handle -->
       <div 
