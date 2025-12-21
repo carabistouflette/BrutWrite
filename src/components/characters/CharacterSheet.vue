@@ -157,7 +157,7 @@ const roles = Object.values(CharacterRole);
 
         <!-- Window Container -->
         <div 
-            class="relative w-full max-w-6xl h-[85vh] flex bg-paper/95 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
+            class="relative w-full max-w-6xl h-[85%] flex bg-paper/95 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
             style="box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.4)"
         >
             <!-- Sidebar (List) -->

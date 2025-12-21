@@ -45,7 +45,7 @@ const tabs = [
 
         <!-- Window Container -->
         <div 
-            class="relative w-full max-w-4xl h-[700px] flex bg-paper/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
+            class="relative w-full max-w-4xl h-[85%] flex bg-paper/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
             :class="{ 'modal-exit': !show }"
             style="box-shadow: 
                 0 20px 50px -12px rgba(0, 0, 0, 0.2), 
