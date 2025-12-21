@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { VueDraggableNext } from 'vue-draggable-next';
 import { ref, watch, nextTick } from 'vue';
+import { useDragState } from '../composables/useDragState';
 import type { FileNode } from '../types';
 import FileTreeItem from './FileTreeItem.vue';
 
@@ -40,7 +41,7 @@ const handleNestedUpdate = (index: number, newChildren: FileNode[]) => {
 
 const editName = ref('');
 const itemRefs = ref<any[]>([]);
-const isDragging = ref(false);
+const { isDragging, setDragging } = useDragState();
 
 const isActive = (id: string) => id === props.activeId;
 
@@ -77,8 +78,8 @@ const handleRenameSubmit = (id: string) => {
     :swap-threshold="0.65"
     class="min-h-[10px] relative block"
     tag="div"
-    @start="isDragging = true"
-    @end="isDragging = false"
+    @start="setDragging(true)"
+    @end="setDragging(false)"
   >
     <div
       v-for="(element, index) in props.modelValue"
@@ -107,9 +108,13 @@ const handleRenameSubmit = (id: string) => {
       >
         <div 
           v-if="element.children"
-          v-show="element.children.length > 0 || isDragging"
-          class="ml-6 pl-4 border-l border-ink/5 group-hover/item:border-ink/15 transition-all duration-300 ease-in-out"
-          :class="{ 'py-1': isDragging && element.children.length === 0 }"
+          v-show="isDragging || element.children.length > 0"
+          class="ml-6 pl-4 border-l transition-all duration-300 ease-in-out"
+          :class="[
+            isDragging && element.children.length === 0 
+              ? 'py-3 border-dashed border-accent/40 bg-accent/5 rounded-r-lg my-1' 
+              : 'border-ink/5 hover:border-ink/15'
+          ]"
         >
           <FileTree 
             :model-value="element.children"
