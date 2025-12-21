@@ -6,38 +6,26 @@ const PLOTLINE_COLORS = [
 
 import { computed } from 'vue';
 import { useProjectData } from './useProjectData';
-import type { Chapter, Plotline, ParadoxWarning, FileNode } from '../types';
+import type { Chapter, Plotline, ParadoxWarning } from '../types';
 
 export function useTimeline() {
-    const { projectData, activeId, selectNode, plotlines, updatePlotlines, updateNodeTemporal } = useProjectData();
+    const { activeId, selectNode, plotlines, updatePlotlines, updateNodeTemporal, flatNodes } = useProjectData();
 
-    // Flatten all chapters/scenes from the tree
+    // Flatten all chapters/scenes from the tree (Optimized: uses pre-flattened list from project store)
     const allChapters = computed<Chapter[]>(() => {
-        const flatten = (nodes: FileNode[]): Chapter[] => {
-            const result: Chapter[] = [];
-            nodes.forEach((node, idx) => {
-                const chapter: Chapter = {
-                    id: node.id,
-                    title: node.name || 'Untitled',
-                    filename: node.filename || '',
-                    word_count: node.word_count || 0,
-                    order: idx,
-                    // Temporal fields populated from backend if present
-                    chronological_date: node.chronological_date,
-                    abstract_timeframe: node.abstract_timeframe,
-                    duration: node.duration,
-                    plotline_tag: node.plotline_tag,
-                    depends_on: node.depends_on,
-                    pov_character_id: node.pov_character_id,
-                };
-                result.push(chapter);
-                if (node.children?.length) {
-                    result.push(...flatten(node.children));
-                }
-            });
-            return result;
-        };
-        return flatten(projectData.value);
+        return flatNodes.value.map((node, idx) => ({
+            id: node.id,
+            title: node.name || 'Untitled',
+            filename: node.filename || '',
+            word_count: node.word_count || 0,
+            order: idx, // Note: idx here is manuscript global order which is usually what timeline wants
+            chronological_date: node.chronological_date,
+            abstract_timeframe: node.abstract_timeframe,
+            duration: node.duration,
+            plotline_tag: node.plotline_tag,
+            depends_on: node.depends_on,
+            pov_character_id: node.pov_character_id,
+        }));
     });
 
     // Scenes that have temporal data (for timeline)

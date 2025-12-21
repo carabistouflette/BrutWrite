@@ -68,6 +68,18 @@ pub struct Chapter {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
+pub struct NodeMetadataUpdate {
+    pub title: Option<String>,
+    pub chronological_date: Option<String>,
+    pub abstract_timeframe: Option<String>,
+    pub duration: Option<String>,
+    pub plotline_tag: Option<String>,
+    pub depends_on: Option<String>,
+    pub pov_character_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "snake_case")]
 pub struct Plotline {
     pub id: String,
     pub name: String,

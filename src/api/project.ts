@@ -47,5 +47,9 @@ export const projectApi = {
 
     createNode: async (projectId: string, parentId: string | undefined, name: string): Promise<ProjectMetadata> => {
         return invoke<ProjectMetadata>('create_node', { projectId, parentId, name });
+    },
+
+    updateNodeMetadata: async (projectId: string, nodeId: string, update: any): Promise<ProjectMetadata> => {
+        return invoke<ProjectMetadata>('update_node_metadata', { projectId, nodeId, update });
     }
 };

@@ -21,6 +21,7 @@ const emit = defineEmits<{
 }>();
 
 const inputRef = ref<HTMLInputElement | null>(null);
+const numberFormatter = new Intl.NumberFormat();
 
 defineExpose({
     focus: () => inputRef.value?.focus()
@@ -82,7 +83,7 @@ defineExpose({
             </span>
             <span v-if="element.word_count && element.word_count > 0" 
                   class="text-[10px] bg-stone/50 text-ink/40 px-1.5 rounded-full mt-0.5 group-hover/row:translate-x-1.5 transition-transform duration-500">
-                {{ new Intl.NumberFormat().format(element.word_count) }}
+                {{ numberFormatter.format(element.word_count) }}
             </span>
         </div>
     </div>

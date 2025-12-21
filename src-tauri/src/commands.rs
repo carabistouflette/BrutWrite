@@ -105,6 +105,44 @@ pub async fn update_manifest(
 }
 
 #[tauri::command]
+pub async fn update_node_metadata(
+    state: State<'_, AppState>,
+    project_id: Uuid,
+    node_id: String,
+    update: crate::models::NodeMetadataUpdate,
+) -> Result<ProjectMetadata, String> {
+    let (root_path, mut metadata) = get_project_context(&state, project_id)?;
+
+    if let Some(node) = metadata
+        .manifest
+        .chapters
+        .iter_mut()
+        .find(|c| c.id == node_id)
+    {
+        if let Some(t) = update.title { node.title = t; }
+        if let Some(d) = update.chronological_date { node.chronological_date = Some(d); }
+        if let Some(a) = update.abstract_timeframe { node.abstract_timeframe = Some(a); }
+        if let Some(dur) = update.duration { node.duration = Some(dur); }
+        if let Some(p) = update.plotline_tag { node.plotline_tag = Some(p); }
+        if let Some(dep) = update.depends_on { node.depends_on = Some(dep); }
+        if let Some(pov) = update.pov_character_id { node.pov_character_id = Some(pov); }
+    } else {
+        return Err("Node not found".to_string());
+    }
+
+    metadata.updated_at = chrono::Utc::now();
+    storage::save_project_metadata(&root_path, &metadata).map_err(|e| e.to_string())?;
+
+    let mut cache = state
+        .project_cache
+        .lock()
+        .map_err(|_| "Failed to lock cache")?;
+    cache.insert(project_id, metadata.clone());
+
+    Ok(metadata)
+}
+
+#[tauri::command]
 pub async fn update_project_settings(
     state: State<'_, AppState>,
     project_id: Uuid,

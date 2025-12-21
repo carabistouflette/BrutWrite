@@ -1,4 +1,4 @@
-import { ref, computed, triggerRef } from 'vue';
+import { ref, computed } from 'vue';
 import { projectApi } from '../api/project';
 import type { FileNode, ProjectSettings } from '../types';
 import { useCharacters } from './useCharacters';
@@ -38,12 +38,29 @@ export function useProjectData() {
     // --- Actions ---
 
     // Debounce helper for syncing manifest to avoid excessive IPC/IO
-    let syncTimeout: ReturnType<typeof setTimeout> | null = null;
-    const syncManifestDebounced = () => {
-        if (syncTimeout) clearTimeout(syncTimeout);
-        syncTimeout = setTimeout(() => {
-            syncManifest();
-            syncTimeout = null;
+
+    const pendingMetadataUpdates = new Map<string, any>();
+    let metadataTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const syncNodeMetadataDebounced = (nodeId: string, updates: any) => {
+        // Merge updates for the same node
+        const current = pendingMetadataUpdates.get(nodeId) || {};
+        pendingMetadataUpdates.set(nodeId, { ...current, ...updates });
+
+        if (metadataTimeout) clearTimeout(metadataTimeout);
+        metadataTimeout = setTimeout(async () => {
+            if (!projectId.value) return;
+            const updatesToSync = Array.from(pendingMetadataUpdates.entries());
+            pendingMetadataUpdates.clear();
+            metadataTimeout = null;
+
+            for (const [id, up] of updatesToSync) {
+                try {
+                    await projectApi.updateNodeMetadata(projectId.value, id, up);
+                } catch (e) {
+                    notifyError(`Failed to sync metadata for node ${id}`, e);
+                }
+            }
         }, 1000);
     };
 
@@ -180,33 +197,35 @@ export function useProjectData() {
 
     const renameNode = async (id: string, newName: string) => {
         if (findAndRename(projectData.value, id, newName)) {
-            // Note: triggerRef is not needed here as nested name change is captured by granular reactivity
-            // and we don't want to rebuild the entire nodeMap if structure hasn't changed.
-            await syncManifestDebounced();
+            syncNodeMetadataDebounced(id, { title: newName });
         }
     };
 
     // --- Optimized Lookups ---
     const nodeMap = computed(() => {
         const map = new Map<string, FileNode>();
+        const list: FileNode[] = [];
         const traverseNodes = (nodes: FileNode[]) => {
             for (const node of nodes) {
                 map.set(node.id, node);
+                list.push(node);
                 if (node.children) traverseNodes(node.children);
             }
         };
         traverseNodes(projectData.value);
-        return map;
+        return { map, list };
     });
+
+    const flatNodes = computed(() => nodeMap.value.list);
 
     const activeChapter = computed(() => {
         if (!activeId.value) return undefined;
-        return nodeMap.value.get(activeId.value);
+        return nodeMap.value.map.get(activeId.value);
     });
 
     const totalWords = computed(() => {
         let total = 0;
-        nodeMap.value.forEach(node => {
+        nodeMap.value.map.forEach(node => {
             total += (node.word_count || 0);
         });
         return total;
@@ -218,7 +237,7 @@ export function useProjectData() {
     };
 
     const updateNodeStats = (id: string, wordCount: number) => {
-        const node = nodeMap.value.get(id);
+        const node = nodeMap.value.map.get(id);
         if (node && node.word_count !== wordCount) {
             node.word_count = wordCount;
             // No triggerRef - totalWords computed will re-run automatically because it tracks node.word_count
@@ -226,20 +245,26 @@ export function useProjectData() {
     };
 
     const updateNodeTemporal = async (id: string, updates: Partial<FileNode>) => {
-        const node = nodeMap.value.get(id);
+        const node = nodeMap.value.map.get(id);
         if (node) {
             // Only allow temporal updates here
             const allowed = ['chronological_date', 'abstract_timeframe', 'duration', 'plotline_tag', 'depends_on', 'pov_character_id'];
             let changed = false;
+            const updateForBackend: any = {};
+            
             allowed.forEach(key => {
                 if (key in updates && (node as any)[key] !== (updates as any)[key]) {
                     (node as any)[key] = (updates as any)[key];
+                    (updateForBackend as any)[key === 'chronological_date' ? 'chronological_date' : 
+                                              key === 'abstract_timeframe' ? 'abstract_timeframe' : 
+                                              key] = (updates as any)[key];
                     changed = true;
                 }
             });
 
+            // Special handling for key mapping if needed (but backend uses snake_case, same as frontend properties here)
             if (changed) {
-                await syncManifestDebounced();
+                syncNodeMetadataDebounced(id, updateForBackend);
             }
         }
     };
@@ -296,6 +321,7 @@ export function useProjectData() {
         updatePlotlines,
         updateNodeStats,
         updateNodeTemporal,
+        flatNodes,
         plotlines: computed(() => projectPlotlines.value),
         closeProject
     };
