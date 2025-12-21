@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 w-full flex flex-col items-center justify-center bg-paper text-ink selection:bg-accent/20 overflow-hidden relative">
+  <div class="flex-1 w-full flex flex-col items-center justify-center bg-paper text-ink selection:bg-accent/20 overflow-hidden relative" :class="{'exit-active': isExiting}">
     
     <!-- Background Decorative Elements -->
     <div class="absolute inset-0 z-0 pointer-events-none opacity-30">
@@ -119,6 +119,7 @@ import { useProjectData } from '../composables/useProjectData';
 
 const { loadProject, createProject } = useProjectData();
 const recentProjects = ref<string[]>([]);
+const isExiting = ref(false);
 
 const refreshRecent = () => {
     const recentStr = localStorage.getItem('recent_projects') || '[]';
@@ -133,7 +134,13 @@ const getFileName = (path: string) => {
     return path.split(/[\\/]/).pop()?.replace('.json', '') || 'Untitled';
 };
 
+const triggerExit = async () => {
+    isExiting.value = true;
+    await new Promise(resolve => setTimeout(resolve, 600)); // Wait for animation
+};
+
 const handleRecent = async (path: string) => {
+    await triggerExit();
     await loadProject(path);
 };
 
@@ -147,6 +154,7 @@ const handleOpenProject = async () => {
         });
 
         if (selected && typeof selected === 'string') {
+            await triggerExit();
             await loadProject(selected);
             refreshRecent();
         }
@@ -167,6 +175,7 @@ const handleNewProject = async () => {
 
         if (selected && typeof selected === 'string') {
             const name = selected.split(/[\\/]/).pop()?.replace('.json', '') || 'Untitled Project';
+            await triggerExit();
             await createProject(selected, name, 'Unknown Author');
             refreshRecent();
         }
@@ -180,5 +189,20 @@ const handleNewProject = async () => {
 .cyber-glass {
     backdrop-filter: blur(12px) saturate(180%);
     -webkit-backdrop-filter: blur(12px) saturate(180%);
+}
+
+.exit-active {
+    animation: exit-scale 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes exit-scale {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.95);
+    }
 }
 </style>

@@ -103,10 +103,18 @@ const addChapter = () => {
     }
   });
 };
+
+const isExiting = ref(false);
+
+const handleChangeProject = async () => {
+    isExiting.value = true;
+    await new Promise(resolve => setTimeout(resolve, 500));
+    closeProject();
+};
 </script>
 
 <template>
-  <div class="flex flex-1 w-full h-full text-ink font-sans overflow-hidden relative">
+  <div class="animate-enter flex flex-1 w-full h-full text-ink font-sans overflow-hidden relative transition-all duration-500" :class="{'opacity-0 scale-95': isExiting}">
     
     <!-- Sidebar -->
     <aside 
@@ -156,7 +164,7 @@ const addChapter = () => {
         @open-settings="showSettings = true" 
         @open-characters="showCharacters = true"
         @open-timeline="showTimeline = !showTimeline"
-        @change-project="closeProject"
+        @change-project="handleChangeProject"
       />
       
       <SettingsModal :show="showSettings" @close="showSettings = false" />
