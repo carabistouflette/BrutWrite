@@ -5,7 +5,6 @@ import { useCharacters } from './useCharacters';
 import { useAppStatus } from './useAppStatus';
 import {
     findNode,
-    findAndAdd,
     findAndRename,
     reconstructHierarchy,
     projectToManifest
@@ -38,6 +37,13 @@ export function useProjectData() {
 
     // --- Actions ---
 
+    const updateRecentProjects = (path: string) => {
+        const recentStr = localStorage.getItem('recent_projects') || '[]';
+        let recent: string[] = JSON.parse(recentStr);
+        recent = [path, ...recent.filter(p => p !== path)].slice(0, 5);
+        localStorage.setItem('recent_projects', JSON.stringify(recent));
+    };
+
     const loadProject = async (path: string) => {
         try {
             const metadata = await projectApi.load(path);
@@ -52,6 +58,7 @@ export function useProjectData() {
             projectPlotlines.value = metadata.plotlines;
 
             localStorage.setItem('last_opened_project_path', path);
+            updateRecentProjects(path);
 
             projectData.value = reconstructHierarchy(metadata.manifest.chapters);
 
@@ -77,6 +84,9 @@ export function useProjectData() {
             projectSettings.value = metadata.settings;
             projectPlotlines.value = metadata.plotlines;
 
+            localStorage.setItem('last_opened_project_path', path);
+            updateRecentProjects(path);
+
             await addChapter();
         } catch (e) {
             notifyError('Failed to create project', e);
@@ -88,32 +98,45 @@ export function useProjectData() {
     };
 
     const addChapter = async () => {
-        const newId = `chapter-${Date.now()}`;
-        const newNode: FileNode = {
-            id: newId,
-            name: 'New Chapter',
-            filename: `${newId}.md`,
-            children: []
-        };
-
-        projectData.value.push(newNode);
-        activeId.value = newId;
-
-        await syncManifest();
-        return newId;
+        if (!projectId.value) return;
+        try {
+            const metadata = await projectApi.createNode(projectId.value, undefined, 'New Chapter');
+            projectData.value = reconstructHierarchy(metadata.manifest.chapters);
+            
+            // Find the newly created node (highest order root node)
+            // Or simplified: just filtering by what we know we created, but we don't know the ID easily unless we check diff.
+            // Actually, we can just find the one with the highest order or specific name if we want to auto-select.
+            // For now, let's find the 'New Chapter' with highest order/index ?
+            // Better: The backend returns metadata. The new node has a generated UUID.
+            // We can iterate to find the node that didn't exist before? No, too expensive.
+            // Let's just not auto-select for a micro-second, or...
+            // Wait, failure to auto-select is fine, but user expects it.
+            // Implementation detail: createNode returns metadata.
+            // We can return the ID from backend?
+            // Actually, let's just find the node with name "New Chapter" and highest order for now as a heuristic, 
+            // OR finding the one that is not in `oldIds`.
+            // But let's look at `create_node` in backend... it returns metadata.
+            
+            // Heuristic: Find the chapter with highest order among roots.
+            // (Assuming we just added it to the end).
+             const roots = projectData.value;
+             if (roots.length > 0) {
+                 const newChapter = roots[roots.length - 1];
+                 activeId.value = newChapter.id;
+                 return newChapter.id;
+             }
+        } catch (e) {
+            notifyError('Failed to create chapter', e);
+        }
     };
 
     const addSection = async (parentId: string) => {
-        const newId = `sec-${Date.now()}`;
-        const newNode: FileNode = {
-            id: newId,
-            name: 'New Section',
-            filename: `${newId}.md`,
-            children: []
-        };
-
-        if (findAndAdd(projectData.value, parentId, newNode)) {
-            await syncManifest();
+        if (!projectId.value) return;
+        try {
+            const metadata = await projectApi.createNode(projectId.value, parentId, 'New Section');
+            projectData.value = reconstructHierarchy(metadata.manifest.chapters);
+        } catch (e) {
+            notifyError('Failed to create section', e);
         }
     };
 
@@ -216,9 +239,9 @@ export function useProjectData() {
     };
 
     const closeProject = () => {
-        projectId.value = undefined;
-        projectData.value = [];
         activeId.value = undefined;
+        projectData.value = [];
+        projectId.value = undefined;
         projectSettings.value = null;
         projectPlotlines.value = [];
 
