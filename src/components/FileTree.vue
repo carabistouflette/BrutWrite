@@ -65,6 +65,7 @@ const handleRenameSubmit = (id: string) => {
     group="files"
     :animation="200" 
     ghost-class="ghost"
+    :force-fallback="true"
     class="min-h-[10px] relative block"
     tag="div"
   >

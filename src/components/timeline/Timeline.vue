@@ -71,16 +71,6 @@ onMounted(() => {
         }
     });
 
-    // Drop support
-    const wrapper = containerRef.value;
-    if (wrapper) {
-        wrapper.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-        });
-        wrapper.addEventListener('drop', handleDrop);
-    }
-
     // Hover handler for popover
     timeline.value.on('itemover', (props: { item: string; event: MouseEvent }) => {
         hoveredScene.value = {
@@ -181,28 +171,32 @@ function parseDurationToHours(duration: string): number {
 }
 
 async function handleItemMove(item: any, callback: (item: any) => void) {
-    await updateNodeTemporal(item.id, {
-        chronological_date: new Date(item.start).toISOString(),
-        plotline_tag: item.group
-    });
-    // Callback is not strictly needed if watcher syncs data, but prevents jumpiness
-    callback(item);
+    try {
+        await updateNodeTemporal(item.id, {
+            chronological_date: item.start.toISOString(),
+            plotline_tag: item.group
+        });
+        callback(item);
+    } catch (e) {
+        console.error('Failed to move scene:', e);
+        callback(null); // Cancel move
+    }
 }
 
 async function handleDrop(event: DragEvent) {
-    event.preventDefault();
-    if (!timeline.value) return;
+    const sceneId = event.dataTransfer?.getData('text/plain');
+    if (!sceneId || !timeline.value) return;
 
-    const id = event.dataTransfer?.getData('text/plain');
-    if (!id) return;
+    // Get time and group from the drop position
+    const time = (timeline.value as any).getEventTime(event);
+    const group = (timeline.value as any).getEventGroup(event);
 
-    const props = timeline.value.getEventProperties(event);
-    if (!props.time) return;
-
-    await updateNodeTemporal(id, {
-        chronological_date: props.time.toISOString(),
-        plotline_tag: props.group !== undefined && props.group !== null ? String(props.group) : 'main'
-    });
+    if (time && group) {
+        await updateNodeTemporal(sceneId, {
+            chronological_date: time.toISOString(),
+            plotline_tag: String(group)
+        });
+    }
 }
 
 function toggleNarrativeConnectors() {
@@ -239,7 +233,12 @@ function zoomOut() {
 
             <!-- Main Timeline -->
             <div class="timeline-canvas-wrapper">
-                <div ref="containerRef" class="timeline-canvas"></div>
+                <div 
+                    ref="containerRef" 
+                    class="timeline-canvas"
+                    @dragover.prevent
+                    @drop="handleDrop"
+                ></div>
 
                 <!-- Narrative Connectors Overlay -->
                 <svg

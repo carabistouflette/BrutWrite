@@ -32,6 +32,8 @@ watch(() => settings.value.interface.cyberGlassIntensity, (intensity) => {
 watch(() => settings.value.interface.uiScaling, (scaling) => {
     const scale = scaling / 100;
     document.documentElement.style.setProperty('--ui-scale', `${scale}`);
+    // Zoom property is buggy with drag-and-drop libraries coordinates.
+    // We'll apply scaling to a wrapper instead of documentElement zoom.
 }, { immediate: true });
 
 // Load settings on startup
@@ -58,7 +60,15 @@ onMounted(async () => {
     <WelcomeScreen v-if="!projectId" />
 
     <!-- Main Content (Sidebar + Editor) -->
-    <MainLayout v-else>
+    <MainLayout v-else 
+      class="app-scaling-wrapper"
+      :style="{ 
+        transform: `scale(${settings.interface.uiScaling / 100})`,
+        transformOrigin: 'top left',
+        width: `${100 / (settings.interface.uiScaling / 100)}%`,
+        height: `${100 / (settings.interface.uiScaling / 100)}%`
+      }"
+    >
         <EditorMain v-if="activeId" />
         <div v-else class="h-full flex flex-col justify-center items-center text-ink/60 select-none">
             <h2 class="text-5xl font-serif font-bold italic tracking-tight mb-2">Start Writing</h2>

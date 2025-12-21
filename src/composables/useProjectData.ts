@@ -180,10 +180,16 @@ export function useProjectData() {
         }
     };
 
-    const updateNodeTemporal = async (id: string, data: Partial<Pick<FileNode, 'chronological_date' | 'abstract_timeframe' | 'duration' | 'plotline_tag'>>) => {
+    const updateNodeTemporal = async (id: string, updates: Partial<FileNode>) => {
         const node = findNode(projectData.value, id);
         if (node) {
-            Object.assign(node, data);
+            // Only allow temporal updates here
+            const allowed = ['chronological_date', 'abstract_timeframe', 'duration', 'plotline_tag', 'depends_on', 'pov_character_id'];
+            allowed.forEach(key => {
+                if (key in updates) {
+                    (node as any)[key] = (updates as any)[key];
+                }
+            });
             triggerRef(projectData);
             await syncManifest();
         }
