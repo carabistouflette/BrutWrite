@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { projectApi } from '../api/project';
 import type { FileNode, ProjectSettings } from '../types';
 import { useCharacters } from './useCharacters';
@@ -64,7 +64,10 @@ export function useProjectData() {
     };
 
     // --- Optimized Lookups ---
-    const nodeMap = computed(() => {
+    const _nodeMap = ref(new Map<string, FileNode>());
+    const _flatNodes = ref<FileNode[]>([]);
+
+    const rebuildMap = () => {
         const map = new Map<string, FileNode>();
         const list: FileNode[] = [];
         const traverseNodes = (nodes: FileNode[]) => {
@@ -75,19 +78,24 @@ export function useProjectData() {
             }
         };
         traverseNodes(projectData.value);
-        return { map, list };
-    });
+        _nodeMap.value = map;
+        _flatNodes.value = list;
+    };
 
-    const flatNodes = computed(() => nodeMap.value.list);
+    // Only rebuild on structural changes (when projectData.value is replaced)
+    watch(projectData, rebuildMap, { immediate: true });
+
+
+    const flatNodes = computed(() => _flatNodes.value);
 
     const activeChapter = computed(() => {
         if (!activeId.value) return undefined;
-        return nodeMap.value.map.get(activeId.value);
+        return _nodeMap.value.get(activeId.value);
     });
 
     const totalWords = computed(() => {
         let total = 0;
-        nodeMap.value.map.forEach(node => {
+        _flatNodes.value.forEach(node => {
             total += (node.word_count || 0);
         });
         return total;
@@ -183,7 +191,7 @@ export function useProjectData() {
     const deleteNode = async (id: string) => {
         if (!projectId.value) return;
 
-        const node = nodeMap.value.map.get(id);
+        const node = _nodeMap.value.get(id);
         if (!node) return;
 
         const collectFilenames = (n: FileNode, acc: string[]) => {
@@ -209,7 +217,7 @@ export function useProjectData() {
     };
 
     const renameNode = async (id: string, newName: string) => {
-        const node = nodeMap.value.map.get(id);
+        const node = _nodeMap.value.get(id);
         if (node && node.name !== newName) {
             node.name = newName;
             syncNodeMetadataDebounced(id, { title: newName });
@@ -222,14 +230,14 @@ export function useProjectData() {
     };
 
     const updateNodeStats = (id: string, wordCount: number) => {
-        const node = nodeMap.value.map.get(id);
+        const node = _nodeMap.value.get(id);
         if (node && node.word_count !== wordCount) {
             node.word_count = wordCount;
         }
     };
 
     const updateNodeTemporal = async (id: string, updates: Partial<FileNode>) => {
-        const node = nodeMap.value.map.get(id);
+        const node = _nodeMap.value.get(id);
         if (node) {
             // Only allow temporal updates here
             const allowed = ['chronological_date', 'abstract_timeframe', 'duration', 'plotline_tag', 'depends_on', 'pov_character_id'];
