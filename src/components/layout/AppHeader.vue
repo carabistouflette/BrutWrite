@@ -109,6 +109,7 @@ const { minimize, toggleMaximize, close } = useWindowControls();
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
   animation: shimmer 4s infinite linear;
+  will-change: transform;
 }
 
 @keyframes shimmer {
