@@ -35,6 +35,7 @@ const list = computed({
 
 const editName = ref('');
 const itemRefs = ref<any[]>([]);
+const isDragging = ref(false);
 
 const isActive = (id: string) => id === props.activeId;
 
@@ -66,8 +67,12 @@ const handleRenameSubmit = (id: string) => {
     :animation="200" 
     ghost-class="ghost"
     :force-fallback="true"
+    :invert-swap="true"
+    :swap-threshold="0.65"
     class="min-h-[10px] relative block"
     tag="div"
+    @start="isDragging = true"
+    @end="isDragging = false"
   >
     <div
       v-for="element in list"
@@ -89,15 +94,16 @@ const handleRenameSubmit = (id: string) => {
         @request-rename="(id) => emit('request-rename', id)"
       />
 
-      <!-- Recursive Nesting -->
       <transition
-        enter-active-class="transition-all duration-500 ease-out"
-        enter-from-class="opacity-0 -translate-y-2 scale-95"
-        enter-to-class="opacity-100 translate-y-0 scale-100"
+        enter-active-class="transition-all duration-300 ease-out"
+        enter-from-class="opacity-0 -translate-y-2"
+        enter-to-class="opacity-100 translate-y-0"
       >
         <div 
-          v-if="element.children && element.children.length > 0"
-          class="ml-6 pl-4 border-l border-ink/5 group-hover/item:border-ink/15 transition-all duration-500 ease-in-out"
+          v-if="element.children"
+          v-show="element.children.length > 0 || isDragging"
+          class="ml-6 pl-4 border-l border-ink/5 group-hover/item:border-ink/15 transition-all duration-300 ease-in-out"
+          :class="{ 'py-1': isDragging && element.children.length === 0 }"
         >
           <FileTree 
             v-model="element.children"
