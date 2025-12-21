@@ -258,6 +258,12 @@ mod tests {
                 filename: "c1.md".to_string(),
                 word_count: 0,
                 order: 0,
+                chronological_date: None,
+                abstract_timeframe: None,
+                duration: None,
+                plotline_tag: None,
+                depends_on: None,
+                pov_character_id: None,
             }],
         };
         update_project_manifest(&project_path, manifest).unwrap();
