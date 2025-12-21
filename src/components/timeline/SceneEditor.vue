@@ -53,7 +53,7 @@ async function handleUnschedule() {
     <div v-if="scene" class="scene-editor-panel">
         <div class="editor-header">
             <h3>{{ scene.title }}</h3>
-            <button class="close-btn" @click="$emit('close')">×</button>
+            <button class="close-btn" @click="emit('close')">×</button>
         </div>
 
         <div class="editor-body">

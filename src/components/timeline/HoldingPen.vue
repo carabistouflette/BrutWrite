@@ -70,8 +70,8 @@ function handleDragStart(event: DragEvent, scene: Chapter) {
     width: 220px;
     min-width: 200px;
     max-width: 280px;
-    background: #111111; /* Dark background */
-    border-right: 1px solid #333;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -83,8 +83,8 @@ function handleDragStart(event: DragEvent, scene: Chapter) {
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    border-bottom: 1px solid #333;
-    background: #000000; /* Pitch black header */
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
 }
 
 .holding-pen-title {
@@ -93,7 +93,7 @@ function handleDragStart(event: DragEvent, scene: Chapter) {
     gap: 8px;
     font-size: 0.875rem;
     font-weight: 600;
-    color: #ffffff;
+    color: var(--text-primary);
     margin: 0;
 }
 
@@ -153,8 +153,8 @@ function handleDragStart(event: DragEvent, scene: Chapter) {
     align-items: center;
     justify-content: space-between;
     padding: 8px 10px; /* Reduced padding */
-    background: #1a1a1a;
-    border: 1px solid #333;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
     cursor: grab;
     transition: all 0.15s ease;

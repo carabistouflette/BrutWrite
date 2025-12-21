@@ -47,6 +47,7 @@ const showNarrativeConnectors = ref(false);
 const showCalendarSettings = ref(false);
 const selectedSceneId = ref<string | null>(null);
 const hoveredScene = ref<{ id: string; x: number; y: number } | null>(null);
+const isMounted = ref(false);
 
 // vis-timeline datasets
 const items = new DataSet<any>([]);
@@ -54,6 +55,7 @@ const groups = new DataSet<any>([]);
 
 // Initialize timeline
 onMounted(() => {
+    isMounted.value = true;
     if (!containerRef.value) return;
 
     const options = {
@@ -120,7 +122,10 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    isMounted.value = false;
+    if (connectorAnimationFrame) cancelAnimationFrame(connectorAnimationFrame);
     timeline.value?.destroy();
+    timeline.value = null;
 });
 
 // Watch for data changes
@@ -130,6 +135,7 @@ watch(showNarrativeConnectors, (val) => {
 });
 
 function syncData() {
+    if (!isMounted.value || !timeline.value) return;
     // Sync groups
     const groupsData = plotlines.value.map(pl => ({
         id: pl.id,
@@ -280,7 +286,7 @@ let lastConnectorUpdate = 0;
 const CONNECTOR_UPDATE_THROTTLE = 16; // ms
 
 function updateConnectorPositions() {
-    if (!timeline.value || !showNarrativeConnectors.value) {
+    if (!isMounted.value || !timeline.value || !showNarrativeConnectors.value) {
         connectorPaths.value = [];
         return;
     }
@@ -378,6 +384,8 @@ async function handleExport(format: 'png' | 'pdf') {
             backgroundColor: '#1a1a1a', 
             ignoreElements: (element: Element) => element.classList.contains('narrative-overlay'),
         });
+        
+        if (!isMounted.value) return;
 
         const defaultName = `timeline_export_${new Date().toISOString().split('T')[0]}`;
         let fileData: Uint8Array;
@@ -388,6 +396,7 @@ async function handleExport(format: 'png' | 'pdf') {
             // Convert DataURL to Uint8Array
             const res = await fetch(dataUrl);
             const blob = await res.blob();
+            if (!isMounted.value) return;
             fileData = new Uint8Array(await blob.arrayBuffer());
             filters = [{ name: 'PNG Image', extensions: ['png'] }];
         } else {
@@ -407,6 +416,8 @@ async function handleExport(format: 'png' | 'pdf') {
             defaultPath: defaultName,
             filters: filters
         });
+        
+        if (!isMounted.value) return;
 
         if (path) {
             await writeFile(path, fileData);
@@ -511,10 +522,10 @@ async function handleExport(format: 'png' | 'pdf') {
     flex: 1;
     overflow: hidden;
     /* Data Grid Background */
-    background-color: #050505; /* Almost black */
+    background-color: var(--bg-primary); 
     background-image: 
-        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        linear-gradient(rgba(var(--color-ink-rgb), 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(var(--color-ink-rgb), 0.05) 1px, transparent 1px);
     background-size: 50px 50px;
 }
 

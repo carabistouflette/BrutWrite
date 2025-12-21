@@ -103,7 +103,7 @@ const popoverStyle = computed(() => ({
         </div>
     </div>
 </template>
-
+<style scoped>
 .scene-popover {
     position: fixed;
     z-index: 1000;
@@ -215,3 +215,4 @@ const popoverStyle = computed(() => ({
     height: 14px;
     stroke: var(--color-danger);
 }
+</style>

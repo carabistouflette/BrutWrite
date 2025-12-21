@@ -38,11 +38,11 @@ function apply() {
 </script>
 
 <template>
-    <div class="calendar-settings-overlay" @click.self="$emit('close')">
+    <div class="calendar-settings-overlay" @click.self="emit('close')">
         <div class="calendar-settings-modal">
             <header>
                 <h2>Calendar Settings</h2>
-                <button class="close-btn" @click="$emit('close')">&times;</button>
+                <button class="close-btn" @click="emit('close')">&times;</button>
             </header>
 
             <div class="modal-body">
