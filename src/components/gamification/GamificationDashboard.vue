@@ -57,7 +57,7 @@ const chartData = computed(() => {
 </script>
 
 <template>
-  <Teleport to="#app">
+  <Teleport to="#app-scale-root">
     <Transition
       enter-active-class="transition duration-200 ease-out"
       enter-from-class="opacity-0 translate-y-2 scale-95"

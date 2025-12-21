@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VueDraggableNext } from 'vue-draggable-next';
-import { computed, ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 import type { FileNode } from '../types';
 import FileTreeItem from './FileTreeItem.vue';
 
@@ -28,10 +28,15 @@ const emit = defineEmits<{
   (e: 'cancel-rename'): void;
 }>();
 
-const list = computed({
-  get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
-});
+const handleUpdate = (newList: FileNode[]) => {
+  emit('update:modelValue', newList);
+};
+
+const handleNestedUpdate = (index: number, newChildren: FileNode[]) => {
+  const updatedList = [...props.modelValue];
+  updatedList[index] = { ...updatedList[index], children: newChildren };
+  emit('update:modelValue', updatedList);
+};
 
 const editName = ref('');
 const itemRefs = ref<any[]>([]);
@@ -62,7 +67,8 @@ const handleRenameSubmit = (id: string) => {
 
 <template>
   <VueDraggableNext
-    v-model="list"
+    :model-value="props.modelValue"
+    @update:model-value="handleUpdate"
     group="files"
     :animation="200" 
     ghost-class="ghost"
@@ -75,7 +81,7 @@ const handleRenameSubmit = (id: string) => {
     @end="isDragging = false"
   >
     <div
-      v-for="element in list"
+      v-for="(element, index) in props.modelValue"
       :key="element.id"
       class="cursor-pointer select-none group/row"
     >
@@ -106,7 +112,8 @@ const handleRenameSubmit = (id: string) => {
           :class="{ 'py-1': isDragging && element.children.length === 0 }"
         >
           <FileTree 
-            v-model="element.children"
+            :model-value="element.children"
+            @update:model-value="(val) => handleNestedUpdate(index, val)"
             :active-id="activeId"
             :editing-id="editingId"
             :depth="depth + 1"

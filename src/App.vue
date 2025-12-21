@@ -53,6 +53,7 @@ onMounted(async () => {
 
 <template>
   <div 
+    id="app-scale-root"
     class="bg-paper text-ink flex flex-col font-sans overflow-hidden relative"
     :style="{ 
       transform: `scale(${settings.interface.uiScaling / 100})`,
