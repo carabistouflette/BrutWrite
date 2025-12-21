@@ -7,7 +7,7 @@ const { minimize, toggleMaximize, close } = useWindowControls();
 <template>
   <header class="app-header">
     <div class="logo">
-      <span class="logo-text">BrutWrite</span>
+      <span class="logo-text">Brut<span class="underline-target">Write</span></span>
     </div>
     <div class="window-controls">
       <button @click="minimize" class="control-btn minimize">
@@ -49,19 +49,23 @@ const { minimize, toggleMaximize, close } = useWindowControls();
   text-shadow: 0 0 20px rgba(var(--color-accent-rgb), 0.2);
 }
 
-.logo-text::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--color-accent);
-  transition: width 0.3s ease;
-  box-shadow: 0 0 8px var(--color-accent);
+.underline-target {
+  position: relative;
 }
 
-.app-header:hover .logo-text::after {
+.underline-target::after {
+  content: '';
+  position: absolute;
+  bottom: 0px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--color-accent);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 6px var(--color-accent);
+}
+
+.app-header:hover .underline-target::after {
   width: 100%;
 }
 
