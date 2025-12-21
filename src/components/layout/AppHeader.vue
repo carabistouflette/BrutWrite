@@ -104,7 +104,7 @@ const { minimize, toggleMaximize, close } = useWindowControls();
   content: '';
   position: absolute;
   top: 0;
-  left: -100%;
+  left: 0;
   width: 40%;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
@@ -112,7 +112,7 @@ const { minimize, toggleMaximize, close } = useWindowControls();
 }
 
 @keyframes shimmer {
-  0% { left: -100%; }
-  100% { left: 200%; }
+  0% { transform: translateX(-250%); }
+  100% { transform: translateX(500%); }
 }
 </style>

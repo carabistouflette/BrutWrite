@@ -47,8 +47,12 @@ export function useGamification() {
         checkNewDay();
     };
 
-    const saveState = () => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.value));
+    let saveTimeout: ReturnType<typeof setTimeout>;
+    const saveStateDebounced = () => {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state.value));
+        }, 2000); // 2 second debounce
     };
 
     // Check if it's a new day to reset daily counters if needed (though we track history)
@@ -79,7 +83,7 @@ export function useGamification() {
         }
 
         // Note: Total project words are now calculated via useProjectData from recursive nodes
-        saveState();
+        saveStateDebounced();
     };
 
     const setProjectTarget = async (target: number) => {
@@ -92,7 +96,7 @@ export function useGamification() {
         }
         // Fallback for local state (UI compatibility)
         state.value.projectTarget = target;
-        saveState();
+        saveStateDebounced();
     };
 
     // Computed
