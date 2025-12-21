@@ -12,6 +12,43 @@ const isLoaded = ref(false);
 
 const SETTINGS_FILE = 'settings.json';
 
+// Singleton debouncer and watcher
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const performSave = async () => {
+    try {
+        // Ensure the directory exists (mkdir -p behavior)
+        await mkdir('', { baseDir: BaseDirectory.AppConfig, recursive: true });
+
+        await writeTextFile(
+            SETTINGS_FILE,
+            JSON.stringify(settings.value, null, 2),
+            { baseDir: BaseDirectory.AppConfig }
+        );
+    } catch (err) {
+        console.error('Failed to save settings:', err);
+    }
+};
+
+const saveSettings = async (immediate = false) => {
+    if (!immediate) {
+        if (saveTimeout) clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(async () => {
+            await performSave();
+            saveTimeout = null;
+        }, 1000); // 1 second debounce
+        return;
+    }
+    await performSave();
+};
+
+// Start watching once (Singleton)
+watch(settings, () => {
+    if (isLoaded.value) {
+        saveSettings();
+    }
+}, { deep: true });
+
 export function useSettings() {
 
     const loadSettings = async () => {
@@ -52,47 +89,9 @@ export function useSettings() {
                     result[key] = loaded[key];
                 }
             }
-            // if key is not in defaults (old or deprecated), we might ignore it or keep it. 
-            // For schema strictness, let's ignore keys not in defaults.
         }
         return result;
     }
-
-    let saveTimeout: ReturnType<typeof setTimeout> | null = null;
-
-    const saveSettings = async (immediate = false) => {
-        if (!immediate) {
-            if (saveTimeout) clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(async () => {
-                await performSave();
-                saveTimeout = null;
-            }, 1000); // 1 second debounce
-            return;
-        }
-        await performSave();
-    };
-
-    const performSave = async () => {
-        try {
-            // Ensure the directory exists (mkdir -p behavior)
-            await mkdir('', { baseDir: BaseDirectory.AppConfig, recursive: true });
-
-            await writeTextFile(
-                SETTINGS_FILE,
-                JSON.stringify(settings.value, null, 2),
-                { baseDir: BaseDirectory.AppConfig }
-            );
-        } catch (err) {
-            console.error('Failed to save settings:', err);
-        }
-    };
-
-    // Auto-save watch
-    watch(settings, () => {
-        if (isLoaded.value) {
-            saveSettings();
-        }
-    }, { deep: true });
 
     return {
         settings,
@@ -100,3 +99,4 @@ export function useSettings() {
         saveSettings
     };
 }
+
