@@ -274,33 +274,54 @@ function zoomOut() {
 // Connector Overlay Logic
 const connectorPaths = ref<{ d: string; color: string; isFlashback: boolean }[]>([]);
 
+// Optimization: Throttle connector updates to avoid layout thrashing
+let connectorAnimationFrame: number | null = null;
+let lastConnectorUpdate = 0;
+const CONNECTOR_UPDATE_THROTTLE = 16; // ms
+
 function updateConnectorPositions() {
     if (!timeline.value || !showNarrativeConnectors.value) {
         connectorPaths.value = [];
         return;
     }
 
+    const now = performance.now();
+    if (now - lastConnectorUpdate < CONNECTOR_UPDATE_THROTTLE) {
+        if (connectorAnimationFrame) cancelAnimationFrame(connectorAnimationFrame);
+        connectorAnimationFrame = requestAnimationFrame(updateConnectorPositions);
+        return;
+    }
+    lastConnectorUpdate = now;
+
     const paths: { d: string; color: string; isFlashback: boolean }[] = [];
-    const containerRect = containerRef.value?.getBoundingClientRect();
-    if (!containerRect) return;
+    const canvasRef = containerRef.value;
+    if (!canvasRef) return;
+
+    const containerRect = canvasRef.getBoundingClientRect();
+    const itemsEl = canvasRef.querySelectorAll('.vis-item');
+    
+    // Create a lookup for item positions to avoid multiple getBoundingClientRect calls
+    const itemRects = new Map<string, DOMRect>();
+    itemsEl.forEach(el => {
+        const id = (el as HTMLElement).dataset.id;
+        if (id) itemRects.set(id, el.getBoundingClientRect());
+    });
 
     narrativeConnectors.value.forEach(conn => {
-        const fromEl = containerRef.value?.querySelector(`.vis-item[data-id="${conn.from}"]`);
-        const toEl = containerRef.value?.querySelector(`.vis-item[data-id="${conn.to}"]`);
+        const fromRect = itemRects.get(conn.from);
+        const toRect = itemRects.get(conn.to);
 
-        if (fromEl && toEl) {
-            const fromRect = fromEl.getBoundingClientRect();
-            const toRect = toEl.getBoundingClientRect();
-
+        if (fromRect && toRect) {
             const x1 = fromRect.right - containerRect.left;
             const y1 = fromRect.top + fromRect.height / 2 - containerRect.top;
             const x2 = toRect.left - containerRect.left;
             const y2 = toRect.top + toRect.height / 2 - containerRect.top;
 
+            // Simple curve calculation
             const dist = Math.abs(x2 - x1);
-            const cp1x = x1 + dist * 0.5;
+            const cp1x = x1 + dist * 0.4; // Slightly tighter curves
             const cp1y = y1;
-            const cp2x = x2 - dist * 0.5;
+            const cp2x = x2 - dist * 0.4;
             const cp2y = y2;
             
             const isFlashback = x2 < x1;
