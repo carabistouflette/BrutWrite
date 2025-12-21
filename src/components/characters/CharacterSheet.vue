@@ -177,10 +177,10 @@ const roles = Object.values(CharacterRole);
                         :key="char.id"
                         @click="selectedId = char.id"
                         class="w-full text-left px-4 py-3 rounded-xl transition-all duration-200 group relative border border-transparent"
-                        :class="selectedId === char.id ? 'bg-white shadow-sm border-black/5' : 'hover:bg-white/50'"
+                        :class="selectedId === char.id ? 'bg-ink shadow-lg shadow-black/10 border-ink/10' : 'hover:bg-ink/5'"
                     >
-                        <div class="font-medium text-ink group-hover:text-black transition-colors">{{ char.name }}</div>
-                        <div class="text-xs text-ink/50 uppercase tracking-wider mt-0.5 flex justify-between">
+                        <div class="font-medium transition-colors" :class="selectedId === char.id ? 'text-paper!' : 'text-ink group-hover:text-accent'">{{ char.name }}</div>
+                        <div class="text-xs uppercase tracking-wider mt-0.5 flex justify-between transition-colors" :class="selectedId === char.id ? 'text-paper/60!' : 'text-ink/50'">
                             <span>{{ char.role }}</span>
                             <span v-if="char.archetype" class="opacity-60 truncate ml-2 max-w-[80px]">{{ char.archetype }}</span>
                         </div>
@@ -200,7 +200,7 @@ const roles = Object.values(CharacterRole);
                         <input 
                             v-model="localCharacter.name" 
                             @input="handleChange"
-                            class="text-2xl font-serif font-bold bg-transparent border-none focus:ring-0 p-0 text-ink placeholder-ink/30 w-full max-w-md focus:outline-none"
+                            class="text-2xl font-serif font-bold bg-transparent border-none focus:ring-0 p-0 text-ink placeholder-ink/20 w-full max-w-md focus:outline-none"
                             placeholder="Character Name"
                         />
                         <span v-if="hasChanges" class="text-xs text-accent font-medium bg-accent/10 px-2 py-0.5 rounded-full animate-pulse">Unsaved</span>
@@ -231,8 +231,8 @@ const roles = Object.values(CharacterRole);
                                         v-for="role in roles" 
                                         :key="role"
                                         @click="() => { if (localCharacter) localCharacter.role = role; handleChange(); }"
-                                        class="px-4 py-2 rounded-lg text-sm transition-all border"
-                                        :class="localCharacter.role === role ? 'bg-ink text-paper border-ink shadow-md' : 'bg-transparent border-ink/10 text-ink/60 hover:border-ink/30'"
+                                        class="px-4 py-2 rounded-lg text-sm transition-all border font-bold"
+                                        :class="localCharacter.role === role ? 'bg-ink text-paper! border-ink shadow-md' : 'bg-transparent border-ink/10 text-ink/60 hover:border-ink/30'"
                                     >
                                         {{ role.charAt(0).toUpperCase() + role.slice(1) }}
                                     </button>
@@ -244,7 +244,7 @@ const roles = Object.values(CharacterRole);
                                 <input 
                                     v-model="localCharacter.archetype"
                                     @input="handleChange"
-                                    class="w-full bg-stone/30 border border-ink/5 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all font-medium"
+                                    class="w-full bg-ink/5 border border-ink/10 rounded-xl px-4 py-3 focus:outline-none focus:bg-ink/10 focus:ring-2 focus:ring-accent/20 transition-all font-medium text-ink placeholder-ink/20"
                                     placeholder="e.g. The Reluctant Hero, The Mentor"
                                 />
                             </div>
@@ -265,7 +265,7 @@ const roles = Object.values(CharacterRole);
                                         v-model="localCharacter.engine!.desire"
                                         @input="handleChange"
                                         rows="3"
-                                        class="w-full bg-transparent resize-none focus:outline-none text-ink/90 placeholder-ink/20 leading-relaxed"
+                                        class="w-full bg-transparent resize-none focus:outline-none text-ink placeholder-ink/10 leading-relaxed font-medium"
                                         placeholder="What do they want more than anything?"
                                     ></textarea>
                                 </div>
@@ -312,12 +312,12 @@ const roles = Object.values(CharacterRole);
                         <section class="grid grid-cols-1 gap-8">
                             <div class="space-y-3">
                                 <h3 class="text-lg font-bold font-serif italic text-ink">Physicality</h3>
-                                <div class="bg-white/40 rounded-xl p-4 border border-ink/5 focus-within:ring-2 focus-within:ring-accent/10 transition-all">
+                                <div class="bg-ink/5 rounded-xl p-4 border border-ink/10 focus-within:ring-2 focus-within:ring-accent/10 transition-all">
                                     <textarea 
                                         v-model="localCharacter.physical_features"
                                         @input="handleChange"
                                         rows="4"
-                                        class="w-full bg-transparent resize-none focus:outline-none text-ink/90 placeholder-ink/20 leading-relaxed"
+                                        class="w-full bg-transparent resize-none focus:outline-none text-ink placeholder-ink/10 leading-relaxed font-medium"
                                         placeholder="Distinguishing features, mannerisms, style..."
                                     ></textarea>
                                 </div>
@@ -325,12 +325,12 @@ const roles = Object.values(CharacterRole);
                              
                             <div class="space-y-3">
                                 <h3 class="text-lg font-bold font-serif italic text-ink">Notes & Arc</h3>
-                                <div class="bg-white/40 rounded-xl p-4 border border-ink/5 focus-within:ring-2 focus-within:ring-accent/10 transition-all">
+                                <div class="bg-ink/5 rounded-xl p-4 border border-ink/10 focus-within:ring-2 focus-within:ring-accent/10 transition-all">
                                     <textarea 
                                         v-model="localCharacter.notes"
                                         @input="handleChange"
                                         rows="8"
-                                        class="w-full bg-transparent resize-none focus:outline-none text-ink/90 placeholder-ink/20 leading-relaxed"
+                                        class="w-full bg-transparent resize-none focus:outline-none text-ink placeholder-ink/10 leading-relaxed font-medium"
                                         placeholder="General notes, ideas, character arc progression..."
                                     ></textarea>
                                 </div>
