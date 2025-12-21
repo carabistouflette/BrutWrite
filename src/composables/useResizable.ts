@@ -10,10 +10,15 @@ export function useResizable({ initialWidth, minWidth, maxWidth }: UseResizableO
     const width = ref(initialWidth);
     const isResizing = ref(false);
 
+    let animationFrame: number | null = null;
     const handleResize = (e: MouseEvent) => {
         if (isResizing.value) {
-            const scale = (parseFloat(document.documentElement.style.getPropertyValue('--ui-scale')) || 1);
-            width.value = Math.max(minWidth, Math.min(e.clientX / scale, maxWidth));
+            if (animationFrame) return;
+            animationFrame = requestAnimationFrame(() => {
+                const scale = (parseFloat(document.documentElement.style.getPropertyValue('--ui-scale')) || 1);
+                width.value = Math.max(minWidth, Math.min(e.clientX / scale, maxWidth));
+                animationFrame = null;
+            });
         }
     };
 
