@@ -9,6 +9,7 @@ import 'tippy.js/dist/tippy.css';
 import { projectApi } from '../api/project';
 import { useCharacters } from './useCharacters';
 import { useProjectData } from './useProjectData';
+import { useAppStatus } from './useAppStatus';
 import MentionList from '../components/base/MentionList.vue';
 
 export function useTiptapEditor(
@@ -19,6 +20,7 @@ export function useTiptapEditor(
     const isDirty = ref(false); // Track if content has changed
     const { characters } = useCharacters();
     const { updateNodeStats, activeId } = useProjectData();
+    const { notifyError } = useAppStatus();
 
     const editor = useEditor({
         content: '',
@@ -110,13 +112,17 @@ export function useTiptapEditor(
         }
     });
 
+    const calculateWordCount = (text: string): number => {
+        return text.trim().length === 0
+            ? 0
+            : text.split(/\s+/).filter(w => w.length > 0).length;
+    };
+
     let wordCountTimeout: ReturnType<typeof setTimeout>;
     const debouncedWordCountUpdate = (text: string) => {
         clearTimeout(wordCountTimeout);
         wordCountTimeout = setTimeout(() => {
-            const newCount = text.trim().length === 0
-                ? 0
-                : text.split(/\s+/).filter(w => w.length > 0).length;
+            const newCount = calculateWordCount(text);
 
             const delta = newCount - lastWordCount.value;
             if (delta !== 0) {
@@ -152,8 +158,7 @@ export function useTiptapEditor(
 
     const resetWordCountState = () => {
         if (!editor.value) return;
-        const text = editor.value.state.doc.textContent;
-        lastWordCount.value = text.trim().length === 0 ? 0 : text.split(/\s+/).filter(w => w.length > 0).length;
+        lastWordCount.value = calculateWordCount(editor.value.state.doc.textContent);
     }
 
     // --- Backend Actions ---
@@ -166,7 +171,7 @@ export function useTiptapEditor(
             resetWordCountState();
             isDirty.value = false;
         } catch (e) {
-            console.error('Failed to load chapter:', e);
+            notifyError('Failed to load chapter', e);
             editor.value.commands.setContent(`<h1>Error</h1><p>Could not load chapter.</p>`);
         }
     };
@@ -194,7 +199,7 @@ export function useTiptapEditor(
             isDirty.value = false; // Reset dirty flag on successful save
             console.debug(`Auto-saved chapter ${chapterId}`);
         } catch (e) {
-            console.error('Failed to save chapter:', e);
+            notifyError(`Failed to save chapter ${chapterId}`, e);
         }
     }
 

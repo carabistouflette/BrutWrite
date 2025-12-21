@@ -52,7 +52,7 @@ export function useTimeline() {
     // Convert assigned scenes to timeline positions
     const timelineScenes = computed<TimelineScene[]>(() => {
         return assignedScenes.value.map((chapter, idx) => {
-            const plotlineIdx = plotlines.value.findIndex(p => p.id === chapter.plotline_tag);
+            const plotlineIdx = plotlines.value.findIndex((p: Plotline) => p.id === chapter.plotline_tag);
             return {
                 chapter,
                 x: idx * 150, // Basic positioning, refined by vis-timeline
@@ -182,7 +182,7 @@ export function useTimeline() {
     }
 
     async function removePlotline(id: string) {
-        const idx = plotlines.value.findIndex(p => p.id === id);
+        const idx = plotlines.value.findIndex((p: Plotline) => p.id === id);
         if (idx > 0) { // Don't remove default 'main' 
             const newPlotlines = [...plotlines.value];
             newPlotlines.splice(idx, 1);
@@ -191,7 +191,7 @@ export function useTimeline() {
     }
 
     async function updatePlotline(id: string, updates: Partial<Plotline>) {
-        const newPlotlines = plotlines.value.map(p =>
+        const newPlotlines = plotlines.value.map((p: Plotline) =>
             p.id === id ? { ...p, ...updates } : p
         );
         await updatePlotlines(newPlotlines);

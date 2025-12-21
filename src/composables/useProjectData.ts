@@ -2,9 +2,9 @@ import { ref, computed, triggerRef } from 'vue';
 import { projectApi } from '../api/project';
 import type { FileNode, ProjectSettings } from '../types';
 import { useCharacters } from './useCharacters';
+import { useAppStatus } from './useAppStatus';
 import {
     findNode,
-    deleteFromList,
     findAndAdd,
     findAndRename,
     reconstructHierarchy,
@@ -16,9 +16,10 @@ const projectData = ref<FileNode[]>([]);
 const activeId = ref<string | undefined>(undefined);
 const projectId = ref<string | undefined>(undefined); // Store active project UUID
 const projectSettings = ref<ProjectSettings | null>(null);
-const projectPlotlines = ref<any[]>([]); // We'll type this properly
+const projectPlotlines = ref<any[]>([]);
 
 export function useProjectData() {
+    const { notifyError } = useAppStatus();
 
     // --- Backend Sync Helpers ---
 
@@ -31,7 +32,7 @@ export function useProjectData() {
             await projectApi.updateManifest(projectId.value, manifest);
             console.debug('Manifest synced');
         } catch (e) {
-            console.error('Failed to sync manifest:', e);
+            notifyError('Failed to sync manifest', e);
         }
     };
 
@@ -58,7 +59,7 @@ export function useProjectData() {
                 activeId.value = projectData.value[0].id;
             }
         } catch (e) {
-            console.error('Failed to load project:', e);
+            notifyError('Failed to load project', e);
             localStorage.removeItem('last_opened_project_path');
         }
     };
@@ -78,7 +79,7 @@ export function useProjectData() {
 
             await addChapter();
         } catch (e) {
-            console.error('Failed to create project:', e);
+            notifyError('Failed to create project', e);
         }
     }
 
@@ -119,39 +120,33 @@ export function useProjectData() {
     const deleteNode = async (id: string) => {
         if (!projectId.value) return;
 
-        // Helper to collect all filenames in a subtree
-        const collectFilenames = (node: FileNode, acc: string[]) => {
-            if (node.filename) acc.push(node.filename);
-            if (node.children) {
-                node.children.forEach(child => collectFilenames(child, acc));
+        const node = findNode(projectData.value, id);
+        if (!node) return;
+
+        const collectFilenames = (n: FileNode, acc: string[]) => {
+            if (n.filename) acc.push(n.filename);
+            if (n.children) {
+                n.children.forEach(child => collectFilenames(child, acc));
             }
         };
 
-        const node = findNode(projectData.value, id);
-        if (node) {
-            const filesToDelete: string[] = [];
-            collectFilenames(node, filesToDelete);
+        const filesToDelete: string[] = [];
+        collectFilenames(node, filesToDelete);
 
-            // Delete files from backend
-            for (const filename of filesToDelete) {
-                try {
-                    await projectApi.deleteChapter(projectId.value, filename);
-                } catch (e) {
-                    console.error(`Failed to delete file ${filename}:`, e);
-                }
-            }
-        }
+        try {
+            const metadata = await projectApi.deleteNode(projectId.value, id, filesToDelete);
 
-        if (deleteFromList(projectData.value, id)) {
+            // Atomic sync from backend
+            projectData.value = reconstructHierarchy(metadata.manifest.chapters);
             if (activeId.value === id) activeId.value = undefined;
-            await syncManifest();
+
+        } catch (e) {
+            notifyError(`Failed to delete node ${id}`, e);
         }
     };
 
     const renameNode = async (id: string, newName: string) => {
         if (findAndRename(projectData.value, id, newName)) {
-            // Use triggerRef to force a reactivity update on children components 
-            // (like the Sidebar/FileTree) without replacing the underlying array reference.
             triggerRef(projectData);
             await syncManifest();
         }
@@ -181,20 +176,17 @@ export function useProjectData() {
         const node = findNode(projectData.value, id);
         if (node) {
             node.word_count = wordCount;
-            // Trigger reactivity without full array replacement if possible, 
-            // but for deep partial updates to refs, standard Vue reactivity handles it
-            // if we mutate the object directly.
             triggerRef(projectData);
         }
     };
 
-    const updateContextSettings = async (settings: ProjectSettings) => {
+    const updateSettings = async (settings: ProjectSettings) => {
         if (!projectId.value) return;
         try {
             const metadata = await projectApi.updateSettings(projectId.value, settings);
             projectSettings.value = metadata.settings;
         } catch (e) {
-            console.error('Failed to update project settings:', e);
+            notifyError('Failed to update project settings', e);
         }
     };
 
@@ -204,23 +196,20 @@ export function useProjectData() {
             const metadata = await projectApi.updatePlotlines(projectId.value, plotlines);
             projectPlotlines.value = metadata.plotlines;
         } catch (e) {
-            console.error('Failed to update plotlines:', e);
+            notifyError('Failed to update plotlines', e);
         }
     };
 
     const closeProject = () => {
-        // Clear all project state
         projectId.value = undefined;
         projectData.value = [];
         activeId.value = undefined;
         projectSettings.value = null;
         projectPlotlines.value = [];
 
-        // Clear character store
         const { setCharacters } = useCharacters();
         setCharacters([]);
 
-        // Remove last opened project from localStorage
         localStorage.removeItem('last_opened_project_path');
     };
 
@@ -239,7 +228,7 @@ export function useProjectData() {
         deleteNode,
         renameNode,
         updateStructure,
-        updateSettings: updateContextSettings,
+        updateSettings,
         updatePlotlines,
         updateNodeStats,
         plotlines: computed(() => projectPlotlines.value),

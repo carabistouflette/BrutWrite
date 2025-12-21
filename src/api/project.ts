@@ -32,8 +32,8 @@ export const projectApi = {
         return invoke<ProjectMetadata>('save_chapter', { projectId, chapterId, content });
     },
 
-    deleteChapter: async (projectId: string, filename: string): Promise<void> => {
-        return invoke('delete_chapter', { projectId, filename });
+    deleteNode: async (projectId: string, id: string, filenamesToDelete: string[]): Promise<ProjectMetadata> => {
+        return invoke<ProjectMetadata>('delete_node', { projectId, id, filenamesToDelete });
     },
 
     // Character Management
