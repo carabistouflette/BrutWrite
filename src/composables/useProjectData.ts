@@ -4,8 +4,6 @@ import type { FileNode, ProjectSettings } from '../types';
 import { useCharacters } from './useCharacters';
 import { useAppStatus } from './useAppStatus';
 import {
-    findNode,
-    findAndRename,
     reconstructHierarchy,
     projectToManifest
 } from '../utils/tree';
@@ -17,12 +15,16 @@ const projectId = ref<string | undefined>(undefined); // Store active project UU
 const projectSettings = ref<ProjectSettings | null>(null);
 const projectPlotlines = ref<any[]>([]);
 
+// Shared debouncers and pending updates (Singleton)
+let syncManifestTimeout: ReturnType<typeof setTimeout> | null = null;
+const pendingMetadataUpdates = new Map<string, any>();
+let metadataTimeout: ReturnType<typeof setTimeout> | null = null;
+
 export function useProjectData() {
     const { notifyError } = useAppStatus();
 
     // --- Backend Sync Helpers ---
 
-    let syncManifestTimeout: ReturnType<typeof setTimeout> | null = null;
     const syncManifestDebounced = () => {
         if (syncManifestTimeout) clearTimeout(syncManifestTimeout);
         syncManifestTimeout = setTimeout(async () => {
@@ -38,13 +40,6 @@ export function useProjectData() {
             }
         }, 1500); // 1.5s debounce for structural changes
     };
-
-    // --- Actions ---
-
-    // Debounce helper for syncing manifest to avoid excessive IPC/IO
-
-    const pendingMetadataUpdates = new Map<string, any>();
-    let metadataTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const syncNodeMetadataDebounced = (nodeId: string, updates: any) => {
         // Merge updates for the same node
@@ -67,6 +62,36 @@ export function useProjectData() {
             }
         }, 1000);
     };
+
+    // --- Optimized Lookups ---
+    const nodeMap = computed(() => {
+        const map = new Map<string, FileNode>();
+        const list: FileNode[] = [];
+        const traverseNodes = (nodes: FileNode[]) => {
+            for (const node of nodes) {
+                map.set(node.id, node);
+                list.push(node);
+                if (node.children) traverseNodes(node.children);
+            }
+        };
+        traverseNodes(projectData.value);
+        return { map, list };
+    });
+
+    const flatNodes = computed(() => nodeMap.value.list);
+
+    const activeChapter = computed(() => {
+        if (!activeId.value) return undefined;
+        return nodeMap.value.map.get(activeId.value);
+    });
+
+    const totalWords = computed(() => {
+        let total = 0;
+        nodeMap.value.map.forEach(node => {
+            total += (node.word_count || 0);
+        });
+        return total;
+    });
 
     const updateRecentProjects = (path: string) => {
         const recentStr = localStorage.getItem('recent_projects') || '[]';
@@ -134,22 +159,6 @@ export function useProjectData() {
             const metadata = await projectApi.createNode(projectId.value, undefined, 'New Chapter');
             projectData.value = reconstructHierarchy(metadata.manifest.chapters);
             
-            // Find the newly created node (highest order root node)
-            // Or simplified: just filtering by what we know we created, but we don't know the ID easily unless we check diff.
-            // Actually, we can just find the one with the highest order or specific name if we want to auto-select.
-            // For now, let's find the 'New Chapter' with highest order/index ?
-            // Better: The backend returns metadata. The new node has a generated UUID.
-            // We can iterate to find the node that didn't exist before? No, too expensive.
-            // Let's just not auto-select for a micro-second, or...
-            // Wait, failure to auto-select is fine, but user expects it.
-            // Implementation detail: createNode returns metadata.
-            // We can return the ID from backend?
-            // Actually, let's just find the node with name "New Chapter" and highest order for now as a heuristic, 
-            // OR finding the one that is not in `oldIds`.
-            // But let's look at `create_node` in backend... it returns metadata.
-            
-            // Heuristic: Find the chapter with highest order among roots.
-            // (Assuming we just added it to the end).
              const roots = projectData.value;
              if (roots.length > 0) {
                  const newChapter = roots[roots.length - 1];
@@ -174,7 +183,7 @@ export function useProjectData() {
     const deleteNode = async (id: string) => {
         if (!projectId.value) return;
 
-        const node = findNode(projectData.value, id);
+        const node = nodeMap.value.map.get(id);
         if (!node) return;
 
         const collectFilenames = (n: FileNode, acc: string[]) => {
@@ -200,40 +209,12 @@ export function useProjectData() {
     };
 
     const renameNode = async (id: string, newName: string) => {
-        if (findAndRename(projectData.value, id, newName)) {
+        const node = nodeMap.value.map.get(id);
+        if (node && node.name !== newName) {
+            node.name = newName;
             syncNodeMetadataDebounced(id, { title: newName });
         }
     };
-
-    // --- Optimized Lookups ---
-    const nodeMap = computed(() => {
-        const map = new Map<string, FileNode>();
-        const list: FileNode[] = [];
-        const traverseNodes = (nodes: FileNode[]) => {
-            for (const node of nodes) {
-                map.set(node.id, node);
-                list.push(node);
-                if (node.children) traverseNodes(node.children);
-            }
-        };
-        traverseNodes(projectData.value);
-        return { map, list };
-    });
-
-    const flatNodes = computed(() => nodeMap.value.list);
-
-    const activeChapter = computed(() => {
-        if (!activeId.value) return undefined;
-        return nodeMap.value.map.get(activeId.value);
-    });
-
-    const totalWords = computed(() => {
-        let total = 0;
-        nodeMap.value.map.forEach(node => {
-            total += (node.word_count || 0);
-        });
-        return total;
-    });
 
     const updateStructure = async (newStructure: FileNode[]) => {
         projectData.value = newStructure;
@@ -244,7 +225,6 @@ export function useProjectData() {
         const node = nodeMap.value.map.get(id);
         if (node && node.word_count !== wordCount) {
             node.word_count = wordCount;
-            // No triggerRef - totalWords computed will re-run automatically because it tracks node.word_count
         }
     };
 
@@ -259,14 +239,11 @@ export function useProjectData() {
             allowed.forEach(key => {
                 if (key in updates && (node as any)[key] !== (updates as any)[key]) {
                     (node as any)[key] = (updates as any)[key];
-                    (updateForBackend as any)[key === 'chronological_date' ? 'chronological_date' : 
-                                              key === 'abstract_timeframe' ? 'abstract_timeframe' : 
-                                              key] = (updates as any)[key];
+                    (updateForBackend as any)[key] = (updates as any)[key];
                     changed = true;
                 }
             });
 
-            // Special handling for key mapping if needed (but backend uses snake_case, same as frontend properties here)
             if (changed) {
                 syncNodeMetadataDebounced(id, updateForBackend);
             }
@@ -330,3 +307,4 @@ export function useProjectData() {
         closeProject
     };
 }
+
