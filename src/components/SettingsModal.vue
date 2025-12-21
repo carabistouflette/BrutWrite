@@ -45,11 +45,8 @@ const tabs = [
 
         <!-- Window Container -->
         <div 
-            class="relative w-full max-w-4xl h-[85%] flex bg-paper/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
+            class="relative w-full max-w-4xl h-[85%] flex bg-paper/90 backdrop-blur-xl border border-white/40 dark:border-white/5 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
             :class="{ 'modal-exit': !show }"
-            style="box-shadow: 
-                0 20px 50px -12px rgba(0, 0, 0, 0.2), 
-                0 0 0 1px rgba(255, 255, 255, 0.4) inset"
         >
             <!-- Sidebar -->
             <div class="w-64 cyber-glass border-r border-ink/5 flex flex-col">
@@ -148,6 +145,14 @@ const tabs = [
 
 .modal-container {
     animation: modal-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    box-shadow: 
+        0 20px 50px -12px rgba(0, 0, 0, 0.2), 
+        0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+}
+
+:global(.dark) .modal-container {
+    box-shadow: 
+        0 20px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 .modal-exit {
