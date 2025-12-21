@@ -14,6 +14,8 @@ pub struct ProjectMetadata {
     pub manifest: Manifest,
     #[serde(default)]
     pub characters: Vec<Character>,
+    #[serde(default)]
+    pub plotlines: Vec<Plotline>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -62,6 +64,14 @@ pub struct Chapter {
     /// POV character ID (for simultaneous-scene paradox detection)
     #[serde(default)]
     pub pov_character_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct Plotline {
+    pub id: String,
+    pub name: String,
+    pub color: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -132,6 +142,11 @@ impl ProjectMetadata {
             settings: ProjectSettings::default(),
             manifest: Manifest::default(),
             characters: Vec::new(),
+            plotlines: vec![Plotline {
+                id: "main".to_string(),
+                name: "Main Plot".to_string(),
+                color: "#3b82f6".to_string(),
+            }],
         }
     }
 }

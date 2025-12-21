@@ -220,6 +220,31 @@ pub fn delete_character<P: AsRef<Path>>(
     Ok(metadata)
 }
 
+pub fn save_project_metadata<P: AsRef<Path>>(
+    root_path: P,
+    metadata: &ProjectMetadata,
+) -> Result<()> {
+    let metadata_path = root_path.as_ref().join("project.json");
+    let json = serde_json::to_string_pretty(metadata)?;
+    fs::write(metadata_path, json)?;
+    Ok(())
+}
+
+pub fn update_plotlines<P: AsRef<Path>>(
+    root_path: P,
+    plotlines: Vec<crate::models::Plotline>,
+) -> Result<ProjectMetadata> {
+    let root = root_path.as_ref();
+    let mut metadata = load_project_metadata(root)?;
+
+    metadata.plotlines = plotlines;
+    metadata.updated_at = chrono::Utc::now();
+
+    save_project_metadata(root, &metadata)?;
+
+    Ok(metadata)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
