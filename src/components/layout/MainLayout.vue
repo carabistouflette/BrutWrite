@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue';
-import FileTree from './FileTree.vue';
-import GamificationStatus from './GamificationStatus.vue';
-import ContextMenu from './base/ContextMenu.vue';
-import AppLogo from './AppLogo.vue';
+import FileTree from '../FileTree.vue';
+import GamificationStatus from '../GamificationStatus.vue';
+import ContextMenu from '../base/ContextMenu.vue';
+import AppLogo from '../common/AppLogo.vue';
 import SidebarFooter from './SidebarFooter.vue';
-import AddChapterButton from './AddChapterButton.vue';
-import { useResizable } from '../composables/useResizable';
-import { useProjectData } from '../composables/useProjectData';
-import { useContextMenu } from '../composables/useContextMenu';
+import AddChapterButton from '../AddChapterButton.vue';
+import { useResizable } from '../../composables/useResizable';
+import { useProjectData } from '../../composables/useProjectData';
+import { useContextMenu } from '../../composables/useContextMenu';
 
 import { defineAsyncComponent } from 'vue';
 
-const SettingsModal = defineAsyncComponent(() => import('./SettingsModal.vue'));
-const CharacterSheet = defineAsyncComponent(() => import('./characters/CharacterSheet.vue'));
-const TimelineView = defineAsyncComponent(() => import('./timeline/Timeline.vue'));
+const SettingsModal = defineAsyncComponent(() => import('../SettingsModal.vue'));
+const CharacterSheet = defineAsyncComponent(() => import('../characters/CharacterSheet.vue'));
+const TimelineView = defineAsyncComponent(() => import('../timeline/Timeline.vue'));
 
 // --- Composables ---
 const { width: sidebarWidth, isResizing, startResize } = useResizable({

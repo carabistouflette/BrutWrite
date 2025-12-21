@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useWindowControls } from '../composables/useWindowControls';
+import { useWindowControls } from '../../composables/useWindowControls';
 
 const { minimize, toggleMaximize, close } = useWindowControls();
 </script>
