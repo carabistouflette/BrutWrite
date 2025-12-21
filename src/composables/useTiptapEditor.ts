@@ -105,7 +105,7 @@ export function useTiptapEditor(
         onUpdate: ({ transaction }) => {
             isDirty.value = true;
             handleScroll();
-            debouncedWordCountUpdate(transaction.doc.textContent);
+            debouncedWordCountUpdate(transaction.doc);
         },
         onSelectionUpdate: () => {
             handleScroll();
@@ -119,9 +119,10 @@ export function useTiptapEditor(
     };
 
     let wordCountTimeout: ReturnType<typeof setTimeout>;
-    const debouncedWordCountUpdate = (text: string) => {
+    const debouncedWordCountUpdate = (doc: any) => {
         clearTimeout(wordCountTimeout);
         wordCountTimeout = setTimeout(() => {
+            const text = doc.textContent;
             const newCount = calculateWordCount(text);
 
             const delta = newCount - lastWordCount.value;
@@ -133,19 +134,33 @@ export function useTiptapEditor(
     };
 
     let lastScrollTime = 0;
+    let lastFrom = -1;
+    let cachedContainerRect: DOMRect | null = null;
+
     const handleScroll = () => {
         const now = Date.now();
-        if (now - lastScrollTime < 20) return; // Throttle to ~50fps
+        if (now - lastScrollTime < 30) return; // Throttle slightly more
+        
+        if (!editor.value || !containerRef.value) return;
+        const { from } = editor.value.state.selection;
+        if (from === lastFrom) return;
+        lastFrom = from;
+        
         lastScrollTime = now;
 
         requestAnimationFrame(() => {
             if (!editor.value || !containerRef.value) return;
 
-            const { from } = editor.value.state.selection;
             const view = editor.value.view;
             const coords = view.coordsAtPos(from);
-            const containerRect = containerRef.value.getBoundingClientRect();
-
+            
+            if (!cachedContainerRect) {
+                cachedContainerRect = containerRef.value.getBoundingClientRect();
+                // Reset cache on next resize
+                window.addEventListener('resize', () => { cachedContainerRect = null; }, { once: true });
+            }
+            
+            const containerRect = cachedContainerRect;
             const containerCenter = containerRect.top + containerRect.height / 2;
             const cursorY = coords.top;
             const diff = cursorY - containerCenter;
