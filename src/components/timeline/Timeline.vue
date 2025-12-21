@@ -304,16 +304,27 @@ function updateConnectorPositions() {
     if (!canvasRef) return;
 
     const containerRect = canvasRef.getBoundingClientRect();
-    const itemsEl = canvasRef.querySelectorAll('.vis-item');
-    
-    // Create a lookup for item positions to avoid multiple getBoundingClientRect calls
-    const itemRects = new Map<string, DOMRect>();
-    itemsEl.forEach(el => {
-        const id = (el as HTMLElement).dataset.id;
-        if (id) itemRects.set(id, el.getBoundingClientRect());
+    const connectors = narrativeConnectors.value;
+    if (connectors.length === 0) {
+        connectorPaths.value = [];
+        return;
+    }
+
+    // Get unique connected IDs
+    const connectedIds = new Set<string>();
+    connectors.forEach(conn => {
+        connectedIds.add(conn.from);
+        connectedIds.add(conn.to);
     });
 
-    narrativeConnectors.value.forEach(conn => {
+    // Create a lookup for item positions
+    const itemRects = new Map<string, DOMRect>();
+    connectedIds.forEach(id => {
+        const el = canvasRef.querySelector(`[data-id="${id}"]`);
+        if (el) itemRects.set(id, el.getBoundingClientRect());
+    });
+
+    connectors.forEach(conn => {
         const fromRect = itemRects.get(conn.from);
         const toRect = itemRects.get(conn.to);
 
