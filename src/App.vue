@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { watch, onMounted } from 'vue';
-import AppHeader from './components/AppHeader.vue';
-import MainLayout from './components/MainLayout.vue';
+import AppHeader from './components/layout/AppHeader.vue';
+import MainLayout from './components/layout/MainLayout.vue';
 import EditorMain from './components/EditorMain.vue';
 import WelcomeScreen from './components/WelcomeScreen.vue';
 import AppNotifications from './components/base/AppNotifications.vue';
