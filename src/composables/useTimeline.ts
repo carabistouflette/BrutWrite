@@ -89,16 +89,18 @@ export function useTimeline() {
         });
 
         // 2. Causality violation detection
+        const sceneMap = new Map<string, Chapter>();
+        assignedScenes.value.forEach(s => sceneMap.set(s.id, s));
+
         const chronoSorted = [...assignedScenes.value].sort((a, b) => {
             const aTime = a.chronological_date || a.abstract_timeframe || '';
             const bTime = b.chronological_date || b.abstract_timeframe || '';
-            // Handle ISO dates vs Strings? Simple string compare works for ISO.
             return aTime.localeCompare(bTime);
         });
 
         chronoSorted.forEach(scene => {
             if (scene.depends_on) {
-                const dependency = chronoSorted.find(s => s.id === scene.depends_on);
+                const dependency = sceneMap.get(scene.depends_on);
                 if (dependency) {
                     const sceneTime = scene.chronological_date || scene.abstract_timeframe || '';
                     const depTime = dependency.chronological_date || dependency.abstract_timeframe || '';

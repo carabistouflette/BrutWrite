@@ -175,19 +175,30 @@ export function useProjectData() {
         }
     };
 
+    // --- Optimized Lookups ---
+    const nodeMap = computed(() => {
+        const map = new Map<string, FileNode>();
+        const traverseNodes = (nodes: FileNode[]) => {
+            for (const node of nodes) {
+                map.set(node.id, node);
+                if (node.children) traverseNodes(node.children);
+            }
+        };
+        traverseNodes(projectData.value);
+        return map;
+    });
+
     const activeChapter = computed(() => {
         if (!activeId.value) return undefined;
-        return findNode(projectData.value, activeId.value);
+        return nodeMap.value.get(activeId.value);
     });
 
     const totalWords = computed(() => {
-        const countWords = (nodes: FileNode[]): number => {
-            return nodes.reduce((sum, node) => {
-                const childSum = node.children ? countWords(node.children) : 0;
-                return sum + (node.word_count || 0) + childSum;
-            }, 0);
-        };
-        return countWords(projectData.value);
+        let total = 0;
+        nodeMap.value.forEach(node => {
+            total += (node.word_count || 0);
+        });
+        return total;
     });
 
     const updateStructure = async (newStructure: FileNode[]) => {
@@ -196,7 +207,7 @@ export function useProjectData() {
     };
 
     const updateNodeStats = (id: string, wordCount: number) => {
-        const node = findNode(projectData.value, id);
+        const node = nodeMap.value.get(id);
         if (node) {
             node.word_count = wordCount;
             triggerRef(projectData);
@@ -204,7 +215,7 @@ export function useProjectData() {
     };
 
     const updateNodeTemporal = async (id: string, updates: Partial<FileNode>) => {
-        const node = findNode(projectData.value, id);
+        const node = nodeMap.value.get(id);
         if (node) {
             // Only allow temporal updates here
             const allowed = ['chronological_date', 'abstract_timeframe', 'duration', 'plotline_tag', 'depends_on', 'pov_character_id'];
