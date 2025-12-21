@@ -245,6 +245,69 @@ pub fn update_plotlines<P: AsRef<Path>>(
     Ok(metadata)
 }
 
+pub fn create_chapter_node<P: AsRef<Path>>(
+    root_path: P,
+    parent_id: Option<String>,
+    name: String,
+) -> Result<ProjectMetadata> {
+    let root = root_path.as_ref();
+    let mut metadata = load_project_metadata(root)?;
+
+    // 1. Generate ID and Filename
+    let new_id = format!("chapter-{}", uuid::Uuid::new_v4());
+    let filename = format!("{}.md", new_id);
+
+    // 2. Calculate Order (last child + 1)
+    let siblings: Vec<&crate::models::Chapter> = metadata
+        .manifest
+        .chapters
+        .iter()
+        .filter(|c| c.parent_id == parent_id)
+        .collect();
+
+    let max_order = siblings.iter().map(|c| c.order).max().unwrap_or(0);
+    // If there are siblings, order is next. If no siblings, start at 0.
+    let new_order = if siblings.is_empty() {
+        0
+    } else {
+        max_order + 1
+    };
+
+    // 3. Create Chapter Object
+    let new_chapter = crate::models::Chapter {
+        id: new_id.clone(),
+        parent_id,
+        title: name,
+        filename: filename.clone(),
+        word_count: 0,
+        order: new_order,
+        chronological_date: None,
+        abstract_timeframe: None,
+        duration: None,
+        plotline_tag: None,
+        depends_on: None,
+        pov_character_id: None,
+    };
+
+    // 4. Create File
+    let manuscript_dir = root.join("manuscript");
+    if !manuscript_dir.exists() {
+        fs::create_dir_all(&manuscript_dir)?;
+    }
+    let file_path = manuscript_dir.join(&filename);
+    fs::write(&file_path, "")?;
+
+    // 5. Update Metadata
+    metadata.manifest.chapters.push(new_chapter);
+    metadata.updated_at = chrono::Utc::now();
+
+    let metadata_path = root.join("project.json");
+    let json = serde_json::to_string_pretty(&metadata)?;
+    fs::write(metadata_path, json)?;
+
+    Ok(metadata)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

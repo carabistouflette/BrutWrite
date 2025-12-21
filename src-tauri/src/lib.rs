@@ -45,7 +45,8 @@ pub fn run() {
             commands::save_character,
             commands::delete_character,
             commands::update_project_settings,
-            commands::update_plotlines
+            commands::update_plotlines,
+            commands::create_node
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

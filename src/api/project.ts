@@ -43,5 +43,9 @@ export const projectApi = {
 
     deleteCharacter: async (projectId: string, characterId: string): Promise<ProjectMetadata> => {
         return invoke<ProjectMetadata>('delete_character', { projectId, characterId });
+    },
+
+    createNode: async (projectId: string, parentId: string | undefined, name: string): Promise<ProjectMetadata> => {
+        return invoke<ProjectMetadata>('create_node', { projectId, parentId, name });
     }
 };

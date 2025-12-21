@@ -242,6 +242,39 @@ pub async fn save_chapter(
 }
 
 #[tauri::command]
+pub async fn create_node(
+    state: State<'_, AppState>,
+    project_id: Uuid,
+    parent_id: Option<String>,
+    name: String,
+) -> Result<ProjectMetadata, String> {
+    let root_path = {
+        let projects = state
+            .open_projects
+            .lock()
+            .map_err(|_| "Failed to lock projects")?;
+        projects
+            .get(&project_id)
+            .cloned()
+            .ok_or_else(|| "Project not loaded".to_string())?
+    };
+
+    let mut cache = state
+        .project_cache
+        .lock()
+        .map_err(|_| "Failed to lock cache")?;
+
+    // Perform Creation
+    let metadata =
+        storage::create_chapter_node(&root_path, parent_id, name).map_err(|e| e.to_string())?;
+
+    // Update Cache
+    cache.insert(project_id, metadata.clone());
+
+    Ok(metadata)
+}
+
+#[tauri::command]
 pub async fn delete_node(
     state: State<'_, AppState>,
     project_id: Uuid,
