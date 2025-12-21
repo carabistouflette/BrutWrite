@@ -9,7 +9,7 @@ import { useProjectData } from './useProjectData';
 import type { Chapter, Plotline, ParadoxWarning, TimelineScene, FileNode } from '../types';
 
 export function useTimeline() {
-    const { projectData, activeId, selectNode, plotlines, updatePlotlines } = useProjectData();
+    const { projectData, activeId, selectNode, plotlines, updatePlotlines, updateNodeTemporal } = useProjectData();
 
     // Flatten all chapters/scenes from the tree
     const allChapters = computed<Chapter[]>(() => {
@@ -231,5 +231,6 @@ export function useTimeline() {
         addPlotline,
         removePlotline,
         updatePlotline,
+        updateNodeTemporal,
     };
 }

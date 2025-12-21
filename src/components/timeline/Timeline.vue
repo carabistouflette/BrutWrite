@@ -27,6 +27,7 @@ const {
     paradoxWarnings,
     narrativeConnectors,
     selectNode,
+    updateNodeTemporal,
 } = useTimeline();
 
 // Refs
@@ -69,6 +70,16 @@ onMounted(() => {
             selectNode(props.items[0]);
         }
     });
+
+    // Drop support
+    const wrapper = containerRef.value;
+    if (wrapper) {
+        wrapper.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        });
+        wrapper.addEventListener('drop', handleDrop);
+    }
 
     // Hover handler for popover
     timeline.value.on('itemover', (props: { item: string; event: MouseEvent }) => {
@@ -169,11 +180,29 @@ function parseDurationToHours(duration: string): number {
     return 1;
 }
 
-function handleItemMove(item: any, callback: (item: any) => void) {
-    // TODO: Persist the new time to backend
-    console.log('Scene moved:', item.id, 'to', item.start);
-    // For now, accept the move
+async function handleItemMove(item: any, callback: (item: any) => void) {
+    await updateNodeTemporal(item.id, {
+        chronological_date: new Date(item.start).toISOString(),
+        plotline_tag: item.group
+    });
+    // Callback is not strictly needed if watcher syncs data, but prevents jumpiness
     callback(item);
+}
+
+async function handleDrop(event: DragEvent) {
+    event.preventDefault();
+    if (!timeline.value) return;
+
+    const id = event.dataTransfer?.getData('text/plain');
+    if (!id) return;
+
+    const props = timeline.value.getEventProperties(event);
+    if (!props.time) return;
+
+    await updateNodeTemporal(id, {
+        chronological_date: props.time.toISOString(),
+        plotline_tag: props.group !== undefined && props.group !== null ? String(props.group) : 'main'
+    });
 }
 
 function toggleNarrativeConnectors() {

@@ -180,6 +180,15 @@ export function useProjectData() {
         }
     };
 
+    const updateNodeTemporal = async (id: string, data: Partial<Pick<FileNode, 'chronological_date' | 'abstract_timeframe' | 'duration' | 'plotline_tag'>>) => {
+        const node = findNode(projectData.value, id);
+        if (node) {
+            Object.assign(node, data);
+            triggerRef(projectData);
+            await syncManifest();
+        }
+    };
+
     const updateSettings = async (settings: ProjectSettings) => {
         if (!projectId.value) return;
         try {
@@ -231,6 +240,7 @@ export function useProjectData() {
         updateSettings,
         updatePlotlines,
         updateNodeStats,
+        updateNodeTemporal,
         plotlines: computed(() => projectPlotlines.value),
         closeProject
     };

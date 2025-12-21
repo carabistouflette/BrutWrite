@@ -29,7 +29,7 @@ defineExpose({
 
 <template>
   <div 
-    class="group relative flex justify-between items-center py-2 px-3 transition-all duration-300 ease-out active:scale-[0.98]"
+    class="group relative flex justify-between items-center py-2 px-3 transition-colors duration-300 ease-out active:scale-[0.98]"
     :class="{ 'active-pop': isActive }"
     @click.stop="emit('select', element.id)"
     @contextmenu.prevent="(e) => emit('context-menu', { e, id: element.id })"
