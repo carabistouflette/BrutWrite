@@ -52,7 +52,15 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-screen w-screen bg-paper text-ink flex flex-col font-sans overflow-hidden relative">
+  <div 
+    class="h-screen w-screen bg-paper text-ink flex flex-col font-sans overflow-hidden relative"
+    :style="{ 
+      transform: `scale(${settings.interface.uiScaling / 100})`,
+      transformOrigin: 'top left',
+      width: `${100 / (settings.interface.uiScaling / 100)}%`,
+      height: `${100 / (settings.interface.uiScaling / 100)}%`
+    }"
+  >
     <!-- Cyber-Glass App Header -->
     <AppHeader data-tauri-drag-region />
 
@@ -60,15 +68,7 @@ onMounted(async () => {
     <WelcomeScreen v-if="!projectId" />
 
     <!-- Main Content (Sidebar + Editor) -->
-    <MainLayout v-else 
-      class="app-scaling-wrapper"
-      :style="{ 
-        transform: `scale(${settings.interface.uiScaling / 100})`,
-        transformOrigin: 'top left',
-        width: `${100 / (settings.interface.uiScaling / 100)}%`,
-        height: `${100 / (settings.interface.uiScaling / 100)}%`
-      }"
-    >
+    <MainLayout v-else>
         <EditorMain v-if="activeId" />
         <div v-else class="h-full flex flex-col justify-center items-center text-ink/60 select-none">
             <h2 class="text-5xl font-serif font-bold italic tracking-tight mb-2">Start Writing</h2>
