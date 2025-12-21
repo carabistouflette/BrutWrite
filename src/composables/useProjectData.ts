@@ -16,6 +16,7 @@ const projectData = ref<FileNode[]>([]);
 const activeId = ref<string | undefined>(undefined);
 const projectId = ref<string | undefined>(undefined); // Store active project UUID
 const projectSettings = ref<ProjectSettings | null>(null);
+const projectPlotlines = ref<any[]>([]); // We'll type this properly
 
 export function useProjectData() {
 
@@ -47,6 +48,7 @@ export function useProjectData() {
 
             // Set settings
             projectSettings.value = metadata.settings;
+            projectPlotlines.value = metadata.plotlines;
 
             localStorage.setItem('last_opened_project_path', path);
 
@@ -72,6 +74,7 @@ export function useProjectData() {
             setCharacters([]);
 
             projectSettings.value = metadata.settings;
+            projectPlotlines.value = metadata.plotlines;
 
             await addChapter();
         } catch (e) {
@@ -195,12 +198,23 @@ export function useProjectData() {
         }
     };
 
+    const updatePlotlines = async (plotlines: any[]) => {
+        if (!projectId.value) return;
+        try {
+            const metadata = await projectApi.updatePlotlines(projectId.value, plotlines);
+            projectPlotlines.value = metadata.plotlines;
+        } catch (e) {
+            console.error('Failed to update plotlines:', e);
+        }
+    };
+
     const closeProject = () => {
         // Clear all project state
         projectId.value = undefined;
         projectData.value = [];
         activeId.value = undefined;
         projectSettings.value = null;
+        projectPlotlines.value = [];
 
         // Clear character store
         const { setCharacters } = useCharacters();
@@ -226,7 +240,9 @@ export function useProjectData() {
         renameNode,
         updateStructure,
         updateSettings: updateContextSettings,
+        updatePlotlines,
         updateNodeStats,
+        plotlines: computed(() => projectPlotlines.value),
         closeProject
     };
 }

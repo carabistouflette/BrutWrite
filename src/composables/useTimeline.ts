@@ -1,26 +1,19 @@
-import { ref, computed } from 'vue';
-import { useProjectData } from './useProjectData';
-import type { Chapter, Plotline, ParadoxWarning, TimelineScene } from '../types';
-
-// Singleton state for plotlines
-const plotlines = ref<Plotline[]>([
-    { id: 'main', name: 'Main Plot', color: '#3b82f6' },
-    { id: 'subplot-a', name: 'Subplot A', color: '#10b981' },
-    { id: 'subplot-b', name: 'Subplot B', color: '#f59e0b' },
-]);
-
 // Default plotline colors for auto-assignment
 const PLOTLINE_COLORS = [
     '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
     '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'
 ];
 
+import { computed } from 'vue';
+import { useProjectData } from './useProjectData';
+import type { Chapter, Plotline, ParadoxWarning, TimelineScene, FileNode } from '../types';
+
 export function useTimeline() {
-    const { projectData, activeId, selectNode } = useProjectData();
+    const { projectData, activeId, selectNode, plotlines, updatePlotlines } = useProjectData();
 
     // Flatten all chapters/scenes from the tree
     const allChapters = computed<Chapter[]>(() => {
-        const flatten = (nodes: { id: string; filename?: string; word_count?: number; children?: any[]; name?: string }[]): Chapter[] => {
+        const flatten = (nodes: FileNode[]): Chapter[] => {
             const result: Chapter[] = [];
             nodes.forEach((node, idx) => {
                 result.push({
@@ -30,12 +23,12 @@ export function useTimeline() {
                     word_count: node.word_count || 0,
                     order: idx,
                     // Temporal fields populated from backend if present
-                    chronological_date: (node as any).chronological_date,
-                    abstract_timeframe: (node as any).abstract_timeframe,
-                    duration: (node as any).duration,
-                    plotline_tag: (node as any).plotline_tag,
-                    depends_on: (node as any).depends_on,
-                    pov_character_id: (node as any).pov_character_id,
+                    chronological_date: node.chronological_date,
+                    abstract_timeframe: node.abstract_timeframe,
+                    duration: node.duration,
+                    plotline_tag: node.plotline_tag,
+                    depends_on: node.depends_on,
+                    pov_character_id: node.pov_character_id,
                 });
                 if (node.children?.length) {
                     result.push(...flatten(node.children));
@@ -180,25 +173,28 @@ export function useTimeline() {
     }
 
     // Actions
-    function addPlotline(name: string) {
+    async function addPlotline(name: string) {
         const id = `plotline-${Date.now()}`;
         const colorIdx = plotlines.value.length % PLOTLINE_COLORS.length;
-        plotlines.value.push({ id, name, color: PLOTLINE_COLORS[colorIdx] });
+        const newPlotlines = [...plotlines.value, { id, name, color: PLOTLINE_COLORS[colorIdx] }];
+        await updatePlotlines(newPlotlines);
         return id;
     }
 
-    function removePlotline(id: string) {
+    async function removePlotline(id: string) {
         const idx = plotlines.value.findIndex(p => p.id === id);
         if (idx > 0) { // Don't remove default 'main' 
-            plotlines.value.splice(idx, 1);
+            const newPlotlines = [...plotlines.value];
+            newPlotlines.splice(idx, 1);
+            await updatePlotlines(newPlotlines);
         }
     }
 
-    function updatePlotline(id: string, updates: Partial<Plotline>) {
-        const plotline = plotlines.value.find(p => p.id === id);
-        if (plotline) {
-            Object.assign(plotline, updates);
-        }
+    async function updatePlotline(id: string, updates: Partial<Plotline>) {
+        const newPlotlines = plotlines.value.map(p =>
+            p.id === id ? { ...p, ...updates } : p
+        );
+        await updatePlotlines(newPlotlines);
     }
 
     // Export narrative connectors data (reading order lines)

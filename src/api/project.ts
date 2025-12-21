@@ -19,6 +19,10 @@ export const projectApi = {
         return invoke<ProjectMetadata>('update_project_settings', { projectId, settings });
     },
 
+    updatePlotlines: async (projectId: string, plotlines: any[]): Promise<ProjectMetadata> => {
+        return invoke<ProjectMetadata>('update_plotlines', { projectId, plotlines });
+    },
+
     // Content Management
     loadChapter: async (projectId: string, chapterId: string): Promise<string> => {
         return invoke<string>('load_chapter_content', { projectId, chapterId });

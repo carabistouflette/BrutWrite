@@ -7,6 +7,7 @@ export interface ProjectMetadata {
     settings: ProjectSettings;
     manifest: Manifest;
     characters: Character[];
+    plotlines: Plotline[];
 }
 
 export interface ProjectSettings {
@@ -74,6 +75,13 @@ export interface FileNode {
     // Link to backend data
     filename?: string;
     word_count?: number;
+    // Temporal data
+    chronological_date?: string;
+    abstract_timeframe?: string;
+    duration?: string;
+    plotline_tag?: string;
+    depends_on?: string;
+    pov_character_id?: string;
 }
 
 export interface DailyStats {
