@@ -33,7 +33,7 @@ const localList = ref<FileNode[]>([...props.modelValue]);
 
 watch(() => props.modelValue, (newVal) => {
   localList.value = [...newVal];
-});
+}, { deep: true });
 
 const handleUpdate = (newList: FileNode[]) => {
   localList.value = newList;
