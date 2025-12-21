@@ -1,11 +1,13 @@
 import { ref } from 'vue';
 import { projectApi } from '../api/project';
 import type { Character } from '../types';
+import { useAppStatus } from './useAppStatus';
 
 // Singleton state for characters (shared across components)
 const characters = ref<Character[]>([]);
 
 export function useCharacters() {
+    const { notifyError } = useAppStatus();
 
     /**
      * Set the full list of characters (e.g., after loading a project)
@@ -24,7 +26,7 @@ export function useCharacters() {
             characters.value = metadata.characters;
             return metadata;
         } catch (e) {
-            console.error('Failed to save character:', e);
+            notifyError('Failed to save character', e);
             throw e;
         }
     };
@@ -38,7 +40,7 @@ export function useCharacters() {
             characters.value = metadata.characters;
             return metadata;
         } catch (e) {
-            console.error('Failed to delete character:', e);
+            notifyError('Failed to delete character', e);
             throw e;
         }
     };

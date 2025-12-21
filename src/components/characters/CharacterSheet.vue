@@ -4,6 +4,7 @@ import { useProjectData } from '../../composables/useProjectData';
 import { useCharacters } from '../../composables/useCharacters';
 import { CharacterRole, type Character } from '../../types';
 import ConfirmationModal from '../base/ConfirmationModal.vue';
+import { useAppStatus } from '../../composables/useAppStatus';
 
 const props = defineProps<{
   show: boolean;
@@ -13,6 +14,7 @@ const emit = defineEmits(['close']);
 
 const { projectId } = useProjectData();
 const { characters, saveCharacter, deleteCharacter } = useCharacters();
+const { notifyError, notifySuccess } = useAppStatus();
 
 const selectedId = ref<string | null>(null);
 
@@ -54,11 +56,8 @@ const generateUUID = () => {
 };
 
 const createCharacter = async () => {
-    console.log('Attempting to create character...');
     if (!projectId.value) {
-        console.error('Cannot create character: No active project ID');
-        // TODO: Replace with a nice toast notification
-        alert('Error: No active project found. Please open a project first.');
+        notifyError('Cannot create character: No active project found.');
         return;
     }
 
@@ -81,9 +80,8 @@ const createCharacter = async () => {
             notes: ''
         };
         
-        console.log('Sending character to backend:', newChar);
         await saveCharacter(projectId.value!, newChar);
-        console.log('Character saved successfully.');
+        notifySuccess(`Character ${newChar.name} created`);
         
         // Force selection next tick to ensure list is updated
         setTimeout(() => {
@@ -91,15 +89,19 @@ const createCharacter = async () => {
         }, 50);
         
     } catch (e) {
-        console.error('Failed to create character:', e);
-        alert(`Failed to create character: ${e}`);
+        notifyError('Failed to create character', e);
     }
 };
 
 const saveCurrent = async () => {
     if (localCharacter.value && projectId.value) {
-        await saveCharacter(projectId.value, localCharacter.value);
-        hasChanges.value = false;
+        try {
+            await saveCharacter(projectId.value, localCharacter.value);
+            hasChanges.value = false;
+            notifySuccess('Character saved');
+        } catch (e) {
+            notifyError('Failed to save character', e);
+        }
     }
 };
 
@@ -112,9 +114,15 @@ const requestDelete = () => {
 
 const confirmDelete = async () => {
     if (localCharacter.value && projectId.value) {
-        await deleteCharacter(projectId.value, localCharacter.value.id);
-        selectedId.value = null;
-        showDeleteConfirm.value = false;
+        try {
+            const name = localCharacter.value.name;
+            await deleteCharacter(projectId.value, localCharacter.value.id);
+            selectedId.value = null;
+            showDeleteConfirm.value = false;
+            notifySuccess(`Character ${name} deleted`);
+        } catch (e) {
+            notifyError('Failed to delete character', e);
+        }
     }
 };
 

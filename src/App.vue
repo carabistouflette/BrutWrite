@@ -4,6 +4,7 @@ import AppHeader from './components/AppHeader.vue';
 import MainLayout from './components/MainLayout.vue';
 import EditorMain from './components/EditorMain.vue';
 import WelcomeScreen from './components/WelcomeScreen.vue';
+import AppNotifications from './components/base/AppNotifications.vue';
 import { useProjectData } from './composables/useProjectData';
 import { useSettings } from './composables/useSettings';
 
@@ -66,5 +67,7 @@ onMounted(async () => {
             <p class="text-xs font-sans tracking-[0.2em] uppercase text-ink/40 border-t border-accent/30 pt-4 mt-2">Select a chapter from the sidebar</p>
         </div>
     </MainLayout>
+
+    <AppNotifications />
   </div>
 </template>
