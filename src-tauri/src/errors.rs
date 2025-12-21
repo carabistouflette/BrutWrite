@@ -17,6 +17,12 @@ pub enum Error {
 
     #[error("Validation error: {0}")]
     Validation(String),
+
+    #[error("Chapter not found: {0}")]
+    ChapterNotFound(String),
+
+    #[error("Character not found: {0}")]
+    CharacterNotFound(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
