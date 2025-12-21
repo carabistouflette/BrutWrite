@@ -22,17 +22,21 @@ export function useProjectData() {
 
     // --- Backend Sync Helpers ---
 
-    const syncManifest = async () => {
-        if (!projectId.value) return;
+    let syncManifestTimeout: ReturnType<typeof setTimeout> | null = null;
+    const syncManifestDebounced = () => {
+        if (syncManifestTimeout) clearTimeout(syncManifestTimeout);
+        syncManifestTimeout = setTimeout(async () => {
+            if (!projectId.value) return;
 
-        const manifest = projectToManifest(projectData.value);
+            const manifest = projectToManifest(projectData.value);
 
-        try {
-            await projectApi.updateManifest(projectId.value, manifest);
-            console.debug('Manifest synced');
-        } catch (e) {
-            notifyError('Failed to sync manifest', e);
-        }
+            try {
+                await projectApi.updateManifest(projectId.value, manifest);
+                console.debug('Manifest synced');
+            } catch (e) {
+                notifyError('Failed to sync manifest', e);
+            }
+        }, 1500); // 1.5s debounce for structural changes
     };
 
     // --- Actions ---
@@ -233,7 +237,7 @@ export function useProjectData() {
 
     const updateStructure = async (newStructure: FileNode[]) => {
         projectData.value = newStructure;
-        await syncManifest();
+        syncManifestDebounced();
     };
 
     const updateNodeStats = (id: string, wordCount: number) => {
