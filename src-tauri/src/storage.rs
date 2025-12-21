@@ -266,9 +266,19 @@ mod tests {
         let word_count = 7;
         save_chapter_content(&project_path, "c1.md", content, word_count).unwrap();
 
-        // Read Content (read_chapter_content still looks up by ID, which verifies the file exists at the correct path)
+        // Read Content
         let read_back = read_chapter_content(&project_path, "c1").unwrap();
         assert_eq!(read_back, content);
+
+        // Verify Manifest Match
+        let updated_meta = load_project_metadata(&project_path).unwrap();
+        let chapter = updated_meta
+            .manifest
+            .chapters
+            .iter()
+            .find(|c| c.id == "c1")
+            .unwrap();
+        assert_eq!(chapter.word_count, 7);
     }
     #[test]
     fn test_save_character_and_load() {
