@@ -6,7 +6,7 @@ const PLOTLINE_COLORS = [
 
 import { computed } from 'vue';
 import { useProjectData } from './useProjectData';
-import type { Chapter, Plotline, ParadoxWarning, TimelineScene, FileNode } from '../types';
+import type { Chapter, Plotline, ParadoxWarning, FileNode } from '../types';
 
 export function useTimeline() {
     const { projectData, activeId, selectNode, plotlines, updatePlotlines, updateNodeTemporal } = useProjectData();
@@ -16,7 +16,7 @@ export function useTimeline() {
         const flatten = (nodes: FileNode[]): Chapter[] => {
             const result: Chapter[] = [];
             nodes.forEach((node, idx) => {
-                result.push({
+                const chapter: Chapter = {
                     id: node.id,
                     title: node.name || 'Untitled',
                     filename: node.filename || '',
@@ -29,7 +29,8 @@ export function useTimeline() {
                     plotline_tag: node.plotline_tag,
                     depends_on: node.depends_on,
                     pov_character_id: node.pov_character_id,
-                });
+                };
+                result.push(chapter);
                 if (node.children?.length) {
                     result.push(...flatten(node.children));
                 }
@@ -48,19 +49,6 @@ export function useTimeline() {
     const unassignedScenes = computed(() =>
         allChapters.value.filter(c => !c.chronological_date && !c.abstract_timeframe)
     );
-
-    // Convert assigned scenes to timeline positions
-    const timelineScenes = computed<TimelineScene[]>(() => {
-        return assignedScenes.value.map((chapter, idx) => {
-            const plotlineIdx = plotlines.value.findIndex((p: Plotline) => p.id === chapter.plotline_tag);
-            return {
-                chapter,
-                x: idx * 150, // Basic positioning, refined by vis-timeline
-                width: parseDurationToPixels(chapter.duration),
-                plotlineLaneY: plotlineIdx >= 0 ? plotlineIdx : 0,
-            };
-        });
-    });
 
     // Paradox detection
     const paradoxWarnings = computed<ParadoxWarning[]>(() => {
@@ -85,16 +73,16 @@ export function useTimeline() {
                         povGroups.get(s.pov_character_id)!.push(s);
                     }
                 });
-                povGroups.forEach((povScenes) => {
+                povGroups.forEach((povScenes, povId) => {
                     if (povScenes.length > 1) {
-                        const uniquePlotlines = new Set(povScenes.map(s => s.plotline_tag).filter(Boolean));
-                        if (uniquePlotlines.size > 1) {
-                            warnings.push({
-                                type: 'simultaneous_presence',
-                                sceneIds: povScenes.map(s => s.id),
-                                message: `Character appears in multiple locations at ${timeKey}`,
-                            });
-                        }
+                        // Only warn if they aren't the exact same scene (unlikely but possible with weird data)
+                        // and if they are in arguably "different" locations? 
+                        // Realistically just being in two scenes at once is the warning.
+                        warnings.push({
+                            type: 'simultaneous_presence',
+                            sceneIds: povScenes.map(s => s.id),
+                            message: `Character (${povId}) appears in multiple scenes at ${timeKey}`,
+                        });
                     }
                 });
             }
@@ -104,6 +92,7 @@ export function useTimeline() {
         const chronoSorted = [...assignedScenes.value].sort((a, b) => {
             const aTime = a.chronological_date || a.abstract_timeframe || '';
             const bTime = b.chronological_date || b.abstract_timeframe || '';
+            // Handle ISO dates vs Strings? Simple string compare works for ISO.
             return aTime.localeCompare(bTime);
         });
 
@@ -113,6 +102,7 @@ export function useTimeline() {
                 if (dependency) {
                     const sceneTime = scene.chronological_date || scene.abstract_timeframe || '';
                     const depTime = dependency.chronological_date || dependency.abstract_timeframe || '';
+                    
                     if (sceneTime && depTime && sceneTime < depTime) {
                         warnings.push({
                             type: 'causality_violation',
@@ -128,8 +118,14 @@ export function useTimeline() {
         for (let i = 1; i < chronoSorted.length; i++) {
             const prev = chronoSorted[i - 1];
             const curr = chronoSorted[i];
+            
+            // Only check gaps between scenes on the SAME plotline? 
+            // Or general gaps? The request mentioned "continuity threshold".
+            // Let's check general global gaps for now.
+            
             const gap = computeTimeGap(prev.chronological_date, curr.chronological_date);
-            if (gap && gap > 365 * 3) { // 3 year gap threshold
+            // Threshold: 3 years (~1095 days)
+            if (gap && gap > 1095) { 
                 warnings.push({
                     type: 'orphan_gap',
                     sceneIds: [prev.id, curr.id],
@@ -141,23 +137,29 @@ export function useTimeline() {
         return warnings;
     });
 
-    // Helper: parse duration string to approximate pixel width
-    function parseDurationToPixels(duration?: string): number {
-        if (!duration) return 50; // default width
-        const lower = duration.toLowerCase();
-        if (lower.includes('minute')) {
-            const num = parseInt(lower) || 30;
-            return Math.max(30, num / 2);
-        }
-        if (lower.includes('hour')) {
-            const num = parseInt(lower) || 1;
-            return Math.max(50, num * 30);
-        }
-        if (lower.includes('day')) {
-            const num = parseInt(lower) || 1;
-            return Math.max(80, num * 50);
-        }
-        return 50;
+    // Helper: parse duration string to MILLISECONDS
+    function parseDurationToMillis(duration?: string): number {
+        if (!duration) return 0;
+        const lower = duration.toLowerCase().trim();
+        const num = parseFloat(lower) || 0;
+        
+        // Multipliers in milliseconds
+        const MINUTE = 60 * 1000;
+        const HOUR = 60 * MINUTE;
+        const DAY = 24 * HOUR;
+        const WEEK = 7 * DAY;
+        const MONTH = 30 * DAY; // approx
+        const YEAR = 365 * DAY; // approx
+
+        if (lower.includes('minute') || lower.includes('min')) return num * MINUTE;
+        if (lower.includes('hour')) return num * HOUR;
+        if (lower.includes('week')) return num * WEEK;
+        if (lower.includes('month')) return num * MONTH;
+        if (lower.includes('year')) return num * YEAR;
+        // Default to days if "day" or just number? safest to assume days if explicitly 'day'
+        if (lower.includes('day')) return num * DAY;
+        
+        return 0;
     }
 
     // Helper: compute gap in days between two ISO dates
@@ -166,6 +168,7 @@ export function useTimeline() {
         try {
             const d1 = new Date(date1).getTime();
             const d2 = new Date(date2).getTime();
+            if (isNaN(d1) || isNaN(d2)) return null;
             return Math.abs(d2 - d1) / (1000 * 60 * 60 * 24);
         } catch {
             return null;
@@ -183,7 +186,10 @@ export function useTimeline() {
 
     async function removePlotline(id: string) {
         const idx = plotlines.value.findIndex((p: Plotline) => p.id === id);
-        if (idx > 0) { // Don't remove default 'main' 
+        if (idx >= 0) { // Allowed to remove first if needed, but usually we keep one.
+             // Actually let's allow removing any, but maybe warn if it's the last one?
+             // Logic: remove and reassign scenes safely? 
+             // For now just remove the definition.
             const newPlotlines = [...plotlines.value];
             newPlotlines.splice(idx, 1);
             await updatePlotlines(newPlotlines);
@@ -200,15 +206,22 @@ export function useTimeline() {
     // Export narrative connectors data (reading order lines)
     const narrativeConnectors = computed(() => {
         // Return pairs of scene IDs in reading order (manuscript order)
-        const ordered = [...allChapters.value];
+        // Only include scenes that are ASSIGNED to the timeline.
+        const assignedIds = new Set(assignedScenes.value.map(s => s.id));
+        const ordered = allChapters.value.filter(c => assignedIds.has(c.id));
+        
         const pairs: { from: string; to: string; isFlashback: boolean }[] = [];
 
         for (let i = 1; i < ordered.length; i++) {
             const from = ordered[i - 1];
             const to = ordered[i];
-            const fromTime = from.chronological_date || from.abstract_timeframe || '';
-            const toTime = to.chronological_date || to.abstract_timeframe || '';
-            const isFlashback = !!(fromTime && toTime && toTime < fromTime);
+            
+            // Check dates for flashback detection
+            // Simple string compare allows '2023-01' < '2023-02'
+            // But abstract "Day 1" < "Day 2" might fail string compare if not padded.
+            // Let's assume chronological_date (ISO) for strict flashback checks for now.
+            const isFlashback = !!(from.chronological_date && to.chronological_date && to.chronological_date < from.chronological_date);
+            
             pairs.push({ from: from.id, to: to.id, isFlashback });
         }
 
@@ -221,7 +234,6 @@ export function useTimeline() {
         allChapters,
         assignedScenes,
         unassignedScenes,
-        timelineScenes,
         paradoxWarnings,
         narrativeConnectors,
         activeId,
@@ -232,5 +244,35 @@ export function useTimeline() {
         removePlotline,
         updatePlotline,
         updateNodeTemporal,
+        
+        // Helpers
+        parseDurationToMillis,
+        formatDurationFromMillis
     };
+}
+
+// Helper: format milliseconds back to string
+function formatDurationFromMillis(millis: number): string {
+    if (!millis || millis <= 0) return '';
+    
+    const MINUTE = 60 * 1000;
+    const HOUR = 60 * MINUTE;
+    const DAY = 24 * HOUR;
+    const WEEK = 7 * DAY;
+    const MONTH = 30 * DAY; // approx
+    const YEAR = 365 * DAY; // approx
+
+    // Determine the best unit
+    if (millis >= YEAR && millis % YEAR === 0) return `${millis / YEAR} years`;
+    if (millis >= MONTH && millis % MONTH === 0) return `${millis / MONTH} months`;
+    if (millis >= WEEK && millis % WEEK === 0) return `${millis / WEEK} weeks`;
+    if (millis >= DAY && millis % DAY === 0) return `${millis / DAY} days`;
+    if (millis >= HOUR && millis % HOUR === 0) return `${millis / HOUR} hours`;
+    if (millis >= MINUTE && millis % MINUTE === 0) return `${millis / MINUTE} minutes`;
+    
+    // Fallback to days with decimals if needed, or just days
+    const days = millis / DAY;
+    if (days >= 1) return `${parseFloat(days.toFixed(2))} days`;
+    
+    return `${Math.floor(millis / MINUTE)} minutes`;
 }
