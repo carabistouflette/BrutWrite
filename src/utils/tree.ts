@@ -67,6 +67,12 @@ export function reconstructHierarchy(chapters: Chapter[]): FileNode[] {
             name: c.title,
             filename: c.filename,
             word_count: c.word_count || 0,
+            chronological_date: c.chronological_date,
+            abstract_timeframe: c.abstract_timeframe,
+            duration: c.duration,
+            plotline_tag: c.plotline_tag,
+            depends_on: c.depends_on,
+            pov_character_id: c.pov_character_id,
             children: []
         };
         nodeMap.set(c.id, node);
@@ -96,7 +102,13 @@ export function projectToManifest(nodes: FileNode[]): Manifest {
             title: node.name,
             filename: node.filename || `${node.id}.md`,
             word_count: node.word_count || 0,
-            order: order++
+            order: order++,
+            chronological_date: node.chronological_date,
+            abstract_timeframe: node.abstract_timeframe,
+            duration: node.duration,
+            plotline_tag: node.plotline_tag,
+            depends_on: node.depends_on,
+            pov_character_id: node.pov_character_id,
         });
     });
 
