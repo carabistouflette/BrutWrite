@@ -1,0 +1,113 @@
+/* ScenePopover Styles */
+
+.scene-popover {
+    position: fixed;
+    z-index: 1000;
+    width: 260px;
+    background: #111111; /* Darker than bg-primary */
+    border: 1px solid #333;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    pointer-events: none;
+    animation: popover-in 0.15s ease-out;
+}
+
+@keyframes popover-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #000000; /* Pitch black header */
+    border-bottom: 1px solid #333;
+}
+
+.scene-title {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.plotline-badge {
+    flex-shrink: 0;
+    font-size: 0.688rem;
+    font-weight: 500;
+    padding: 2px 8px;
+    background: var(--color-primary);
+    color: white;
+    border-radius: 10px;
+}
+
+.popover-body {
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: #111111;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.stat-value {
+    font-size: 0.813rem;
+    font-weight: 500;
+    color: #eee;
+}
+
+.time-delta {
+    color: var(--color-primary);
+}
+
+.date-display {
+    font-family: monospace;
+    font-size: 0.75rem;
+}
+
+.popover-warnings {
+    background: rgba(239, 68, 68, 0.05);
+    border-top: 1px solid rgba(239, 68, 68, 0.2);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.warning-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--color-danger);
+}
+
+.warning-icon {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    stroke: var(--color-danger);
+}
