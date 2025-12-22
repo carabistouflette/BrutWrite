@@ -191,6 +191,43 @@ impl ProjectMetadata {
         }
     }
 
+    pub fn create_and_add_chapter(&mut self, parent_id: Option<String>, title: String) -> Chapter {
+        let new_id = format!("chapter-{}", Uuid::new_v4());
+        let filename = format!("{}.md", new_id);
+
+        let siblings: Vec<&Chapter> = self
+            .manifest
+            .chapters
+            .iter()
+            .filter(|c| c.parent_id == parent_id)
+            .collect();
+
+        let max_order = siblings.iter().map(|c| c.order).max().unwrap_or(0);
+        let new_order = if siblings.is_empty() {
+            0
+        } else {
+            max_order + 1
+        };
+
+        let new_chapter = Chapter {
+            id: new_id.clone(),
+            parent_id,
+            title,
+            filename: filename.clone(),
+            word_count: 0,
+            order: new_order,
+            chronological_date: None,
+            abstract_timeframe: None,
+            duration: None,
+            plotline_tag: None,
+            depends_on: None,
+            pov_character_id: None,
+        };
+
+        self.manifest.chapters.push(new_chapter.clone());
+        new_chapter
+    }
+
     pub fn remove_node_recursively(&mut self, node_id: String) -> Vec<String> {
         // Build efficient lookup
         let mut children_map: std::collections::HashMap<Option<String>, Vec<String>> =

@@ -167,27 +167,26 @@ pub async fn save_chapter(
     chapter_id: String,
     content: String,
 ) -> Result<ProjectMetadata, String> {
-    // 1. Write file first (IO bound, doesn't need metadata lock if we determine path carefully)
-    // Wait, to resolve path we need metadata. We can get read access.
-    // However, if we want to be safe, we can just do it in one go with manual locking.
-
     let (root_path, metadata_arc) = state.get_context(project_id).await?;
     let mut metadata = metadata_arc.lock().await;
 
-    let chapter_path = storage::resolve_chapter_path(&root_path, &metadata, &chapter_id)
+    // 1. Resolve filename to ensure chapter exists
+    let filename = storage::resolve_chapter_path(&root_path, &metadata, &chapter_id)
+        .map(|p| p.file_name().unwrap().to_string_lossy().to_string())
         .map_err(|e| e.to_string())?;
 
-    tokio::fs::write(&chapter_path, content.clone())
+    // 2. Write content
+    storage::write_chapter_file(&root_path, &filename, &content)
         .await
         .map_err(|e| e.to_string())?;
 
+    // 3. Update word count
     if let Some(chapter) = metadata
         .manifest
         .chapters
         .iter_mut()
         .find(|c| c.id == chapter_id)
     {
-        // Strip HTML tags before counting words
         chapter.word_count = crate::models::count_words(&content);
     } else {
         return Err("Chapter not found in manifest".to_string());
@@ -211,59 +210,15 @@ pub async fn create_node(
     let (root_path, metadata_arc) = state.get_context(project_id).await?;
     let mut metadata = metadata_arc.lock().await;
 
-    // We can't use storage::create_chapter_node directly because it's async and mixes logic.
-    // Unrolling logic here for async safety with manual lock holding.
+    // 1. Create entry in manifest (Domain Logic)
+    let new_chapter = metadata.create_and_add_chapter(parent_id, name);
 
-    // 1. Generate ID and Filename
-    let new_id = format!("chapter-{}", uuid::Uuid::new_v4());
-    let filename = format!("{}.md", new_id);
-
-    // 2. Calculate Order
-    let siblings: Vec<&crate::models::Chapter> = metadata
-        .manifest
-        .chapters
-        .iter()
-        .filter(|c| c.parent_id == parent_id)
-        .collect();
-
-    let max_order = siblings.iter().map(|c| c.order).max().unwrap_or(0);
-    let new_order = if siblings.is_empty() {
-        0
-    } else {
-        max_order + 1
-    };
-
-    // 3. Create Chapter Object
-    let new_chapter = crate::models::Chapter {
-        id: new_id.clone(),
-        parent_id,
-        title: name,
-        filename: filename.clone(),
-        word_count: 0,
-        order: new_order,
-        chronological_date: None,
-        abstract_timeframe: None,
-        duration: None,
-        plotline_tag: None,
-        depends_on: None,
-        pov_character_id: None,
-    };
-
-    // 4. Create File (Async IO while holding lock - safe with tokio::sync::Mutex)
-    let manuscript_dir = root_path.join("manuscript");
-    if !manuscript_dir.exists() {
-        tokio::fs::create_dir_all(&manuscript_dir)
-            .await
-            .map_err(|e| e.to_string())?;
-    }
-    let file_path = manuscript_dir.join(&filename);
-    tokio::fs::write(&file_path, "")
+    // 2. Create physical file (Storage Logic)
+    storage::write_chapter_file(&root_path, &new_chapter.filename, "")
         .await
         .map_err(|e| e.to_string())?;
 
-    // 5. Update Metadata
-    metadata.manifest.chapters.push(new_chapter);
-
+    // 3. Save Metadata
     metadata.updated_at = chrono::Utc::now();
     storage::save_project_metadata(&root_path, &metadata)
         .await
@@ -292,11 +247,8 @@ pub async fn delete_node(
 
     // 2. Delete files from disk (Async)
     for filename in filenames {
-        let file_path = root_path.join("manuscript").join(filename);
-        if tokio::fs::try_exists(&file_path).await.unwrap_or(false) {
-            // Log error but don't fail the request if file deletion fails
-            let _ = tokio::fs::remove_file(file_path).await;
-        }
+        // Ignore errors during deletion (logging would be good here)
+        let _ = storage::delete_chapter_file(&root_path, &filename).await;
     }
 
     Ok(new_metadata)

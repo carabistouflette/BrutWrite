@@ -95,6 +95,31 @@ pub async fn save_project_metadata<P: AsRef<Path>>(
     Ok(())
 }
 
+pub async fn write_chapter_file<P: AsRef<Path>>(
+    root_path: P,
+    filename: &str,
+    content: &str,
+) -> Result<()> {
+    let root = root_path.as_ref();
+    let manuscript_dir = root.join("manuscript");
+
+    if !manuscript_dir.exists() {
+        tokio::fs::create_dir_all(&manuscript_dir).await?;
+    }
+
+    let file_path = manuscript_dir.join(filename);
+    tokio::fs::write(file_path, content).await?;
+    Ok(())
+}
+
+pub async fn delete_chapter_file<P: AsRef<Path>>(root_path: P, filename: &str) -> Result<()> {
+    let file_path = root_path.as_ref().join("manuscript").join(filename);
+    if tokio::fs::try_exists(&file_path).await.unwrap_or(false) {
+        tokio::fs::remove_file(file_path).await?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
