@@ -45,7 +45,7 @@ onMounted(async () => {
     if (lastPath) {
         // We use the composable's loadProject directly
         const { loadProject } = useProjectData();
-        console.log('Auto-loading project from:', lastPath);
+        console.debug('Auto-loading project from:', lastPath);
         await loadProject(lastPath);
     }
 });
