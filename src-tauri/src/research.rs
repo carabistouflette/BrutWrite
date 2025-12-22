@@ -12,13 +12,19 @@ pub struct ResearchState {
     pub root_path: Mutex<Option<PathBuf>>,
 }
 
-impl ResearchState {
-    pub fn new() -> Self {
+impl Default for ResearchState {
+    fn default() -> Self {
         Self {
             watcher: Mutex::new(None),
             artifacts: Mutex::new(HashMap::new()),
             root_path: Mutex::new(None),
         }
+    }
+}
+
+impl ResearchState {
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 
