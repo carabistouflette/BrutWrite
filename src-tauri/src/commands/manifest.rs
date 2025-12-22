@@ -9,7 +9,7 @@ pub async fn update_manifest(
     state: State<'_, AppState>,
     project_id: Uuid,
     manifest: Manifest,
-) -> Result<ProjectMetadata, String> {
+) -> crate::errors::Result<ProjectMetadata> {
     state
         .mutate_project(project_id, |metadata| {
             metadata.manifest = manifest;
@@ -24,7 +24,7 @@ pub async fn update_node_metadata(
     project_id: Uuid,
     node_id: String,
     update: NodeMetadataUpdate,
-) -> Result<ProjectMetadata, String> {
+) -> crate::errors::Result<ProjectMetadata> {
     state
         .mutate_project(project_id, |metadata| {
             if let Some(node) = metadata
@@ -56,7 +56,7 @@ pub async fn update_node_metadata(
                 }
                 Ok(())
             } else {
-                Err("Node not found".to_string())
+                Err(crate::errors::Error::ChapterNotFound(node_id))
             }
         })
         .await
@@ -68,7 +68,7 @@ pub async fn create_node(
     project_id: Uuid,
     parent_id: Option<String>,
     name: String,
-) -> Result<ProjectMetadata, String> {
+) -> crate::errors::Result<ProjectMetadata> {
     let (root_path, metadata_arc) = state.get_context(project_id).await?;
     let mut metadata = metadata_arc.lock().await;
 
@@ -76,17 +76,13 @@ pub async fn create_node(
     let new_chapter = metadata.manifest.create_chapter(parent_id, name);
 
     // 2. Create physical file (Storage Logic)
-    storage::write_chapter_file(&root_path, &new_chapter.filename, "")
-        .await
-        .map_err(|e| e.to_string())?;
+    storage::write_chapter_file(&root_path, &new_chapter.filename, "").await?;
 
     // 3. Save Metadata
     metadata.manifest.chapters.push(new_chapter);
 
     metadata.updated_at = chrono::Utc::now();
-    storage::save_project_metadata(&root_path, &metadata)
-        .await
-        .map_err(|e| e.to_string())?;
+    storage::save_project_metadata(&root_path, &metadata).await?;
 
     Ok(metadata.clone())
 }
@@ -96,7 +92,7 @@ pub async fn delete_node(
     state: State<'_, AppState>,
     project_id: Uuid,
     id: String,
-) -> Result<ProjectMetadata, String> {
+) -> crate::errors::Result<ProjectMetadata> {
     let (root_path, _) = state.get_context(project_id).await?;
 
     let mut filenames = Vec::new();
