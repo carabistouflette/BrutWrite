@@ -1,4 +1,4 @@
-import { computed, watch } from 'vue';
+import { computed } from 'vue';
 import type { FileNode } from '../types';
 import { 
     projectData, 
@@ -14,24 +14,6 @@ import { useProjectNodeOperations } from './logic/useProjectNodeOperations';
 
 export function useProjectData() {
     
-    const rebuildMap = () => {
-        const map = new Map<string, FileNode>();
-        const list: FileNode[] = [];
-        const traverseNodes = (nodes: FileNode[]) => {
-            for (const node of nodes) {
-                map.set(node.id, node);
-                list.push(node);
-                if (node.children) traverseNodes(node.children);
-            }
-        };
-        traverseNodes(projectData.value);
-        nodeMap.value = map;
-        flatNodes.value = list;
-    };
-
-    // Only rebuild on structural changes (when projectData.value is replaced)
-    watch(projectData, rebuildMap, { immediate: true });
-
     // Initialize logic composables
     const { 
         loadProject, 
