@@ -135,13 +135,27 @@ pub async fn update_node_metadata(
             .iter_mut()
             .find(|c| c.id == node_id)
         {
-            if let Some(t) = update.title { node.title = t; }
-            if let Some(d) = update.chronological_date { node.chronological_date = Some(d); }
-            if let Some(a) = update.abstract_timeframe { node.abstract_timeframe = Some(a); }
-            if let Some(dur) = update.duration { node.duration = Some(dur); }
-            if let Some(p) = update.plotline_tag { node.plotline_tag = Some(p); }
-            if let Some(dep) = update.depends_on { node.depends_on = Some(dep); }
-            if let Some(pov) = update.pov_character_id { node.pov_character_id = Some(pov); }
+            if let Some(t) = update.title {
+                node.title = t;
+            }
+            if let Some(d) = update.chronological_date {
+                node.chronological_date = Some(d);
+            }
+            if let Some(a) = update.abstract_timeframe {
+                node.abstract_timeframe = Some(a);
+            }
+            if let Some(dur) = update.duration {
+                node.duration = Some(dur);
+            }
+            if let Some(p) = update.plotline_tag {
+                node.plotline_tag = Some(p);
+            }
+            if let Some(dep) = update.depends_on {
+                node.depends_on = Some(dep);
+            }
+            if let Some(pov) = update.pov_character_id {
+                node.pov_character_id = Some(pov);
+            }
             Ok(())
         } else {
             Err("Node not found".to_string())
@@ -192,9 +206,9 @@ pub async fn save_chapter(
 ) -> Result<ProjectMetadata, String> {
     let (root_path, _) = get_project_context(&state, project_id)?;
 
-    // 1. Resolve Path and Write content (using storage helper to avoid duplication of path logic if possible, 
+    // 1. Resolve Path and Write content (using storage helper to avoid duplication of path logic if possible,
     // but save_chapter_content in storage.rs also tries to modify metadata which we want to control here to keep mutate_project_metadata)
-    
+
     mutate_project_metadata(&state, project_id, |metadata| {
         let chapter_path = storage::resolve_chapter_path(&root_path, metadata, &chapter_id)
             .map_err(|e| e.to_string())?;
@@ -208,11 +222,7 @@ pub async fn save_chapter(
             .find(|c| c.id == chapter_id)
         {
             // Strip HTML tags before counting words
-            let plain_text = {
-                let re = regex::Regex::new(r"<[^>]*>").unwrap();
-                re.replace_all(&content, " ")
-            };
-            chapter.word_count = plain_text.split_whitespace().count() as u32;
+            chapter.word_count = crate::models::count_words(&content);
             Ok(())
         } else {
             Err("Chapter not found in manifest".to_string())
@@ -230,7 +240,8 @@ pub async fn create_node(
     let (root_path, _) = get_project_context(&state, project_id)?;
 
     mutate_project_metadata(&state, project_id, |metadata| {
-        storage::create_chapter_node(&root_path, metadata, parent_id, name).map_err(|e| e.to_string())
+        storage::create_chapter_node(&root_path, metadata, parent_id, name)
+            .map_err(|e| e.to_string())
     })
 }
 
@@ -260,14 +271,17 @@ pub async fn delete_node(
             for c in &metadata.manifest.chapters {
                 if c.parent_id == Some(current.clone()) {
                     if !ids_to_remove.contains(&c.id) {
-                         ids_to_remove.push(c.id.clone());
+                        ids_to_remove.push(c.id.clone());
                     }
                 }
             }
             i += 1;
         }
-        
-        metadata.manifest.chapters.retain(|c| !ids_to_remove.contains(&c.id));
+
+        metadata
+            .manifest
+            .chapters
+            .retain(|c| !ids_to_remove.contains(&c.id));
         Ok(())
     })
 }
@@ -301,11 +315,10 @@ pub async fn delete_character(
     mutate_project_metadata(&state, project_id, |metadata| {
         let initial_len = metadata.characters.len();
         metadata.characters.retain(|c| c.id != character_id);
-        
+
         if metadata.characters.len() == initial_len {
             return Err("Character not found".to_string());
         }
         Ok(())
     })
 }
-

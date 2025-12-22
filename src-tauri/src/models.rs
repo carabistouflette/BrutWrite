@@ -1,6 +1,16 @@
 use chrono::{DateTime, Utc};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
 use uuid::Uuid;
+
+static HTML_TAG_REGEX: OnceLock<Regex> = OnceLock::new();
+
+pub fn count_words(content: &str) -> u32 {
+    let re = HTML_TAG_REGEX.get_or_init(|| Regex::new(r"<[^>]*>").unwrap());
+    let plain_text = re.replace_all(content, " ");
+    plain_text.split_whitespace().count() as u32
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
