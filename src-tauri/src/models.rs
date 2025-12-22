@@ -172,3 +172,18 @@ impl ProjectMetadata {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_count_words() {
+        assert_eq!(count_words("Hello world"), 2);
+        assert_eq!(count_words("<p>Hello world</p>"), 2);
+        assert_eq!(count_words("<p>Hello</p><p>world</p>"), 2);
+        assert_eq!(count_words("Hello  world"), 2); // multiple spaces
+        assert_eq!(count_words(""), 0);
+        assert_eq!(count_words("<div>Nested <span>content</span></div>"), 2);
+    }
+}
