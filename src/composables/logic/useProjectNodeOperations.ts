@@ -81,25 +81,36 @@ export function useProjectNodeOperations() {
         const node = nodeMap.value.get(id);
         if (node && node.word_count !== wordCount) {
             node.word_count = wordCount;
+            // Also sync word count to backend debounced
+            syncNodeMetadataDebounced(id, { word_count: wordCount });
         }
     };
 
-    const updateNodeTemporal = async (id: string, updates: Partial<FileNode>) => {
+    const updateNodeTemporal = (id: string, updates: Partial<FileNode>) => {
         const node = nodeMap.value.get(id);
         if (node) {
-            // Only allow temporal updates here
-            const allowed = ['chronological_date', 'abstract_timeframe', 'duration', 'plotline_tag', 'depends_on', 'pov_character_id'] as const;
+            const temporalKeys = [
+                'chronological_date', 
+                'abstract_timeframe', 
+                'duration', 
+                'plotline_tag', 
+                'depends_on', 
+                'pov_character_id'
+            ] as const;
+            
             let changed = false;
             const updateForBackend: Partial<FileNode> = {};
             
-            allowed.forEach(key => {
-                if (key in updates && node[key] !== updates[key]) {
-                    const val = updates[key];
-                    (node as any)[key] = val;
-                    (updateForBackend as any)[key] = val;
-                    changed = true;
+            for (const key of temporalKeys) {
+                if (key in updates) {
+                    const newVal = updates[key];
+                    if (node[key] !== newVal) {
+                        (node[key] as any) = newVal; // Still need a small cast for the assignment if TS is strict, but better than 'any' for the whole object
+                        (updateForBackend[key] as any) = newVal;
+                        changed = true;
+                    }
                 }
-            });
+            }
 
             if (changed) {
                 syncNodeMetadataDebounced(id, updateForBackend);

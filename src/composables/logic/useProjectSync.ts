@@ -1,11 +1,14 @@
 import { projectApi } from '../../api/project';
 import { useAppStatus } from '../useAppStatus';
 import { projectToManifest } from '../../utils/tree';
-import { projectData, projectId, pendingMetadataUpdates } from '../state/projectState';
+import { 
+    projectData, 
+    projectId, 
+    pendingMetadataUpdates, 
+    syncManifestTimeout, 
+    metadataTimeout 
+} from '../state/projectState';
 import type { Chapter } from '../../types';
-
-let syncManifestTimeout: ReturnType<typeof setTimeout> | null = null;
-let metadataTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export function useProjectSync() {
     const { notifyError: originalNotifyError } = useAppStatus();
@@ -15,8 +18,8 @@ export function useProjectSync() {
     };
 
     const syncManifestDebounced = () => {
-        if (syncManifestTimeout) clearTimeout(syncManifestTimeout);
-        syncManifestTimeout = setTimeout(async () => {
+        if (syncManifestTimeout.value) clearTimeout(syncManifestTimeout.value);
+        syncManifestTimeout.value = setTimeout(async () => {
             if (!projectId.value) return;
 
             const manifest = projectToManifest(projectData.value);
@@ -35,12 +38,12 @@ export function useProjectSync() {
         const current = pendingMetadataUpdates.get(nodeId) || {};
         pendingMetadataUpdates.set(nodeId, { ...current, ...updates });
 
-        if (metadataTimeout) clearTimeout(metadataTimeout);
-        metadataTimeout = setTimeout(async () => {
+        if (metadataTimeout.value) clearTimeout(metadataTimeout.value);
+        metadataTimeout.value = setTimeout(async () => {
             if (!projectId.value) return;
             const updatesToSync = Array.from(pendingMetadataUpdates.entries());
             pendingMetadataUpdates.clear();
-            metadataTimeout = null;
+            metadataTimeout.value = null;
 
             for (const [id, up] of updatesToSync) {
                 try {
