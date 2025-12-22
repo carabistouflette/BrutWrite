@@ -5,10 +5,12 @@ import { useProjectData } from '../composables/logic/useProjectData';
 import { useGamification } from '../composables/logic/useGamification';
 import { useTiptapEditor } from '../composables/editor/useTiptapEditor';
 import { useSettings } from '../composables/logic/useSettings';
+import { useResearchStore } from '../stores/research';
 
 const { activeId, activeChapter, projectId, renameNode, updateNodeStats } = useProjectData();
 const { addWords } = useGamification();
 const { settings } = useSettings();
+const researchStore = useResearchStore();
 
 // --- Title Logic ---
 const activeChapterName = ref('');
@@ -26,6 +28,31 @@ watch(
 const handleRename = async () => {
   if (activeId.value && activeChapterName.value !== activeChapter.value?.name) {
     await renameNode(activeId.value, activeChapterName.value);
+  }
+};
+
+// --- Link Handler ---
+const handleResearchClick = (e: MouseEvent) => {
+  const target = (e.target as HTMLElement).closest('a');
+  if (target && target.href.startsWith('research://')) {
+    e.preventDefault();
+    // Format: research://<id>
+    const id = target.href.replace('research://', '');
+    // We need to find the artifact. The store might not be loaded if we didn't open the panel yet.
+    // So we force a fetch if needed, then find it.
+    // For now, assume store.fetchArtifacts() is called or we call it.
+
+    // Optimistic lookup
+    const artifact = researchStore.artifacts.find((a) => a.id === id);
+    if (artifact) {
+      researchStore.setActiveArtifact(artifact);
+    } else {
+      // Fetch and try again
+      researchStore.fetchArtifacts().then(() => {
+        const found = researchStore.artifacts.find((a) => a.id === id);
+        if (found) researchStore.setActiveArtifact(found);
+      });
+    }
   }
 };
 
@@ -118,6 +145,7 @@ const editorStyles = computed(() => {
     ref="containerRef"
     class="h-full w-full overflow-y-auto scroll-smooth bg-transparent relative"
     :class="{ 'focus-mode': settings.editor.focusMode }"
+    @click="handleResearchClick"
   >
     <!-- Brutalist Editor Area -->
     <div

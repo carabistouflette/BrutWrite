@@ -109,6 +109,20 @@ const addChapter = () => {
   });
 };
 
+import { useResearchStore } from '../../stores/research';
+import { watch } from 'vue';
+
+const researchStore = useResearchStore();
+
+watch(
+  () => researchStore.activeArtifact,
+  (artifact) => {
+    if (artifact && !showResearch.value) {
+      showResearch.value = true;
+    }
+  }
+);
+
 const isExiting = ref(false);
 
 const handleChangeProject = async () => {
