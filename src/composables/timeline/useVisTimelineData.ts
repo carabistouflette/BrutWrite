@@ -3,6 +3,7 @@ import { DataSet } from 'vis-data';
 import { useTimeline } from '../useTimeline';
 import { useTimeHelpers } from '../logic/useTimeHelpers';
 import { Timeline, type TimelineItemType } from 'vis-timeline';
+import type { Plotline } from '../../types';
 
 export interface VisTimelineItem {
     id: string | number;
@@ -35,7 +36,7 @@ export function useVisTimelineData(
     function syncData() {
         if (!isMounted.value || !timeline.value) return;
         // Sync groups
-        const groupsData: VisTimelineGroup[] = plotlines.value.map(pl => ({
+        const groupsData: VisTimelineGroup[] = plotlines.value.map((pl: Plotline) => ({
             id: pl.id,
             content: pl.name,
             style: `border-left: 4px solid ${pl.color}; background: linear-gradient(90deg, ${pl.color}10 0%, transparent 100%);`,

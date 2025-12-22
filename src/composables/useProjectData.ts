@@ -58,7 +58,7 @@ export function useProjectData() {
 
     const totalWords = computed(() => {
         let total = 0;
-        flatNodes.value.forEach(node => {
+        flatNodes.value.forEach((node: FileNode) => {
             total += (node.word_count || 0);
         });
         return total;

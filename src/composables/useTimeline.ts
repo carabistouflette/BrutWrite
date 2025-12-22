@@ -1,6 +1,6 @@
 import { computed } from 'vue';
 import { useProjectData } from './useProjectData';
-import type { Chapter, TemporalScene } from '../types';
+import type { Chapter, TemporalScene, FileNode } from '../types';
 import { useTimeHelpers } from './logic/useTimeHelpers';
 import { usePlotlines } from './logic/usePlotlines';
 import { useParadoxDetection } from './logic/useParadoxDetection';
@@ -12,7 +12,7 @@ export function useTimeline() {
 
     // Extract only temporal metadata for efficient paradox detection tracking
     const scenesTemporalData = computed<TemporalScene[]>(() => {
-        return flatNodes.value.map(node => ({
+        return flatNodes.value.map((node: FileNode) => ({
             id: node.id,
             title: node.name,
             chronological_date: node.chronological_date,
@@ -25,7 +25,7 @@ export function useTimeline() {
     });
 
     const allChapters = computed<Chapter[]>(() => {
-        return flatNodes.value.map((node, idx) => ({
+        return flatNodes.value.map((node: FileNode, idx: number) => ({
             id: node.id,
             parent_id: undefined, 
             title: node.name || 'Untitled',
