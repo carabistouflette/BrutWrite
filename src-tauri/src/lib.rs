@@ -5,12 +5,12 @@ pub mod storage;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 pub struct AppState {
     pub open_projects: Mutex<HashMap<Uuid, PathBuf>>,
-    pub project_cache: Mutex<HashMap<Uuid, models::ProjectMetadata>>,
+    pub project_cache: Mutex<HashMap<Uuid, Arc<Mutex<models::ProjectMetadata>>>>,
 }
 
 impl AppState {

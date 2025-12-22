@@ -2,6 +2,7 @@ use crate::models::{Manifest, ProjectMetadata};
 use crate::storage;
 use crate::AppState;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use tauri::State;
 use uuid::Uuid;
 
@@ -10,7 +11,7 @@ use uuid::Uuid;
 fn get_project_context(
     state: &State<'_, AppState>,
     project_id: Uuid,
-) -> Result<(PathBuf, ProjectMetadata), String> {
+) -> Result<(PathBuf, Arc<Mutex<ProjectMetadata>>), String> {
     let root_path = {
         let projects = state
             .open_projects
@@ -42,20 +43,19 @@ fn mutate_project_metadata<F>(
 where
     F: FnOnce(&mut ProjectMetadata) -> Result<(), String>,
 {
-    let (root_path, mut metadata) = get_project_context(state, project_id)?;
+    let (root_path, metadata_arc) = get_project_context(state, project_id)?;
+
+    // Lock the specific project logic
+    let mut metadata = metadata_arc.lock().map_err(|_| "Failed to lock metadata")?;
 
     mutation(&mut metadata)?;
 
     metadata.updated_at = chrono::Utc::now();
     storage::save_project_metadata(&root_path, &metadata).map_err(|e| e.to_string())?;
 
-    let mut cache = state
-        .project_cache
-        .lock()
-        .map_err(|_| "Failed to lock cache")?;
-    cache.insert(project_id, metadata.clone());
+    // No need to update cache explicitly as we modified the Arc contents in place.
 
-    Ok(metadata)
+    Ok(metadata.clone())
 }
 
 // --- Commands ---
@@ -81,7 +81,7 @@ pub async fn create_project(
         .project_cache
         .lock()
         .map_err(|_| "Failed to lock cache")?
-        .insert(metadata.id, metadata.clone());
+        .insert(metadata.id, Arc::new(Mutex::new(metadata.clone())));
 
     Ok(metadata)
 }
@@ -104,7 +104,7 @@ pub async fn load_project(
         .project_cache
         .lock()
         .map_err(|_| "Failed to lock cache")?
-        .insert(metadata.id, metadata.clone());
+        .insert(metadata.id, Arc::new(Mutex::new(metadata.clone())));
 
     Ok(metadata)
 }
@@ -193,7 +193,8 @@ pub async fn load_chapter_content(
     project_id: Uuid,
     chapter_id: String,
 ) -> Result<String, String> {
-    let (root_path, metadata) = get_project_context(&state, project_id)?;
+    let (root_path, metadata_arc) = get_project_context(&state, project_id)?;
+    let metadata = metadata_arc.lock().map_err(|_| "Failed to lock metadata")?;
     storage::read_chapter_content(root_path, &metadata, &chapter_id).map_err(|e| e.to_string())
 }
 
