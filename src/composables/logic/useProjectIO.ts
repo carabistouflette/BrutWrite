@@ -1,6 +1,7 @@
 import { projectApi } from '../../api/project';
 import { useAppStatus } from '../ui/useAppStatus';
 import { useCharacters } from './useCharacters';
+import { useRecentProjects } from './useRecentProjects';
 import { reconstructHierarchy } from '../../utils/tree';
 import type { ProjectSettings, Plotline } from '../../types';
 import { 
@@ -15,13 +16,7 @@ import { useProjectNodeOperations } from './useProjectNodeOperations';
 export function useProjectIO() {
     const { notifyError } = useAppStatus();
     const { addChapter } = useProjectNodeOperations();
-
-    const updateRecentProjects = (path: string) => {
-        const recentStr = localStorage.getItem('recent_projects') || '[]';
-        let recent: string[] = JSON.parse(recentStr);
-        recent = [path, ...recent.filter(p => p !== path)].slice(0, 5);
-        localStorage.setItem('recent_projects', JSON.stringify(recent));
-    };
+    const { addRecentProject } = useRecentProjects();
 
     const loadProject = async (path: string) => {
         try {
@@ -37,7 +32,7 @@ export function useProjectIO() {
             projectPlotlines.value = metadata.plotlines;
 
             localStorage.setItem('last_opened_project_path', path);
-            updateRecentProjects(path);
+            addRecentProject(path);
 
             projectData.value = reconstructHierarchy(metadata.manifest.chapters);
 
@@ -64,7 +59,7 @@ export function useProjectIO() {
             projectPlotlines.value = metadata.plotlines;
 
             localStorage.setItem('last_opened_project_path', path);
-            updateRecentProjects(path);
+            addRecentProject(path);
 
             await addChapter();
         } catch (e) {

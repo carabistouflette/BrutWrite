@@ -113,22 +113,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { useProjectData } from '../composables/logic/useProjectData';
+import { useRecentProjects } from '../composables/logic/useRecentProjects';
 
 const { loadProject, createProject } = useProjectData();
-const recentProjects = ref<string[]>([]);
+const { recentProjects, loadRecentProjects } = useRecentProjects();
 const isExiting = ref(false);
-
-const refreshRecent = () => {
-    const recentStr = localStorage.getItem('recent_projects') || '[]';
-    recentProjects.value = JSON.parse(recentStr);
-};
-
-onMounted(() => {
-    refreshRecent();
-});
 
 const getFileName = (path: string) => {
     return path.split(/[\\/]/).pop()?.replace('.json', '') || 'Untitled';
@@ -156,7 +148,7 @@ const handleOpenProject = async () => {
         if (selected && typeof selected === 'string') {
             await triggerExit();
             await loadProject(selected);
-            refreshRecent();
+            // useProjectIO updates recent projects automatically
         }
     } catch (e) {
         console.error('Failed to open project dialog:', e);
@@ -177,12 +169,15 @@ const handleNewProject = async () => {
             const name = selected.split(/[\\/]/).pop()?.replace('.json', '') || 'Untitled Project';
             await triggerExit();
             await createProject(selected, name, 'Unknown Author');
-            refreshRecent();
+            // useProjectIO updates recent projects automatically
         }
     } catch (e) {
          console.error('Failed to create project dialog:', e);
     }
 };
+
+// Ensure list is fresh
+loadRecentProjects();
 </script>
 
 <style scoped>
