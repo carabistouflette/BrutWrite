@@ -1,5 +1,5 @@
-import { ref, type Ref } from 'vue';
-import { useEditor, type Editor } from '@tiptap/vue-3';
+import { ref } from 'vue';
+import { useEditor } from '@tiptap/vue-3';
 import { useTiptapConfig } from './editor/useTiptapConfig';
 import { useEditorScroll } from './editor/useEditorScroll';
 import { useEditorWordCount } from './editor/useEditorWordCount';
@@ -30,7 +30,7 @@ export function useTiptapEditor(
     const { handleScroll } = useEditorScroll(editor, containerRef);
     
     const { loadChapter, saveChapter } = useEditorPersistence(
-        editor as Ref<Editor | undefined>, 
+        editor, 
         isDirty,
         () => resetWordCountState(editor.value)
     );

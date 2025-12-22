@@ -78,19 +78,22 @@ export function useSettings() {
     };
 
     // Helper for merging defaults (source) with loaded (override)
-    function recursiveMerge(defaults: any, loaded: any): any {
-        const result = { ...defaults };
+    function recursiveMerge<T extends Record<string, any>>(defaults: T, loaded: Record<string, any>): T {
+        const result = { ...defaults } as Record<string, any>;
 
         for (const key in loaded) {
-            if (key in defaults) {
-                if (isObject(defaults[key]) && isObject(loaded[key])) {
-                    result[key] = recursiveMerge(defaults[key], loaded[key]);
-                } else {
-                    result[key] = loaded[key];
+            if (Object.prototype.hasOwnProperty.call(defaults, key)) {
+                const defaultValue = defaults[key];
+                const loadedValue = loaded[key];
+
+                if (isObject(defaultValue) && isObject(loadedValue)) {
+                    result[key] = recursiveMerge(defaultValue as Record<string, any>, loadedValue as Record<string, any>);
+                } else if (loadedValue !== undefined) {
+                    result[key] = loadedValue;
                 }
             }
         }
-        return result;
+        return result as T;
     }
 
     return {

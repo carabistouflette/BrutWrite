@@ -48,9 +48,9 @@ const handleNestedUpdate = (index: number, newChildren: FileNode[]) => {
 };
 
 const editName = ref('');
-const itemRefs = new Map<string, any>();
+const itemRefs = new Map<string, InstanceType<typeof FileTreeItem>>();
 const setItemRef = (el: any, id: string) => {
-  if (el) itemRefs.set(id, el);
+  if (el) itemRefs.set(id, el as InstanceType<typeof FileTreeItem>);
   else itemRefs.delete(id);
 };
 const { isDragging, setDragging } = useDragState();

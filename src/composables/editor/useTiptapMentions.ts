@@ -12,12 +12,16 @@ interface BaseSuggestionProps {
 
 interface SuggestionProps extends BaseSuggestionProps {
     editor: Editor;
-    [key: string]: any;
+    query: string;
+    items: any[];
+    command: (props: any) => void;
+    range: { from: number; to: number };
 }
 
 interface SuggestionKeyDownProps extends BaseSuggestionProps {
     event: KeyboardEvent;
-    [key: string]: any;
+    view: any;
+    range: { from: number; to: number };
 }
 
 

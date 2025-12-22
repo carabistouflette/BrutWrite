@@ -44,9 +44,9 @@ export function useVisTimelineEvents(
         const sceneId = event.dataTransfer?.getData('text/plain');
         if (!sceneId || !timeline.value) return;
 
-        const props = (timeline.value as any).getEventProperties(event);
+        const props = timeline.value.getEventProperties(event);
         const time = props.time;
-        let targetGroup = props.group;
+        let targetGroup: string | number | null | undefined = props.group;
         
         if (!targetGroup && groups.length > 0) {
             targetGroup = groups.getIds()[0];

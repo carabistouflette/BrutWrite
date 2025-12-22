@@ -37,8 +37,7 @@ export function useTimeline() {
             duration: node.duration,
             plotline_tag: node.plotline_tag,
             depends_on: node.depends_on,
-            pov_character_id: node.pov_character_id,
-        })) as Chapter[];
+        }));
     });
 
     // Scenes that have temporal data (for timeline)
