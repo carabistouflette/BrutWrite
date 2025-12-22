@@ -73,6 +73,18 @@ impl AppState {
 
         Ok(metadata.clone())
     }
+    pub async fn register_project(
+        &self,
+        id: Uuid,
+        path: PathBuf,
+        metadata: models::ProjectMetadata,
+    ) {
+        self.open_projects.lock().await.insert(id, path);
+        self.project_cache
+            .lock()
+            .await
+            .insert(id, Arc::new(Mutex::new(metadata)));
+    }
 }
 
 impl Default for AppState {
@@ -102,11 +114,11 @@ pub fn run() {
             commands::update_plotlines,
             commands::create_node,
             commands::update_node_metadata,
-            research::get_research_artifacts,
-            research::add_research_files,
-            research::update_research_artifact,
-            research::create_research_note,
-            research::update_note_content
+            commands::get_research_artifacts,
+            commands::add_research_files,
+            commands::update_research_artifact,
+            commands::create_research_note,
+            commands::update_note_content
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
