@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useAppStatus } from '../../composables/useAppStatus';
+import { useAppStatus } from '../../composables/ui/useAppStatus';
 
 const { notifications, removeNotification } = useAppStatus();
 </script>

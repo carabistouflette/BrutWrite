@@ -2,9 +2,9 @@ import { ref, onMounted, onUnmounted, type Ref } from 'vue';
 import { DataSet } from 'vis-data';
 import { Timeline } from 'vis-timeline';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
-import { useVisTimelineOptions } from './timeline/useVisTimelineOptions';
-import { useVisTimelineEvents } from './timeline/useVisTimelineEvents';
-import { useVisTimelineData, type VisTimelineItem, type VisTimelineGroup } from './timeline/useVisTimelineData';
+import { useVisTimelineOptions } from './useVisTimelineOptions';
+import { useVisTimelineEvents } from './useVisTimelineEvents';
+import { useVisTimelineData, type VisTimelineItem, type VisTimelineGroup } from './useVisTimelineData';
 
 export type { VisTimelineItem };
 

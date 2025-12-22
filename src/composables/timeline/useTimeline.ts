@@ -1,9 +1,9 @@
 import { computed } from 'vue';
-import { useProjectData } from './useProjectData';
-import type { Chapter, TemporalScene, FileNode } from '../types';
-import { useTimeHelpers } from './logic/useTimeHelpers';
-import { usePlotlines } from './logic/usePlotlines';
-import { useParadoxDetection } from './logic/useParadoxDetection';
+import { useProjectData } from '../logic/useProjectData';
+import type { Chapter, TemporalScene, FileNode } from '../../types';
+import { useTimeHelpers } from '../logic/useTimeHelpers';
+import { usePlotlines } from '../logic/usePlotlines';
+import { useParadoxDetection } from '../logic/useParadoxDetection';
 
 export function useTimeline() {
     const { activeId, selectNode, plotlines, updateNodeTemporal, flatNodes } = useProjectData();

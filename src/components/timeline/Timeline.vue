@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useTimeline } from '../../composables/useTimeline';
+import { useTimeline } from '../../composables/timeline/useTimeline';
 import HoldingPen from './HoldingPen.vue';
 import SceneEditor from './SceneEditor.vue';
 import CalendarSettings from './CalendarSettings.vue';
 import TimelineControls from './TimelineControls.vue';
 import NarrativeOverlay from './NarrativeOverlay.vue';
-import { useTimelineExport } from '../../composables/useTimelineExport';
-import { useTimelineSort } from '../../composables/useTimelineSort';
-import { useVisTimeline } from '../../composables/useVisTimeline';
+import { useTimelineExport } from '../../composables/timeline/useTimelineExport';
+import { useTimelineSort } from '../../composables/timeline/useTimelineSort';
+import { useVisTimeline } from '../../composables/timeline/useVisTimeline';
 
 import './timeline.css';
 

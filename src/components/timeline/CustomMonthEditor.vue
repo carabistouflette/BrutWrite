@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MonthConfig } from '../../composables/useCalendar';
+import type { MonthConfig } from '../../composables/timeline/useCalendar';
 
 const props = defineProps<{
     modelValue: MonthConfig[];

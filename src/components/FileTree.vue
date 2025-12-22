@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { VueDraggableNext } from 'vue-draggable-next';
 import { ref, watch, nextTick, type ComponentPublicInstance } from 'vue';
-import { useDragState } from '../composables/useDragState';
+import { useDragState } from '../composables/ui/useDragState';
 import type { FileNode } from '../types';
 import FileTreeItem from './FileTreeItem.vue';
 

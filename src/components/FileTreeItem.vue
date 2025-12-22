@@ -5,7 +5,7 @@ const numberFormatter = new Intl.NumberFormat();
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { FileNode } from '../types';
-import { useProjectData } from '../composables/useProjectData';
+import { useProjectData } from '../composables/logic/useProjectData';
 
 const props = defineProps<{
   element: FileNode;

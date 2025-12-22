@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import { EditorContent } from '@tiptap/vue-3'
-import { useProjectData } from '../composables/useProjectData'
-import { useGamification } from '../composables/useGamification'
-import { useTiptapEditor } from '../composables/useTiptapEditor'
-import { useSettings } from '../composables/useSettings'
+import { useProjectData } from '../composables/logic/useProjectData'
+import { useGamification } from '../composables/logic/useGamification'
+import { useTiptapEditor } from '../composables/editor/useTiptapEditor'
+import { useSettings } from '../composables/logic/useSettings'
 
 const { activeId, activeChapter, projectId, renameNode, updateNodeStats } = useProjectData()
 const { addWords } = useGamification()

@@ -1,6 +1,6 @@
 import { ref, watch } from 'vue';
 import { BaseDirectory, readTextFile, writeTextFile, exists, mkdir } from '@tauri-apps/plugin-fs';
-import { type AppSettings, defaultSettings } from '../config/defaultSettings';
+import { type AppSettings, defaultSettings } from '../../config/defaultSettings';
 
 function isObject(item: unknown): item is Record<string, unknown> {
     return !!(item && typeof item === 'object' && !Array.isArray(item));

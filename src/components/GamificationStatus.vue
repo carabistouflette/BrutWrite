@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useGamification } from '../composables/useGamification';
+import { useGamification } from '../composables/logic/useGamification';
 import GamificationDashboard from './gamification/GamificationDashboard.vue';
 
 const { 

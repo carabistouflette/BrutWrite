@@ -115,7 +115,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { useProjectData } from '../composables/useProjectData';
+import { useProjectData } from '../composables/logic/useProjectData';
 
 const { loadProject, createProject } = useProjectData();
 const recentProjects = ref<string[]>([]);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useCharacterSheetLogic } from '../../composables/useCharacterSheetLogic';
+import { useCharacterSheetLogic } from '../../composables/logic/useCharacterSheetLogic';
 import ConfirmationModal from '../base/ConfirmationModal.vue';
 import CharacterList from './CharacterList.vue';
 import CharacterDetail from './CharacterDetail.vue';

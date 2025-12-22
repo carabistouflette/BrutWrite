@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useGamification } from '../../composables/useGamification';
-import { useSettings } from '../../composables/useSettings';
+import { useGamification } from '../../composables/logic/useGamification';
+import { useSettings } from '../../composables/logic/useSettings';
 
 const props = defineProps<{
   show: boolean;

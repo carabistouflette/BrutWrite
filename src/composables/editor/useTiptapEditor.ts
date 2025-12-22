@@ -1,9 +1,9 @@
 import { ref } from 'vue';
 import { useEditor } from '@tiptap/vue-3';
-import { useTiptapConfig } from './editor/useTiptapConfig';
-import { useEditorScroll } from './editor/useEditorScroll';
-import { useEditorWordCount } from './editor/useEditorWordCount';
-import { useEditorPersistence } from './editor/useEditorPersistence';
+import { useTiptapConfig } from './useTiptapConfig';
+import { useEditorScroll } from './useEditorScroll';
+import { useEditorWordCount } from './useEditorWordCount';
+import { useEditorPersistence } from './useEditorPersistence';
 
 export function useTiptapEditor(
     onContentChange?: (count: number) => void

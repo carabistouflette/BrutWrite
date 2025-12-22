@@ -1,5 +1,5 @@
 import { computed } from 'vue';
-import type { FileNode } from '../types';
+import type { FileNode } from '../../types';
 import { 
     projectData, 
     activeId, 
@@ -8,9 +8,9 @@ import {
     projectPlotlines,
     nodeMap,
     flatNodes
-} from './state/projectState';
-import { useProjectIO } from './logic/useProjectIO';
-import { useProjectNodeOperations } from './logic/useProjectNodeOperations';
+} from '../state/projectState';
+import { useProjectIO } from './useProjectIO';
+import { useProjectNodeOperations } from './useProjectNodeOperations';
 
 export function useProjectData() {
     

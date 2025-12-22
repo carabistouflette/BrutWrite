@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { toRef } from 'vue';
-import { useNarrativeConnectors } from '../../composables/useNarrativeConnectors';
-import { useTimeline } from '../../composables/useTimeline';
+import { useNarrativeConnectors } from '../../composables/timeline/useNarrativeConnectors';
+import { useTimeline } from '../../composables/timeline/useTimeline';
 
 const props = defineProps<{
     container: HTMLElement | null;

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useTimeline } from '../../composables/useTimeline';
+import { useTimeline } from '../../composables/timeline/useTimeline';
 
 const props = defineProps<{
     sceneId: string;

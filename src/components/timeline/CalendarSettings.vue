@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useCalendar, type CalendarSystem, type MonthConfig } from '../../composables/useCalendar';
+import { useCalendar, type CalendarSystem, type MonthConfig } from '../../composables/timeline/useCalendar';
 import CustomMonthEditor from './CustomMonthEditor.vue';
 
 const emit = defineEmits(['close']);

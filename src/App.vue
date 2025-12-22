@@ -5,8 +5,8 @@ import MainLayout from './components/layout/MainLayout.vue';
 import EditorMain from './components/EditorMain.vue';
 import WelcomeScreen from './components/WelcomeScreen.vue';
 import AppNotifications from './components/base/AppNotifications.vue';
-import { useProjectData } from './composables/useProjectData';
-import { useSettings } from './composables/useSettings';
+import { useProjectData } from './composables/logic/useProjectData';
+import { useSettings } from './composables/logic/useSettings';
 
 const { activeId, projectId } = useProjectData();
 const { settings, loadSettings } = useSettings();

@@ -6,9 +6,9 @@ import ContextMenu from '../base/ContextMenu.vue';
 import AppLogo from '../common/AppLogo.vue';
 import SidebarFooter from './SidebarFooter.vue';
 import AddChapterButton from '../AddChapterButton.vue';
-import { useResizable } from '../../composables/useResizable';
-import { useProjectData } from '../../composables/useProjectData';
-import { useContextMenu } from '../../composables/useContextMenu';
+import { useResizable } from '../../composables/ui/useResizable';
+import { useProjectData } from '../../composables/logic/useProjectData';
+import { useContextMenu } from '../../composables/ui/useContextMenu';
 
 import { defineAsyncComponent } from 'vue';
 

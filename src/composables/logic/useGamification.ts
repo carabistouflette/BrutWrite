@@ -6,8 +6,8 @@ import {
     calculateAverage,
     getBestDay,
     getTodayStats
-} from '../utils/stats';
-import type { DailyStats } from '../utils/stats';
+} from '../../utils/stats';
+import type { DailyStats } from '../../utils/stats';
 
 const STORAGE_KEY = 'brutwrite_gamification';
 

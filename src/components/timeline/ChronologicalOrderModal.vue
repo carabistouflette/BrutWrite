@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import ConfirmationModal from '../base/ConfirmationModal.vue';
-import { useProjectData } from '../../composables/useProjectData';
-import { useTimeline } from '../../composables/useTimeline';
+import { useProjectData } from '../../composables/logic/useProjectData';
+import { useTimeline } from '../../composables/timeline/useTimeline';
 
 const { updateStructure, nodeMap } = useProjectData();
 const { assignedScenes } = useTimeline();
