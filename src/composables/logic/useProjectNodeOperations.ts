@@ -105,8 +105,8 @@ export function useProjectNodeOperations() {
                 if (key in updates) {
                     const newVal = updates[key];
                     if (node[key] !== newVal) {
-                        (node[key] as any) = newVal; // Still need a small cast for the assignment if TS is strict, but better than 'any' for the whole object
-                        (updateForBackend[key] as any) = newVal;
+                        node[key] = newVal;
+                        updateForBackend[key] = newVal;
                         changed = true;
                     }
                 }
