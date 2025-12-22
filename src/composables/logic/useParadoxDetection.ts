@@ -1,8 +1,8 @@
 import { computed, type Ref } from 'vue';
-import type { ParadoxWarning } from '../../types';
+import type { ParadoxWarning, TemporalScene } from '../../types';
 import { computeTimeGap } from './useTimeHelpers';
 
-export function useParadoxDetection(assignedScenes: Ref<any[]>) {
+export function useParadoxDetection(assignedScenes: Ref<TemporalScene[]>) {
     
     // Paradox detection - now only re-runs if temporal metadata changes
     const paradoxWarnings = computed<ParadoxWarning[]>(() => {
@@ -12,7 +12,7 @@ export function useParadoxDetection(assignedScenes: Ref<any[]>) {
         if (activeScenes.length === 0) return [];
 
         // 1. Simultaneous presence detection
-        const byTime = new Map<string, any[]>();
+        const byTime = new Map<string, TemporalScene[]>();
         activeScenes.forEach(scene => {
             const timeKey = scene.chronological_date || scene.abstract_timeframe || '';
             if (timeKey) {
@@ -23,7 +23,7 @@ export function useParadoxDetection(assignedScenes: Ref<any[]>) {
 
         byTime.forEach((scenes, timeKey) => {
             if (scenes.length > 1) {
-                const povGroups = new Map<string, any[]>();
+                const povGroups = new Map<string, TemporalScene[]>();
                 scenes.forEach(s => {
                     if (s.pov_character_id) {
                         if (!povGroups.has(s.pov_character_id)) povGroups.set(s.pov_character_id, []);
@@ -43,7 +43,7 @@ export function useParadoxDetection(assignedScenes: Ref<any[]>) {
         });
 
         // 2. Causality violation detection
-        const sceneMap = new Map<string, any>();
+        const sceneMap = new Map<string, TemporalScene>();
         activeScenes.forEach(s => sceneMap.set(s.id, s));
 
         const chronoSorted = [...activeScenes].sort((a, b) => {

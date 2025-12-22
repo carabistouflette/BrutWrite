@@ -4,19 +4,19 @@ import { Timeline } from 'vis-timeline';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
 import { useVisTimelineOptions } from './timeline/useVisTimelineOptions';
 import { useVisTimelineEvents } from './timeline/useVisTimelineEvents';
-import { useVisTimelineData, type VisTimelineItem } from './timeline/useVisTimelineData';
+import { useVisTimelineData, type VisTimelineItem, type VisTimelineGroup } from './timeline/useVisTimelineData';
 
 export type { VisTimelineItem };
 
 export function useVisTimeline(
-    containerRef: Ref<HTMLElement | null> | any, // Vue ref
+    containerRef: Ref<HTMLElement | null>,
     onSelect: (sceneId: string | null) => void,
     onHover: (info: { id: string; x: number; y: number } | null) => void,
     onRangeChange: () => void
 ) {
     const timeline = ref<Timeline | null>(null);
-    const items = new DataSet<any>([]);
-    const groups = new DataSet<any>([]);
+    const items = new DataSet<VisTimelineItem>([]);
+    const groups = new DataSet<VisTimelineGroup>([]);
     const isMounted = ref(false);
 
     const { handleItemMove, handleDrop } = useVisTimelineEvents(timeline, groups);
@@ -27,7 +27,7 @@ export function useVisTimeline(
         isMounted.value = true;
         if (!containerRef.value) return;
 
-        timeline.value = new Timeline(containerRef.value, items, groups, options);
+        timeline.value = new Timeline(containerRef.value, items as any, groups as any, options);
 
         // Selection handler
         timeline.value.on('select', (props: { items: string[] }) => {

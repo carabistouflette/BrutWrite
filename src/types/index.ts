@@ -124,3 +124,13 @@ export interface ParadoxWarning {
     sceneIds: string[];
     message: string;
 }
+export interface TemporalScene {
+    id: string;
+    title: string;
+    chronological_date?: string;
+    abstract_timeframe?: string;
+    duration?: string;
+    plotline_tag?: string;
+    depends_on?: string;
+    pov_character_id?: string;
+}

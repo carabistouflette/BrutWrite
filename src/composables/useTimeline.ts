@@ -1,6 +1,6 @@
 import { computed } from 'vue';
 import { useProjectData } from './useProjectData';
-import type { Chapter } from '../types';
+import type { Chapter, TemporalScene } from '../types';
 import { useTimeHelpers } from './logic/useTimeHelpers';
 import { usePlotlines } from './logic/usePlotlines';
 import { useParadoxDetection } from './logic/useParadoxDetection';
@@ -11,7 +11,7 @@ export function useTimeline() {
     const { addPlotline, removePlotline, updatePlotline } = usePlotlines();
 
     // Extract only temporal metadata for efficient paradox detection tracking
-    const scenesTemporalData = computed(() => {
+    const scenesTemporalData = computed<TemporalScene[]>(() => {
         return flatNodes.value.map(node => ({
             id: node.id,
             title: node.name,
