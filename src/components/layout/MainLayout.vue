@@ -15,6 +15,7 @@ import { defineAsyncComponent } from 'vue';
 const SettingsModal = defineAsyncComponent(() => import('../SettingsModal.vue'));
 const CharacterSheet = defineAsyncComponent(() => import('../characters/CharacterSheet.vue'));
 const TimelineView = defineAsyncComponent(() => import('../timeline/Timeline.vue'));
+const ResearchPanel = defineAsyncComponent(() => import('../research/ResearchPanel.vue'));
 
 // --- Composables ---
 const {
@@ -46,6 +47,7 @@ const isAdding = ref(false);
 const showSettings = ref(false);
 const showCharacters = ref(false);
 const showTimeline = ref(false);
+const showResearch = ref(false);
 const sidebarScrollRef = ref<HTMLElement | null>(null);
 
 // --- Event Handlers ---
@@ -156,6 +158,7 @@ const handleChangeProject = async () => {
         @open-settings="showSettings = true"
         @open-characters="showCharacters = true"
         @open-timeline="showTimeline = !showTimeline"
+        @open-research="showResearch = !showResearch"
         @change-project="handleChangeProject"
       />
 
@@ -187,6 +190,14 @@ const handleChangeProject = async () => {
         <slot v-else></slot>
       </div>
     </main>
+
+    <!-- Research Sidebar -->
+    <aside
+      v-if="showResearch"
+      class="w-80 border-l border-stone/50 h-full cyber-glass relative z-10 transition-all duration-300"
+    >
+      <ResearchPanel />
+    </aside>
   </div>
 </template>
 
