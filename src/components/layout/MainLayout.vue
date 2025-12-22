@@ -17,21 +17,25 @@ const CharacterSheet = defineAsyncComponent(() => import('../characters/Characte
 const TimelineView = defineAsyncComponent(() => import('../timeline/Timeline.vue'));
 
 // --- Composables ---
-const { width: sidebarWidth, isResizing, startResize } = useResizable({
+const {
+  width: sidebarWidth,
+  isResizing,
+  startResize,
+} = useResizable({
   initialWidth: 256,
   minWidth: 200,
-  maxWidth: 600
+  maxWidth: 600,
 });
 
-const { 
-  projectData, 
-  activeId, 
-  addChapter: addChapterLogic, 
-  addSection: addSectionLogic, 
+const {
+  projectData,
+  activeId,
+  addChapter: addChapterLogic,
+  addSection: addSectionLogic,
   deleteNode: handleDelete,
   renameNode: handleRenameLogic,
   updateStructure,
-  closeProject
+  closeProject,
 } = useProjectData();
 
 const { showMenu, menuPos, targetNodeId, openMenu, closeMenu } = useContextMenu();
@@ -51,22 +55,22 @@ const handleRenameRequest = (id: string) => {
   editingId.value = id;
 };
 
-const handleRenameSubmit = ({ id, name }: { id: string, name: string }) => {
+const handleRenameSubmit = ({ id, name }: { id: string; name: string }) => {
   handleRenameLogic(id, name);
   editingId.value = null;
 };
 
 const handleRenameCancel = () => {
-    editingId.value = null;
+  editingId.value = null;
 };
 
 // Context Menu Interface
 const startRenameTarget = () => {
-    if (targetNodeId.value) {
-        handleRenameRequest(targetNodeId.value);
-    }
-    closeMenu();
-}
+  if (targetNodeId.value) {
+    handleRenameRequest(targetNodeId.value);
+  }
+  closeMenu();
+};
 
 const deleteTarget = () => {
   if (targetNodeId.value) {
@@ -82,8 +86,8 @@ const addSection = () => {
   closeMenu();
 };
 
-const handleContextMenu = ({ e, id }: { e: MouseEvent, id: string }) => {
-    openMenu(e, id);
+const handleContextMenu = ({ e, id }: { e: MouseEvent; id: string }) => {
+  openMenu(e, id);
 };
 
 // Add Chapter Animation & Scroll
@@ -91,14 +95,14 @@ const addChapter = () => {
   addChapterLogic();
 
   isAdding.value = true;
-  setTimeout(() => isAdding.value = false, 600);
-  
+  setTimeout(() => (isAdding.value = false), 600);
+
   nextTick(() => {
     if (sidebarScrollRef.value) {
-        sidebarScrollRef.value.scrollTo({
-            top: sidebarScrollRef.value.scrollHeight,
-            behavior: 'smooth'
-        });
+      sidebarScrollRef.value.scrollTo({
+        top: sidebarScrollRef.value.scrollHeight,
+        behavior: 'smooth',
+      });
     }
   });
 };
@@ -106,69 +110,60 @@ const addChapter = () => {
 const isExiting = ref(false);
 
 const handleChangeProject = async () => {
-    isExiting.value = true;
-    await new Promise(resolve => setTimeout(resolve, 500));
-    closeProject();
+  isExiting.value = true;
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  closeProject();
 };
 </script>
 
 <template>
-  <div class="animate-enter flex flex-1 w-full h-full text-ink font-sans overflow-hidden relative transition-all duration-500" :class="{'opacity-0 scale-95': isExiting}">
-    
+  <div
+    class="animate-enter flex flex-1 w-full h-full text-ink font-sans overflow-hidden relative transition-all duration-500"
+    :class="{ 'opacity-0 scale-95': isExiting }"
+  >
     <!-- Sidebar -->
-    <aside 
-        class="flex flex-col border-r border-stone/60 h-full cyber-glass relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] group"
-        :style="{ width: `${sidebarWidth}px` }"
+    <aside
+      class="flex flex-col border-r border-stone/60 h-full cyber-glass relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] group"
+      :style="{ width: `${sidebarWidth}px` }"
     >
       <AppLogo />
-      
+
       <div ref="sidebarScrollRef" class="flex-1 overflow-y-auto px-3 py-2 scroll-smooth">
-          <FileTree 
-            :model-value="projectData"
-            @update:model-value="updateStructure" 
-            :active-id="activeId"
-            :editing-id="editingId"
-            @context-menu="handleContextMenu"
-            @request-rename="handleRenameRequest"
-            @submit-rename="handleRenameSubmit"
-            @cancel-rename="handleRenameCancel"
-          />
-        
+        <FileTree
+          :model-value="projectData"
+          @update:model-value="updateStructure"
+          :active-id="activeId"
+          :editing-id="editingId"
+          @context-menu="handleContextMenu"
+          @request-rename="handleRenameRequest"
+          @submit-rename="handleRenameSubmit"
+          @cancel-rename="handleRenameCancel"
+        />
+
         <AddChapterButton :is-adding="isAdding" @click="addChapter" />
       </div>
 
       <!-- Context Menu -->
-      <ContextMenu 
-        :show="showMenu" 
-        :x="menuPos.x" 
-        :y="menuPos.y" 
-        @close="closeMenu"
-      >
-        <div @click.stop="addSection" class="menu-item menu-item-default">
-          Add Section
-        </div>
-        <div @click.stop="startRenameTarget" class="menu-item menu-item-default">
-          Rename
-        </div>
+      <ContextMenu :show="showMenu" :x="menuPos.x" :y="menuPos.y" @close="closeMenu">
+        <div @click.stop="addSection" class="menu-item menu-item-default">Add Section</div>
+        <div @click.stop="startRenameTarget" class="menu-item menu-item-default">Rename</div>
         <div class="h-px bg-ink/5 my-1 mx-2"></div>
-        <div @click.stop="deleteTarget" class="menu-item menu-item-danger">
-          Delete
-        </div>
+        <div @click.stop="deleteTarget" class="menu-item menu-item-danger">Delete</div>
       </ContextMenu>
 
-      <SidebarFooter 
+      <SidebarFooter
         class="mt-auto"
-        @open-settings="showSettings = true" 
+        @open-settings="showSettings = true"
         @open-characters="showCharacters = true"
         @open-timeline="showTimeline = !showTimeline"
         @change-project="handleChangeProject"
       />
-      
+
       <SettingsModal :show="showSettings" @close="showSettings = false" />
       <CharacterSheet :show="showCharacters" @close="showCharacters = false" />
 
       <!-- Resize Handle -->
-      <div 
+      <div
         @mousedown="startResize"
         class="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-accent/50 transition-colors z-20"
         :class="{ 'bg-accent/50': isResizing }"
@@ -181,8 +176,8 @@ const handleChangeProject = async () => {
       <div class="h-16 px-8 flex justify-between items-center bg-transparent">
         <h1 class="font-normal text-sm text-ink/40 uppercase tracking-widest">Editor</h1>
         <div class="space-x-2 flex items-center">
-            <GamificationStatus />
-            <!-- Toolbar -->
+          <GamificationStatus />
+          <!-- Toolbar -->
         </div>
       </div>
 

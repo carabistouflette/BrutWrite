@@ -23,7 +23,12 @@ const handleClose = () => {
 
 <template>
   <Teleport to="#app-scale-root">
-    <div v-if="show" class="fixed inset-0 z-90" @click="handleClose" @contextmenu.prevent="handleClose"></div>
+    <div
+      v-if="show"
+      class="fixed inset-0 z-90"
+      @click="handleClose"
+      @contextmenu.prevent="handleClose"
+    ></div>
     <transition
       enter-active-class="transition duration-100 ease-out"
       enter-from-class="opacity-0 scale-95"
@@ -32,7 +37,7 @@ const handleClose = () => {
       leave-from-class="opacity-100 scale-100"
       leave-to-class="opacity-0 scale-95"
     >
-      <div 
+      <div
         v-if="show"
         class="context-menu-glass fixed z-9999 min-w-[180px] py-2 rounded-xl"
         :style="style"

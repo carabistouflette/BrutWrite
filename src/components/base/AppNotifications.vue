@@ -14,31 +14,41 @@ const { notifications, removeNotification } = useAppStatus();
       leave-from-class="translate-x-0 opacity-100"
       leave-to-class="translate-x-12 opacity-0"
     >
-      <div 
-        v-for="note in notifications" 
+      <div
+        v-for="note in notifications"
         :key="note.id"
         class="pointer-events-auto p-4 rounded-2xl shadow-2xl border flex items-center justify-between gap-4 glass-notification"
         :class="[
-          note.type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-700' : 
-          note.type === 'success' ? 'bg-green-500/10 border-green-500/20 text-green-700' : 
-          'bg-white/80 border-ink/5 text-ink'
+          note.type === 'error'
+            ? 'bg-red-500/10 border-red-500/20 text-red-700'
+            : note.type === 'success'
+              ? 'bg-green-500/10 border-green-500/20 text-green-700'
+              : 'bg-white/80 border-ink/5 text-ink',
         ]"
       >
         <div class="flex items-center gap-3">
-            <!-- Icon -->
-            <div v-if="note.type === 'error'" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-            <div v-else-if="note.type === 'success'" class="w-2 h-2 rounded-full bg-green-500"></div>
-            <div v-else class="w-2 h-2 rounded-full bg-ink/20"></div>
-            
-            <p class="text-sm font-medium tracking-tight">{{ note.message }}</p>
+          <!-- Icon -->
+          <div
+            v-if="note.type === 'error'"
+            class="w-2 h-2 rounded-full bg-red-500 animate-pulse"
+          ></div>
+          <div v-else-if="note.type === 'success'" class="w-2 h-2 rounded-full bg-green-500"></div>
+          <div v-else class="w-2 h-2 rounded-full bg-ink/20"></div>
+
+          <p class="text-sm font-medium tracking-tight">{{ note.message }}</p>
         </div>
 
-        <button 
-          @click="removeNotification(note.id)"
+        <button
           class="p-1 hover:bg-black/5 rounded-full transition-colors opacity-40 hover:opacity-100"
+          @click="removeNotification(note.id)"
         >
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </div>
@@ -48,7 +58,7 @@ const { notifications, removeNotification } = useAppStatus();
 
 <style scoped>
 .glass-notification {
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
 }
 </style>

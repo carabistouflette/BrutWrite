@@ -1,14 +1,9 @@
-import type { FileNode } from "../../types";
-import { projectApi } from "../../api/project";
-import { useAppStatus } from "../ui/useAppStatus";
-import { reconstructHierarchy } from "../../utils/tree";
-import {
-  projectData,
-  projectId,
-  activeId,
-  nodeMap,
-} from "../state/projectState";
-import { useProjectSync } from "./useProjectSync";
+import type { FileNode } from '../../types';
+import { projectApi } from '../../api/project';
+import { useAppStatus } from '../ui/useAppStatus';
+import { reconstructHierarchy } from '../../utils/tree';
+import { projectData, projectId, activeId, nodeMap } from '../state/projectState';
+import { useProjectSync } from './useProjectSync';
 
 export function useProjectNodeOperations() {
   const { notifyError } = useAppStatus();
@@ -17,11 +12,7 @@ export function useProjectNodeOperations() {
   const addChapter = async () => {
     if (!projectId.value) return;
     try {
-      const metadata = await projectApi.createNode(
-        projectId.value,
-        undefined,
-        "New Chapter"
-      );
+      const metadata = await projectApi.createNode(projectId.value, undefined, 'New Chapter');
       projectData.value = reconstructHierarchy(metadata.manifest.chapters);
 
       const roots = projectData.value;
@@ -31,21 +22,17 @@ export function useProjectNodeOperations() {
         return newChapter.id;
       }
     } catch (e) {
-      notifyError("Failed to create chapter", e);
+      notifyError('Failed to create chapter', e);
     }
   };
 
   const addSection = async (parentId: string) => {
     if (!projectId.value) return;
     try {
-      const metadata = await projectApi.createNode(
-        projectId.value,
-        parentId,
-        "New Section"
-      );
+      const metadata = await projectApi.createNode(projectId.value, parentId, 'New Section');
       projectData.value = reconstructHierarchy(metadata.manifest.chapters);
     } catch (e) {
-      notifyError("Failed to create section", e);
+      notifyError('Failed to create section', e);
     }
   };
 
@@ -76,11 +63,7 @@ export function useProjectNodeOperations() {
     syncManifestDebounced();
   };
 
-  const updateNodeStats = (
-    id: string,
-    wordCount: number,
-    shouldSync = true
-  ) => {
+  const updateNodeStats = (id: string, wordCount: number, shouldSync = true) => {
     const node = nodeMap.value.get(id);
     if (node && node.word_count !== wordCount) {
       node.word_count = wordCount;
@@ -95,12 +78,12 @@ export function useProjectNodeOperations() {
     const node = nodeMap.value.get(id);
     if (node) {
       const temporalKeys = [
-        "chronological_date",
-        "abstract_timeframe",
-        "duration",
-        "plotline_tag",
-        "depends_on",
-        "pov_character_id",
+        'chronological_date',
+        'abstract_timeframe',
+        'duration',
+        'plotline_tag',
+        'depends_on',
+        'pov_character_id',
       ] as const;
 
       let changed = false;

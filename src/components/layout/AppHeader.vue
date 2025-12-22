@@ -10,14 +10,48 @@ const { minimize, toggleMaximize, close } = useWindowControls();
       <span class="logo-text">Brut<span class="underline-target">Write</span></span>
     </div>
     <div class="window-controls">
-      <button @click="minimize" class="control-btn minimize">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      <button class="control-btn minimize" @click="minimize">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
       </button>
-      <button @click="toggleMaximize" class="control-btn maximize">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+      <button class="control-btn maximize" @click="toggleMaximize">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        </svg>
       </button>
-      <button @click="close" class="control-btn close">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <button class="control-btn close" @click="close">
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
       </button>
     </div>
   </header>
@@ -113,7 +147,11 @@ const { minimize, toggleMaximize, close } = useWindowControls();
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-250%); }
-  100% { transform: translateX(500%); }
+  0% {
+    transform: translateX(-250%);
+  }
+  100% {
+    transform: translateX(500%);
+  }
 }
 </style>

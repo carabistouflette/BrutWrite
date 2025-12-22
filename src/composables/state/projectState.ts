@@ -1,11 +1,5 @@
-import { ref, shallowRef, watch } from "vue";
-import type {
-  FileNode,
-  ProjectSettings,
-  Character,
-  Plotline,
-  Chapter,
-} from "../../types";
+import { ref, shallowRef, watch } from 'vue';
+import type { FileNode, ProjectSettings, Character, Plotline, Chapter } from '../../types';
 
 // Singleton state
 export const projectData = ref<FileNode[]>([]);
@@ -21,9 +15,7 @@ export const flatNodes = shallowRef<FileNode[]>([]);
 
 // Shared debouncers and pending updates (Singleton)
 export const pendingMetadataUpdates = new Map<string, Partial<Chapter>>();
-export const syncManifestTimeout = ref<ReturnType<typeof setTimeout> | null>(
-  null
-);
+export const syncManifestTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 export const metadataTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
 // Internal helper for rebuilding maps (Iterative to avoid stack overflow)

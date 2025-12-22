@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from '@tauri-apps/api/core';
 import type {
   ProjectMetadata,
   Manifest,
@@ -6,55 +6,42 @@ import type {
   ProjectSettings,
   Plotline,
   Chapter,
-} from "../types";
+} from '../types';
 
 export const projectApi = {
   // Project Management
-  create: async (
-    path: string,
-    name: string,
-    author: string
-  ): Promise<ProjectMetadata> => {
-    return invoke<ProjectMetadata>("create_project", { path, name, author });
+  create: async (path: string, name: string, author: string): Promise<ProjectMetadata> => {
+    return invoke<ProjectMetadata>('create_project', { path, name, author });
   },
 
   load: async (path: string): Promise<ProjectMetadata> => {
-    return invoke<ProjectMetadata>("load_project", { path });
+    return invoke<ProjectMetadata>('load_project', { path });
   },
 
-  updateManifest: async (
-    projectId: string,
-    manifest: Manifest
-  ): Promise<ProjectMetadata> => {
-    return invoke<ProjectMetadata>("update_manifest", { projectId, manifest });
+  updateManifest: async (projectId: string, manifest: Manifest): Promise<ProjectMetadata> => {
+    return invoke<ProjectMetadata>('update_manifest', { projectId, manifest });
   },
 
   updateSettings: async (
     projectId: string,
     settings: ProjectSettings
   ): Promise<ProjectMetadata> => {
-    return invoke<ProjectMetadata>("update_project_settings", {
+    return invoke<ProjectMetadata>('update_project_settings', {
       projectId,
       settings,
     });
   },
 
-  updatePlotlines: async (
-    projectId: string,
-    plotlines: Plotline[]
-  ): Promise<ProjectMetadata> => {
-    return invoke<ProjectMetadata>("update_plotlines", {
+  updatePlotlines: async (projectId: string, plotlines: Plotline[]): Promise<ProjectMetadata> => {
+    return invoke<ProjectMetadata>('update_plotlines', {
       projectId,
       plotlines,
     });
   },
 
   // Content Management
-  loadChapter: async (
-    projectId: string,
-    chapterId: string
-  ): Promise<string> => {
-    return invoke<string>("load_chapter_content", { projectId, chapterId });
+  loadChapter: async (projectId: string, chapterId: string): Promise<string> => {
+    return invoke<string>('load_chapter_content', { projectId, chapterId });
   },
 
   saveChapter: async (
@@ -62,33 +49,24 @@ export const projectApi = {
     chapterId: string,
     content: string
   ): Promise<ProjectMetadata> => {
-    return invoke<ProjectMetadata>("save_chapter", {
+    return invoke<ProjectMetadata>('save_chapter', {
       projectId,
       chapterId,
       content,
     });
   },
 
-  deleteNode: async (
-    projectId: string,
-    id: string
-  ): Promise<ProjectMetadata> => {
-    return invoke<ProjectMetadata>("delete_node", { projectId, id });
+  deleteNode: async (projectId: string, id: string): Promise<ProjectMetadata> => {
+    return invoke<ProjectMetadata>('delete_node', { projectId, id });
   },
 
   // Character Management
-  saveCharacter: async (
-    projectId: string,
-    character: Character
-  ): Promise<ProjectMetadata> => {
-    return invoke<ProjectMetadata>("save_character", { projectId, character });
+  saveCharacter: async (projectId: string, character: Character): Promise<ProjectMetadata> => {
+    return invoke<ProjectMetadata>('save_character', { projectId, character });
   },
 
-  deleteCharacter: async (
-    projectId: string,
-    characterId: string
-  ): Promise<ProjectMetadata> => {
-    return invoke<ProjectMetadata>("delete_character", {
+  deleteCharacter: async (projectId: string, characterId: string): Promise<ProjectMetadata> => {
+    return invoke<ProjectMetadata>('delete_character', {
       projectId,
       characterId,
     });
@@ -99,7 +77,7 @@ export const projectApi = {
     parentId: string | undefined,
     name: string
   ): Promise<ProjectMetadata> => {
-    return invoke<ProjectMetadata>("create_node", {
+    return invoke<ProjectMetadata>('create_node', {
       projectId,
       parentId,
       name,
@@ -111,7 +89,7 @@ export const projectApi = {
     nodeId: string,
     update: Partial<Chapter>
   ): Promise<ProjectMetadata> => {
-    return invoke<ProjectMetadata>("update_node_metadata", {
+    return invoke<ProjectMetadata>('update_node_metadata', {
       projectId,
       nodeId,
       update,

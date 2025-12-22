@@ -1,9 +1,9 @@
-import { type Editor } from "@tiptap/vue-3";
-import { projectApi } from "../../api/project";
-import { useAppStatus } from "../../composables/ui/useAppStatus";
-import { useProjectData } from "../../composables/logic/useProjectData";
-import type { Chapter } from "../../types";
-import type { Ref } from "vue";
+import { type Editor } from '@tiptap/vue-3';
+import { projectApi } from '../../api/project';
+import { useAppStatus } from '../../composables/ui/useAppStatus';
+import { useProjectData } from '../../composables/logic/useProjectData';
+import type { Chapter } from '../../types';
+import type { Ref } from 'vue';
 
 export function useEditorPersistence(
   editor: Ref<Editor | undefined>,
@@ -21,10 +21,8 @@ export function useEditorPersistence(
       resetWordCountState();
       isDirty.value = false;
     } catch (e) {
-      notifyError("Failed to load chapter", e);
-      editor.value.commands.setContent(
-        `<h1>Error</h1><p>Could not load chapter.</p>`
-      );
+      notifyError('Failed to load chapter', e);
+      editor.value.commands.setContent(`<h1>Error</h1><p>Could not load chapter.</p>`);
     }
   };
 
@@ -38,17 +36,11 @@ export function useEditorPersistence(
 
     try {
       const content = editor.value.getHTML();
-      const metadata = await projectApi.saveChapter(
-        projectId,
-        chapterId,
-        content
-      );
+      const metadata = await projectApi.saveChapter(projectId, chapterId, content);
 
       // Sync frontend state from the metadata returned by backend
       if (activeId.value) {
-        const chapter = metadata.manifest.chapters.find(
-          (c: Chapter) => c.id === chapterId
-        );
+        const chapter = metadata.manifest.chapters.find((c: Chapter) => c.id === chapterId);
         if (chapter) {
           updateNodeStats(chapterId, chapter.word_count, false);
         }

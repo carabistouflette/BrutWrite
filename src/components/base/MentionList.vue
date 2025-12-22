@@ -1,20 +1,25 @@
 <template>
-  <div class="bg-paper/95 backdrop-blur-xl border border-white/20 shadow-2xl rounded-xl overflow-hidden min-w-[200px] flex flex-col p-1 text-sm text-ink font-medium">
+  <div
+    class="bg-paper/95 backdrop-blur-xl border border-white/20 shadow-2xl rounded-xl overflow-hidden min-w-[200px] flex flex-col p-1 text-sm text-ink font-medium"
+  >
     <template v-if="items.length">
       <button
         v-for="(item, index) in items"
         :key="index"
         class="w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between"
-        :class="{ 'bg-accent text-white': index === selectedIndex, 'hover:bg-ink/5': index !== selectedIndex }"
+        :class="{
+          'bg-accent text-white': index === selectedIndex,
+          'hover:bg-ink/5': index !== selectedIndex,
+        }"
         @click="selectItem(index)"
       >
         <span>{{ item.label || item.name }}</span>
-        <span v-if="item.role" class="text-xs opacity-60 uppercase tracking-wider ml-2">{{ item.role }}</span>
+        <span v-if="item.role" class="text-xs opacity-60 uppercase tracking-wider ml-2">{{
+          item.role
+        }}</span>
       </button>
     </template>
-    <div v-else class="px-3 py-2 text-ink/40 text-xs italic">
-      No characters found
-    </div>
+    <div v-else class="px-3 py-2 text-ink/40 text-xs italic">No characters found</div>
   </div>
 </template>
 
@@ -35,9 +40,12 @@ const props = defineProps<{
 
 const selectedIndex = ref(0);
 
-watch(() => props.items, () => {
-  selectedIndex.value = 0;
-});
+watch(
+  () => props.items,
+  () => {
+    selectedIndex.value = 0;
+  }
+);
 
 const onKeyDown = ({ event }: { event: KeyboardEvent }) => {
   if (event.key === 'ArrowUp') {
@@ -59,7 +67,7 @@ const onKeyDown = ({ event }: { event: KeyboardEvent }) => {
 };
 
 const upHandler = () => {
-  selectedIndex.value = ((selectedIndex.value + props.items.length) - 1) % props.items.length;
+  selectedIndex.value = (selectedIndex.value + props.items.length - 1) % props.items.length;
 };
 
 const downHandler = () => {

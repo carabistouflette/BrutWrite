@@ -6,32 +6,38 @@ import type { FileNode } from '../types';
 import FileTreeItem from './FileTreeItem.vue';
 
 defineOptions({
-  name: 'FileTree'
+  name: 'FileTree',
 });
 
-const props = withDefaults(defineProps<{
-  modelValue: FileNode[],
-  activeId?: string,
-  depth?: number,
-  editingId?: string | null
-}>(), {
-  depth: 0,
-  editingId: null
-});
+const props = withDefaults(
+  defineProps<{
+    modelValue: FileNode[];
+    activeId?: string;
+    depth?: number;
+    editingId?: string | null;
+  }>(),
+  {
+    depth: 0,
+    editingId: null,
+  }
+);
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: FileNode[]): void;
-  (e: 'context-menu', payload: { e: MouseEvent, id: string }): void;
+  (e: 'context-menu', payload: { e: MouseEvent; id: string }): void;
   (e: 'request-rename', id: string): void;
-  (e: 'submit-rename', payload: { id: string, name: string }): void;
+  (e: 'submit-rename', payload: { id: string; name: string }): void;
   (e: 'cancel-rename'): void;
 }>();
 
 const localList = ref<FileNode[]>([...props.modelValue]);
 
-watch(() => props.modelValue, (newVal) => {
-  localList.value = [...newVal];
-});
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    localList.value = [...newVal];
+  }
+);
 
 const handleUpdate = (newList: FileNode[]) => {
   localList.value = newList;
@@ -55,17 +61,20 @@ const { isDragging, setDragging } = useDragState();
 
 const isActive = (id: string) => id === props.activeId;
 
-watch(() => props.editingId, async (newVal) => {
-  if (newVal) {
-    const node = props.modelValue.find(n => n.id === newVal);
-    if (node) {
-      editName.value = node.name;
-      await nextTick();
-      const item = itemRefs.get(newVal);
-      if (item && item.focus) item.focus();
+watch(
+  () => props.editingId,
+  async (newVal) => {
+    if (newVal) {
+      const node = props.modelValue.find((n) => n.id === newVal);
+      if (node) {
+        editName.value = node.name;
+        await nextTick();
+        const item = itemRefs.get(newVal);
+        if (item && item.focus) item.focus();
+      }
     }
   }
-});
+);
 
 const handleRenameSubmit = (id: string) => {
   if (editName.value.trim()) {
@@ -81,7 +90,7 @@ const handleRenameSubmit = (id: string) => {
     :model-value="localList"
     @update:model-value="handleUpdate"
     group="files"
-    :animation="200" 
+    :animation="200"
     ghost-class="ghost"
     :force-fallback="true"
     :swap-threshold="0.9"
@@ -113,17 +122,17 @@ const handleRenameSubmit = (id: string) => {
         enter-from-class="opacity-0 -translate-y-2"
         enter-to-class="opacity-100 translate-y-0"
       >
-        <div 
+        <div
           v-if="element.children"
           v-show="isDragging || element.children.length > 0"
           class="ml-6 pl-4 border-l transition-all duration-300 ease-in-out"
           :class="[
-            isDragging && element.children.length === 0 
-              ? 'py-3 border-dashed border-accent/40 bg-accent/5 rounded-r-lg my-1' 
-              : 'border-ink/5 hover:border-ink/15'
+            isDragging && element.children.length === 0
+              ? 'py-3 border-dashed border-accent/40 bg-accent/5 rounded-r-lg my-1'
+              : 'border-ink/5 hover:border-ink/15',
           ]"
         >
-          <FileTree 
+          <FileTree
             :model-value="element.children"
             @update:model-value="(val) => handleNestedUpdate(index, val)"
             :active-id="activeId"
@@ -151,9 +160,15 @@ const handleRenameSubmit = (id: string) => {
 }
 
 @keyframes spring-pop {
-  0% { transform: scale(1); }
-  50% { transform: scale(0.97); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .active-pop {

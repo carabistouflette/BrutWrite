@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap");
+@import 'tailwindcss';
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
 
 /**
  * --- Design System Tokens ---
@@ -19,9 +19,9 @@
   --color-accent-rgb: 255, 95, 31;
   --color-glass: rgba(255, 255, 255, 0.4);
 
-  --font-mono: "Courier New", monospace;
+  --font-mono: 'Courier New', monospace;
   --font-sans: Inter, sans-serif;
-  --font-serif: "Playfair Display", Georgia, serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
 
   --shadow-brut: 4px 4px 0px 0px rgba(0, 0, 0, 1);
   --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
@@ -47,7 +47,7 @@
   --border-color: #d1d1d1;
   --color-danger: #ef4444;
 
-  font-family: "Inter", sans-serif;
+  font-family: 'Inter', sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -96,7 +96,9 @@ body {
   color: var(--color-ink);
   -webkit-user-select: none;
   user-select: none;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 /* Custom scrollbar for brutalist feel */
@@ -139,8 +141,7 @@ body {
 }
 
 .animate-enter {
-  animation: slide-up-spring 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)
-    forwards;
+  animation: slide-up-spring 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 .stagger-1 {
@@ -200,7 +201,7 @@ input::-webkit-inner-spin-button {
   margin: 0;
 }
 
-input[type="number"] {
+input[type='number'] {
   -moz-appearance: textfield;
   appearance: textfield;
 }

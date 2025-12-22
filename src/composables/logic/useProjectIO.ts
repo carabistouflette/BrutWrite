@@ -4,107 +4,107 @@ import { useCharacters } from './useCharacters';
 import { useRecentProjects } from './useRecentProjects';
 import { reconstructHierarchy } from '../../utils/tree';
 import type { ProjectSettings, Plotline } from '../../types';
-import { 
-    projectData, 
-    projectId, 
-    activeId, 
-    projectSettings, 
-    projectPlotlines 
+import {
+  projectData,
+  projectId,
+  activeId,
+  projectSettings,
+  projectPlotlines,
 } from '../state/projectState';
 import { useProjectNodeOperations } from './useProjectNodeOperations';
 
 export function useProjectIO() {
-    const { notifyError } = useAppStatus();
-    const { addChapter } = useProjectNodeOperations();
-    const { addRecentProject } = useRecentProjects();
+  const { notifyError } = useAppStatus();
+  const { addChapter } = useProjectNodeOperations();
+  const { addRecentProject } = useRecentProjects();
 
-    const loadProject = async (path: string) => {
-        try {
-            const metadata = await projectApi.load(path);
-            projectId.value = metadata.id;
+  const loadProject = async (path: string) => {
+    try {
+      const metadata = await projectApi.load(path);
+      projectId.value = metadata.id;
 
-            // Sync characters to their dedicated store
-            const { setCharacters } = useCharacters();
-            setCharacters(metadata.characters);
+      // Sync characters to their dedicated store
+      const { setCharacters } = useCharacters();
+      setCharacters(metadata.characters);
 
-            // Set settings
-            projectSettings.value = metadata.settings;
-            projectPlotlines.value = metadata.plotlines;
+      // Set settings
+      projectSettings.value = metadata.settings;
+      projectPlotlines.value = metadata.plotlines;
 
-            localStorage.setItem('last_opened_project_path', path);
-            addRecentProject(path);
+      localStorage.setItem('last_opened_project_path', path);
+      addRecentProject(path);
 
-            projectData.value = reconstructHierarchy(metadata.manifest.chapters);
+      projectData.value = reconstructHierarchy(metadata.manifest.chapters);
 
-            if (projectData.value.length > 0) {
-                activeId.value = projectData.value[0].id;
-            }
-        } catch (e) {
-            notifyError('Failed to load project', e);
-            localStorage.removeItem('last_opened_project_path');
-        }
-    };
-
-    const createProject = async (path: string, name: string, author: string) => {
-        try {
-            const metadata = await projectApi.create(path, name, author);
-            projectId.value = metadata.id;
-            projectData.value = [];
-
-            // Reset character store
-            const { setCharacters } = useCharacters();
-            setCharacters([]);
-
-            projectSettings.value = metadata.settings;
-            projectPlotlines.value = metadata.plotlines;
-
-            localStorage.setItem('last_opened_project_path', path);
-            addRecentProject(path);
-
-            await addChapter();
-        } catch (e) {
-            notifyError('Failed to create project', e);
-        }
+      if (projectData.value.length > 0) {
+        activeId.value = projectData.value[0].id;
+      }
+    } catch (e) {
+      notifyError('Failed to load project', e);
+      localStorage.removeItem('last_opened_project_path');
     }
+  };
 
-    const closeProject = () => {
-        activeId.value = undefined;
-        projectData.value = [];
-        projectId.value = undefined;
-        projectSettings.value = null;
-        projectPlotlines.value = [];
+  const createProject = async (path: string, name: string, author: string) => {
+    try {
+      const metadata = await projectApi.create(path, name, author);
+      projectId.value = metadata.id;
+      projectData.value = [];
 
-        const { setCharacters } = useCharacters();
-        setCharacters([]);
+      // Reset character store
+      const { setCharacters } = useCharacters();
+      setCharacters([]);
 
-        localStorage.removeItem('last_opened_project_path');
-    };
+      projectSettings.value = metadata.settings;
+      projectPlotlines.value = metadata.plotlines;
 
-    const updateSettings = async (settings: ProjectSettings) => {
-        if (!projectId.value) return;
-        try {
-            const metadata = await projectApi.updateSettings(projectId.value, settings);
-            projectSettings.value = metadata.settings;
-        } catch (e) {
-            notifyError('Failed to update project settings', e);
-        }
-    };
+      localStorage.setItem('last_opened_project_path', path);
+      addRecentProject(path);
 
-    const updatePlotlines = async (plotlines: Plotline[]) => {
-        if (!projectId.value) return;
-        try {
-            const metadata = await projectApi.updatePlotlines(projectId.value, plotlines);
-            projectPlotlines.value = metadata.plotlines;
-        } catch (e) {
-            notifyError('Failed to update plotlines', e);
-        }
-    };
+      await addChapter();
+    } catch (e) {
+      notifyError('Failed to create project', e);
+    }
+  };
 
-    return {
-        loadProject,
-        createProject,
-        closeProject,
-        updateSettings,
-        updatePlotlines
-    };
+  const closeProject = () => {
+    activeId.value = undefined;
+    projectData.value = [];
+    projectId.value = undefined;
+    projectSettings.value = null;
+    projectPlotlines.value = [];
+
+    const { setCharacters } = useCharacters();
+    setCharacters([]);
+
+    localStorage.removeItem('last_opened_project_path');
+  };
+
+  const updateSettings = async (settings: ProjectSettings) => {
+    if (!projectId.value) return;
+    try {
+      const metadata = await projectApi.updateSettings(projectId.value, settings);
+      projectSettings.value = metadata.settings;
+    } catch (e) {
+      notifyError('Failed to update project settings', e);
+    }
+  };
+
+  const updatePlotlines = async (plotlines: Plotline[]) => {
+    if (!projectId.value) return;
+    try {
+      const metadata = await projectApi.updatePlotlines(projectId.value, plotlines);
+      projectPlotlines.value = metadata.plotlines;
+    } catch (e) {
+      notifyError('Failed to update plotlines', e);
+    }
+  };
+
+  return {
+    loadProject,
+    createProject,
+    closeProject,
+    updateSettings,
+    updatePlotlines,
+  };
 }
