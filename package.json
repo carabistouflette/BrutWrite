@@ -26,6 +26,8 @@
     "@tiptap/vue-3": "^3.14.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
+    "pdfjs-dist": "^5.4.449",
+    "pinia": "^3.0.4",
     "tippy.js": "^6.3.7",
     "vis-data": "^8.0.3",
     "vis-timeline": "^8.5.0",
