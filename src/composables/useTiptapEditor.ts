@@ -1,228 +1,46 @@
 import { ref } from 'vue';
-import { useEditor, VueRenderer } from '@tiptap/vue-3';
-import StarterKit from '@tiptap/starter-kit';
-import Focus from '@tiptap/extension-focus';
-import Mention from '@tiptap/extension-mention';
-import tippy from 'tippy.js';
-import 'tippy.js/dist/tippy.css';
-
-import { projectApi } from '../api/project';
-import { useCharacters } from './useCharacters';
-import { useProjectData } from './useProjectData';
-import { useAppStatus } from './useAppStatus';
-import MentionList from '../components/base/MentionList.vue';
+import { useEditor } from '@tiptap/vue-3';
+import { useTiptapConfig } from './editor/useTiptapConfig';
+import { useEditorScroll } from './editor/useEditorScroll';
+import { useEditorWordCount } from './editor/useEditorWordCount';
+import { useEditorPersistence } from './editor/useEditorPersistence';
 
 export function useTiptapEditor(
     onContentChange?: (count: number) => void
 ) {
     const containerRef = ref<HTMLElement | null>(null);
-    const lastWordCount = ref(0);
     const isDirty = ref(false); // Track if content has changed
-    const { characters } = useCharacters();
-    const { updateNodeStats, activeId } = useProjectData();
-    const { notifyError } = useAppStatus();
 
-    const editor = useEditor({
-        content: '',
-        extensions: [
-            StarterKit.configure({
-                heading: { levels: [1, 2, 3] }
-            }),
-            Focus.configure({
-                className: 'has-focus',
-                mode: 'all',
-            }),
-            Mention.configure({
-                HTMLAttributes: {
-                    class: 'mention',
-                },
-                suggestion: {
-                    items: ({ query }: { query: string }) => {
-                        return characters.value
-                            .filter(item => item.name.toLowerCase().startsWith(query.toLowerCase()))
-                            .slice(0, 5)
-                            .map(c => ({ id: c.id, name: c.name, role: c.role }));
-                    },
-                    render: () => {
-                        let component: VueRenderer;
-                        let popup: any;
+    const { 
+        debouncedWordCountUpdate, 
+        resetWordCountState 
+    } = useEditorWordCount(onContentChange);
 
-                        return {
-                            onStart: (props: any) => {
-                                component = new VueRenderer(MentionList, {
-                                    // using vue 3 renderer
-                                    props: props,
-                                    editor: props.editor,
-                                });
-
-                                if (!props.clientRect) {
-                                    return;
-                                }
-
-                                popup = tippy(document.body, {
-                                    getReferenceClientRect: props.clientRect,
-                                    appendTo: () => document.body,
-                                    content: component.element as Element,
-                                    showOnCreate: true,
-                                    interactive: true,
-                                    trigger: 'manual',
-                                    placement: 'bottom-start',
-                                });
-                            },
-                            onUpdate(props: any) {
-                                component.updateProps(props);
-
-                                if (!props.clientRect) {
-                                    return;
-                                }
-
-                                popup[0].setProps({
-                                    getReferenceClientRect: props.clientRect,
-                                });
-                            },
-                            onKeyDown(props: any) {
-                                if (props.event.key === 'Escape') {
-                                    popup[0].hide();
-                                    return true;
-                                }
-                                return component.ref?.onKeyDown(props);
-                            },
-                            onExit() {
-                                popup[0].destroy();
-                                component.destroy();
-                            },
-                        };
-                    },
-                },
-            }),
-        ],
-        editorProps: {
-            attributes: {
-                class: 'prose prose-invert prose-lg max-w-none focus:outline-none min-h-screen p-16',
-                spellcheck: 'false',
-            },
-        },
-        onUpdate: ({ transaction }) => {
+    const editor = useEditor(useTiptapConfig(
+        ({ transaction }) => {
             isDirty.value = true;
             handleScroll();
             debouncedWordCountUpdate(transaction.doc);
         },
-        onSelectionUpdate: () => {
+        () => {
             handleScroll();
         }
-    });
+    ));
 
-    const calculateWordCount = (text: string): number => {
-        return text.trim().length === 0
-            ? 0
-            : text.split(/\s+/).filter(w => w.length > 0).length;
-    };
-
-    let wordCountTimeout: ReturnType<typeof setTimeout>;
-    const debouncedWordCountUpdate = (doc: any) => {
-        clearTimeout(wordCountTimeout);
-        wordCountTimeout = setTimeout(() => {
-            const text = doc.textContent;
-            const newCount = calculateWordCount(text);
-
-            const delta = newCount - lastWordCount.value;
-            if (delta !== 0) {
-                if (onContentChange) onContentChange(delta);
-                lastWordCount.value = newCount;
-            }
-        }, 500); // 500ms debounce
-    };
-
-    let lastScrollTime = 0;
-    let lastFrom = -1;
-    let cachedContainerRect: DOMRect | null = null;
-
-    const handleScroll = () => {
-        const now = Date.now();
-        if (now - lastScrollTime < 30) return; // Throttle slightly more
-        
-        if (!editor.value || !containerRef.value) return;
-        const { from } = editor.value.state.selection;
-        if (from === lastFrom) return;
-        lastFrom = from;
-        
-        lastScrollTime = now;
-
-        requestAnimationFrame(() => {
-            if (!editor.value || !containerRef.value) return;
-
-            const view = editor.value.view;
-            const coords = view.coordsAtPos(from);
-            
-            if (!cachedContainerRect) {
-                cachedContainerRect = containerRef.value.getBoundingClientRect();
-                // Reset cache on next resize
-                window.addEventListener('resize', () => { cachedContainerRect = null; }, { once: true });
-            }
-            
-            const containerRect = cachedContainerRect;
-            const containerCenter = containerRect.top + containerRect.height / 2;
-            const cursorY = coords.top;
-            const diff = cursorY - containerCenter;
-
-            if (Math.abs(diff) > 50) {
-                containerRef.value.scrollBy({ top: diff, behavior: 'smooth' });
-            }
-        });
-    };
-
-    const resetWordCountState = () => {
-        if (!editor.value) return;
-        lastWordCount.value = calculateWordCount(editor.value.state.doc.textContent);
-    }
-
-    // --- Backend Actions ---
-
-    const loadChapter = async (projectId: string, chapterId: string) => {
-        if (!editor.value) return;
-        try {
-            const content = await projectApi.loadChapter(projectId, chapterId);
-            editor.value.commands.setContent(content, { emitUpdate: false });
-            resetWordCountState();
-            isDirty.value = false;
-        } catch (e) {
-            notifyError('Failed to load chapter', e);
-            editor.value.commands.setContent(`<h1>Error</h1><p>Could not load chapter.</p>`);
-        }
-    };
-
-    const saveChapter = async (projectId: string, chapterId: string) => {
-        if (!editor.value) return;
-
-        // Optimization: Don't save if nothing changed
-        if (!isDirty.value) {
-            return;
-        }
-
-        try {
-            const content = editor.value.getHTML();
-            const metadata = await projectApi.saveChapter(projectId, chapterId, content);
-
-            // Sync frontend state from the metadata returned by backend
-            if (activeId.value) {
-                const chapter = metadata.manifest.chapters.find(c => c.id === chapterId);
-                if (chapter) {
-                    updateNodeStats(chapterId, chapter.word_count);
-                }
-            }
-
-            isDirty.value = false; // Reset dirty flag on successful save
-            console.debug(`Auto-saved chapter ${chapterId}`);
-        } catch (e) {
-            notifyError(`Failed to save chapter ${chapterId}`, e);
-        }
-    }
+    const { handleScroll } = useEditorScroll(editor, containerRef);
+    
+    const { loadChapter, saveChapter } = useEditorPersistence(
+        editor as any, // casting because useEditor returns a shallow ref wrapper that might mismatch strict types slightly
+        isDirty,
+        () => resetWordCountState(editor.value)
+    );
 
     return {
         editor,
         containerRef,
         loadChapter,
         saveChapter,
-        resetWordCountState
+        resetWordCountState: () => resetWordCountState(editor.value)
     };
 }
+
