@@ -1,6 +1,6 @@
 <template>
   <aside
-    class="flex flex-col h-full w-full bg-zinc-950 text-zinc-300 overflow-hidden font-sans border-r border-white/5 relative"
+    class="flex flex-col h-full w-full bg-paper text-ink overflow-hidden font-sans border-r border-ink/5 relative"
     @dragover.prevent="isDragging = true"
     @dragleave.prevent="isDragging = false"
     @drop.prevent="handleDrop"
@@ -10,7 +10,7 @@
       v-if="isDragging"
       class="absolute inset-0 z-50 bg-accent/20 backdrop-blur-sm border-2 border-accent border-dashed m-2 rounded-xl flex items-center justify-center pointer-events-none"
     >
-      <div class="bg-zinc-950 p-4 rounded-xl shadow-xl flex flex-col items-center gap-2">
+      <div class="bg-paper p-4 rounded-xl shadow-xl flex flex-col items-center gap-2">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="32"
@@ -27,23 +27,21 @@
           <polyline points="17 8 12 3 7 8" />
           <line x1="12" y1="3" x2="12" y2="15" />
         </svg>
-        <span class="text-xs font-bold uppercase tracking-widest text-zinc-100"
-          >Drop to Import</span
-        >
+        <span class="text-xs font-bold uppercase tracking-widest text-ink">Drop to Import</span>
       </div>
     </div>
 
     <!-- Header Area -->
     <div class="pt-8 pb-6 px-8 flex flex-col gap-1 shrink-0">
       <div class="flex items-center justify-between">
-        <h2 class="font-serif text-2xl text-zinc-100 tracking-tight font-medium">Research</h2>
+        <h2 class="font-serif text-2xl text-ink tracking-tight font-medium">Research</h2>
         <span
-          class="text-[10px] tracking-widest uppercase font-bold text-zinc-600 border border-zinc-800 px-2 py-0.5 rounded-full"
+          class="text-[10px] tracking-widest uppercase font-bold text-ink/40 border border-stone px-2 py-0.5 rounded-full"
         >
           {{ store.artifacts.length }}
         </span>
       </div>
-      <p class="text-[11px] text-zinc-500 uppercase tracking-widest font-semibold mt-1">
+      <p class="text-[11px] text-ink/40 uppercase tracking-widest font-semibold mt-1">
         Vault Content
       </p>
     </div>
@@ -53,7 +51,7 @@
       <div class="relative group">
         <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
           <svg
-            class="w-3.5 h-3.5 text-zinc-600 transition-colors duration-300 group-focus-within:text-zinc-300"
+            class="w-3.5 h-3.5 text-ink/30 transition-colors duration-300 group-focus-within:text-accent"
             xmlns="http://www.w3.org/2000/svg"
             width="24"
             height="24"
@@ -72,7 +70,7 @@
           v-model="searchQuery"
           type="text"
           placeholder="Filter sources or #tags..."
-          class="w-full bg-zinc-900/50 hover:bg-zinc-900 transition-all duration-300 text-xs font-medium text-zinc-200 py-3 pl-10 pr-4 rounded-lg border border-transparent focus:border-zinc-700 focus:bg-zinc-900 focus:outline-none placeholder-zinc-700"
+          class="w-full bg-stone/50 hover:bg-stone/80 transition-all duration-300 text-xs font-medium text-ink py-3 pl-10 pr-4 rounded-lg border border-transparent focus:border-accent/40 focus:bg-stone focus:outline-none placeholder-ink/20"
         />
       </div>
     </div>
@@ -85,8 +83,8 @@
         class="group relative flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300"
         :class="[
           store.activeArtifact?.id === item.id
-            ? 'bg-zinc-900 text-zinc-100 shadow-sm'
-            : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40',
+            ? 'bg-stone text-ink shadow-sm'
+            : 'text-ink/60 hover:text-ink hover:bg-stone/40',
         ]"
         @click="store.setActiveArtifact(item)"
         @contextmenu.prevent="handleContextMenu($event, item)"
@@ -94,7 +92,7 @@
         <!-- Active Indicator -->
         <div
           v-if="store.activeArtifact?.id === item.id"
-          class="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-zinc-100 rounded-r-sm shadow-[0_0_10px_rgba(255,255,255,0.3)]"
+          class="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-accent rounded-r-sm shadow-[0_0_10px_rgba(var(--color-accent-rgb),0.3)]"
         ></div>
 
         <!-- Start Icon -->
@@ -102,8 +100,8 @@
           class="ml-1 shrink-0 p-2 rounded-md transition-colors duration-300"
           :class="
             store.activeArtifact?.id === item.id
-              ? 'bg-zinc-800 text-zinc-100'
-              : 'bg-zinc-900/50 text-zinc-600 group-hover:bg-zinc-800 group-hover:text-zinc-400'
+              ? 'bg-paper text-accent'
+              : 'bg-stone/50 text-ink/30 group-hover:bg-stone group-hover:text-ink/60'
           "
         >
           <!-- PDF Icon -->
@@ -167,8 +165,8 @@
               class="text-[9px] font-mono uppercase tracking-wider"
               :class="
                 store.activeArtifact?.id === item.id
-                  ? 'text-zinc-500'
-                  : 'text-zinc-700 group-hover:text-zinc-600'
+                  ? 'text-ink/40'
+                  : 'text-ink/30 group-hover:text-ink/40'
               "
             >
               {{ item.file_type }}
@@ -177,11 +175,11 @@
             <span
               v-for="tag in item.tags.slice(0, 3)"
               :key="tag"
-              class="text-[9px] font-bold px-1.5 py-px rounded-sm bg-zinc-800 text-zinc-400"
+              class="text-[9px] font-bold px-1.5 py-px rounded-sm bg-stone text-ink/40"
             >
               #{{ tag }}
             </span>
-            <span v-if="item.tags.length > 3" class="text-[9px] text-zinc-600"
+            <span v-if="item.tags.length > 3" class="text-[9px] text-ink/20"
               >+{{ item.tags.length - 3 }}</span
             >
           </div>
@@ -190,9 +188,9 @@
     </div>
 
     <!-- Bottom Action -->
-    <div class="p-6 shrink-0 border-t border-white/5 bg-zinc-950/50 backdrop-blur-sm flex gap-2">
+    <div class="p-6 shrink-0 border-t border-ink/5 bg-paper/80 backdrop-blur-sm flex gap-2">
       <button
-        class="group relative flex-1 overflow-hidden rounded-xl bg-zinc-100 text-zinc-950 py-3.5 px-2 text-xs font-bold uppercase tracking-widest transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:-translate-y-0.5"
+        class="group relative flex-1 overflow-hidden rounded-xl bg-ink text-paper py-3.5 px-2 text-xs font-bold uppercase tracking-widest transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
         @click="$emit('add')"
       >
         <span class="relative z-10 flex items-center justify-center gap-2">
@@ -211,13 +209,10 @@
           </svg>
           Add
         </span>
-        <div
-          class="absolute inset-0 z-0 bg-white opacity-0 transition-opacity duration-300 group-hover:opacity-100 mix-blend-overlay"
-        ></div>
       </button>
 
       <button
-        class="group relative flex-1 overflow-hidden rounded-xl bg-zinc-800 text-zinc-300 border border-zinc-700 py-3.5 px-2 text-xs font-bold uppercase tracking-widest transition-all duration-300 hover:bg-zinc-700 hover:text-zinc-100 hover:-translate-y-0.5"
+        class="group relative flex-1 overflow-hidden rounded-xl bg-stone text-ink/70 border border-ink/10 py-3.5 px-2 text-xs font-bold uppercase tracking-widest transition-all duration-300 hover:bg-stone/80 hover:text-ink hover:-translate-y-0.5"
         @click="handleNewNote"
       >
         <span class="relative z-10 flex items-center justify-center gap-2">
@@ -361,10 +356,11 @@ const handleRename = () => {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--stone);
   border-radius: 99px;
 }
 .custom-scrollbar:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--ink-rgb);
+  opacity: 0.2;
 }
 </style>

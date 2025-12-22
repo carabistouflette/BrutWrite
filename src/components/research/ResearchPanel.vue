@@ -34,7 +34,7 @@ const openAddDialog = async () => {
 </script>
 
 <template>
-  <div class="h-full w-full bg-zinc-950 overflow-hidden relative">
+  <div class="h-full w-full bg-paper overflow-hidden relative">
     <Transition name="fade-slide" mode="out-in">
       <!-- View 1: List / Sidebar -->
       <ResearchSidebar v-if="!store.activeArtifact" class="w-full h-full" @add="openAddDialog" />
