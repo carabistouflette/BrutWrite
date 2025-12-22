@@ -95,62 +95,6 @@ pub async fn save_project_metadata<P: AsRef<Path>>(
     Ok(())
 }
 
-pub async fn create_chapter_node<P: AsRef<Path>>(
-    root_path: P,
-    metadata: &mut ProjectMetadata,
-    parent_id: Option<String>,
-    name: String,
-) -> Result<()> {
-    let root = root_path.as_ref();
-
-    // 1. Generate ID and Filename
-    let new_id = format!("chapter-{}", uuid::Uuid::new_v4());
-    let filename = format!("{}.md", new_id);
-
-    // 2. Calculate Order (last child + 1)
-    let siblings: Vec<&crate::models::Chapter> = metadata
-        .manifest
-        .chapters
-        .iter()
-        .filter(|c| c.parent_id == parent_id)
-        .collect();
-
-    let max_order = siblings.iter().map(|c| c.order).max().unwrap_or(0);
-    let new_order = if siblings.is_empty() {
-        0
-    } else {
-        max_order + 1
-    };
-
-    // 3. Create Chapter Object
-    let new_chapter = crate::models::Chapter {
-        id: new_id.clone(),
-        parent_id,
-        title: name,
-        filename: filename.clone(),
-        word_count: 0,
-        order: new_order,
-        chronological_date: None,
-        abstract_timeframe: None,
-        duration: None,
-        plotline_tag: None,
-        depends_on: None,
-        pov_character_id: None,
-    };
-
-    // 4. Create File
-    let manuscript_dir = root.join("manuscript");
-    if !manuscript_dir.exists() {
-        tokio::fs::create_dir_all(&manuscript_dir).await?;
-    }
-    let file_path = manuscript_dir.join(&filename);
-    tokio::fs::write(&file_path, "").await?;
-
-    // 5. Update Metadata
-    metadata.manifest.chapters.push(new_chapter);
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
