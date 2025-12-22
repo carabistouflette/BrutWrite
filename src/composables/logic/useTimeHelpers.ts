@@ -66,6 +66,25 @@ export function useTimeHelpers() {
     return {
         parseDurationToMillis,
         formatDurationFromMillis,
-        computeTimeGap
+        computeTimeGap,
+        parseAbstractTimeframe
     };
+}
+
+export function parseAbstractTimeframe(timeframe?: string): Date {
+    if (!timeframe) return new Date();
+    const match = timeframe.match(/(day|week|month|year)\s*(\d+)/i);
+    if (match) {
+        const unit = match[1].toLowerCase();
+        const num = parseInt(match[2], 10);
+        const base = new Date('2000-01-01');
+
+        if (unit === 'day') base.setDate(base.getDate() + num - 1);
+        else if (unit === 'week') base.setDate(base.getDate() + (num - 1) * 7);
+        else if (unit === 'month') base.setMonth(base.getMonth() + num - 1);
+        else if (unit === 'year') base.setFullYear(base.getFullYear() + num - 1);
+
+        return base;
+    }
+    return new Date();
 }
