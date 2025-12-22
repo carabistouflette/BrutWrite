@@ -241,7 +241,7 @@
       >
         ACTIONS
       </div>
-      <div class="menu-item menu-item-default" @click="handleRename">Rename (Not Impl)</div>
+      <div class="menu-item menu-item-default" @click="handleRename">Rename</div>
       <div class="menu-item menu-item-default" @click="handleAddTag">Add Tag</div>
     </ContextMenu>
   </aside>
@@ -341,8 +341,12 @@ const handleNewNote = async () => {
   }
 };
 
-const handleRename = () => {
-  // TODO: Implement Rename
+const handleRename = async () => {
+  if (!targetArtifact.value) return;
+  const name = window.prompt('New Name:', targetArtifact.value.name);
+  if (name && name.trim() && name !== targetArtifact.value.name) {
+    await store.renameArtifact(targetArtifact.value.id, name.trim());
+  }
   closeMenu();
 };
 </script>
