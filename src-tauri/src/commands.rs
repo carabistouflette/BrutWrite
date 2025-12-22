@@ -211,7 +211,7 @@ pub async fn create_node(
     let mut metadata = metadata_arc.lock().await;
 
     // 1. Create entry in manifest (Domain Logic)
-    let new_chapter = metadata.create_and_add_chapter(parent_id, name);
+    let new_chapter = metadata.create_chapter(parent_id, name);
 
     // 2. Create physical file (Storage Logic)
     storage::write_chapter_file(&root_path, &new_chapter.filename, "")
@@ -219,6 +219,8 @@ pub async fn create_node(
         .map_err(|e| e.to_string())?;
 
     // 3. Save Metadata
+    metadata.manifest.chapters.push(new_chapter);
+
     metadata.updated_at = chrono::Utc::now();
     storage::save_project_metadata(&root_path, &metadata)
         .await

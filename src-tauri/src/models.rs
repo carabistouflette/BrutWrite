@@ -191,7 +191,7 @@ impl ProjectMetadata {
         }
     }
 
-    pub fn create_and_add_chapter(&mut self, parent_id: Option<String>, title: String) -> Chapter {
+    pub fn create_chapter(&self, parent_id: Option<String>, title: String) -> Chapter {
         let new_id = format!("chapter-{}", Uuid::new_v4());
         let filename = format!("{}.md", new_id);
 
@@ -209,7 +209,7 @@ impl ProjectMetadata {
             max_order + 1
         };
 
-        let new_chapter = Chapter {
+        Chapter {
             id: new_id.clone(),
             parent_id,
             title,
@@ -222,10 +222,7 @@ impl ProjectMetadata {
             plotline_tag: None,
             depends_on: None,
             pov_character_id: None,
-        };
-
-        self.manifest.chapters.push(new_chapter.clone());
-        new_chapter
+        }
     }
 
     pub fn remove_node_recursively(&mut self, node_id: String) -> Vec<String> {
