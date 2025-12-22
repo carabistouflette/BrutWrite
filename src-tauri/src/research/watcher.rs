@@ -1,46 +1,28 @@
 use crate::models::research::ResearchArtifact;
+use crate::research::ResearchState;
 use crate::storage;
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
-use tokio::sync::{mpsc, Mutex};
-
-pub struct ResearchState {
-    pub watcher: Mutex<Option<RecommendedWatcher>>,
-    pub artifacts: Mutex<HashMap<String, ResearchArtifact>>,
-    pub root_path: Mutex<Option<PathBuf>>,
-}
-
-impl Default for ResearchState {
-    fn default() -> Self {
-        Self {
-            watcher: Mutex::new(None),
-            artifacts: Mutex::new(HashMap::new()),
-            root_path: Mutex::new(None),
-        }
-    }
-}
-
-impl ResearchState {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
+use tokio::sync::mpsc;
 
 pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathBuf) {
     let research_path = project_path.join("research");
-
-    // Ensure directory exists
-    if !research_path.exists() {
-        let _ = std::fs::create_dir_all(&research_path);
-    }
-
-    // Initial scan and setup
     let app_handle = app.clone();
+
     tauri::async_runtime::spawn(async move {
+        // Ensure directory exists (async)
+        if !research_path.exists() {
+            let _ = tokio::fs::create_dir_all(&research_path).await;
+        }
+
         let state = app_handle.state::<ResearchState>();
-        *state.root_path.lock().await = Some(research_path.clone());
+
+        {
+            let mut inner = state.inner.lock().await;
+            inner.root_path = Some(research_path.clone());
+        }
 
         // Initial scan
         scan_artifacts(&research_path, &state).await;
@@ -58,7 +40,10 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
 
         let _ = watcher.watch(&research_path, RecursiveMode::Recursive);
 
-        *state.watcher.lock().await = Some(watcher);
+        {
+            let mut inner = state.inner.lock().await;
+            inner.watcher = Some(watcher);
+        }
 
         // Handle events
         while let Some(res) = rx.recv().await {
@@ -72,8 +57,13 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
                     });
 
                     if !is_index_change {
-                        if let Some(path) = state.root_path.lock().await.as_ref() {
-                            scan_artifacts(path, &state).await;
+                        let path_to_scan = {
+                            let inner = state.inner.lock().await;
+                            inner.root_path.clone()
+                        };
+
+                        if let Some(path) = path_to_scan {
+                            scan_artifacts(&path, &state).await;
                         }
                         let _ = app_handle.emit("research-update", ());
                     }
@@ -84,9 +74,10 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
     });
 }
 
-async fn scan_artifacts(path: &std::path::Path, state: &ResearchState) {
+async fn scan_artifacts(path: &PathBuf, state: &ResearchState) {
     let mut current_artifacts = HashMap::new();
-    let mut index = storage::load_index(path);
+    let index_data = storage::load_index(path);
+    let mut index = index_data;
     let disk_files = storage::scan_on_disk(path);
 
     // Reconcile index with disk
@@ -130,5 +121,6 @@ async fn scan_artifacts(path: &std::path::Path, state: &ResearchState) {
         println!("Failed to save research index: {:?}", e);
     }
 
-    *state.artifacts.lock().await = current_artifacts;
+    let mut inner = state.inner.lock().await;
+    inner.artifacts = current_artifacts;
 }
