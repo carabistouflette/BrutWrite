@@ -73,7 +73,7 @@ const chartData = computed(() => {
         <!-- Header -->
         <div class="flex justify-between items-center mb-6">
           <h3 class="font-serif italic font-bold text-lg">Goal Tracking</h3>
-          <button @click="emit('close')" class="text-ink/40 hover:text-ink">
+          <button class="text-ink/40 hover:text-ink" @click="emit('close')">
             <svg
               width="16"
               height="16"
@@ -190,15 +190,15 @@ const chartData = computed(() => {
           <div class="flex justify-end">
             <button
               v-if="!isEditing"
-              @click="isEditing = true"
               class="text-xs text-ink/40 hover:text-accent underline decoration-dotted underline-offset-4"
+              @click="isEditing = true"
             >
               Adjust Goals
             </button>
             <button
               v-else
-              @click="saveGoals"
               class="text-xs bg-ink text-white px-3 py-1 rounded hover:bg-accent transition-colors"
+              @click="saveGoals"
             >
               Save Changes
             </button>
@@ -207,6 +207,6 @@ const chartData = computed(() => {
       </div>
     </Transition>
     <!-- Backdrop -->
-    <div v-if="show" @click="emit('close')" class="fixed inset-0 z-90"></div>
+    <div v-if="show" class="fixed inset-0 z-90" @click="emit('close')"></div>
   </Teleport>
 </template>

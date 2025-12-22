@@ -88,7 +88,6 @@ const handleRenameSubmit = (id: string) => {
 <template>
   <VueDraggableNext
     :model-value="localList"
-    @update:model-value="handleUpdate"
     group="files"
     :animation="200"
     ghost-class="ghost"
@@ -96,6 +95,7 @@ const handleRenameSubmit = (id: string) => {
     :swap-threshold="0.9"
     class="min-h-[10px] relative block"
     tag="div"
+    @update:model-value="handleUpdate"
     @start="setDragging(true)"
     @end="setDragging(false)"
   >
@@ -106,11 +106,11 @@ const handleRenameSubmit = (id: string) => {
     >
       <FileTreeItem
         :ref="(el) => setItemRef(el, element.id)"
+        v-model:edit-name="editName"
         :element="element"
         :is-active="isActive(element.id)"
         :is-editing="editingId === element.id"
         :depth="depth"
-        v-model:edit-name="editName"
         @context-menu="(p) => emit('context-menu', p)"
         @submit-rename="handleRenameSubmit"
         @cancel-rename="emit('cancel-rename')"
@@ -134,10 +134,10 @@ const handleRenameSubmit = (id: string) => {
         >
           <FileTree
             :model-value="element.children"
-            @update:model-value="(val) => handleNestedUpdate(index, val)"
             :active-id="activeId"
             :editing-id="editingId"
             :depth="depth + 1"
+            @update:model-value="(val) => handleNestedUpdate(index, val)"
             @context-menu="(p) => emit('context-menu', p)"
             @request-rename="(id) => emit('request-rename', id)"
             @submit-rename="(p) => emit('submit-rename', p)"

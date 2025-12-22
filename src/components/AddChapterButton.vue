@@ -1,12 +1,12 @@
 <template>
   <button
-    @click="$emit('click')"
     class="group relative w-full overflow-hidden rounded-xl border px-4 py-3 mt-8 transition-all duration-500 hover:shadow-sm active:scale-[0.98]"
     :class="
       isAdding
         ? 'border-accent/40 bg-accent/5 ring-1 ring-accent/20'
         : 'border-stone/30 bg-white/5 hover:border-stone/50 hover:bg-white/10'
     "
+    @click="$emit('click')"
   >
     <!-- Subtle Shimmer -->
     <div

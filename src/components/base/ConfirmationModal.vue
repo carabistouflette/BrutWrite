@@ -53,19 +53,19 @@ const confirm = () => {
 
           <div class="flex justify-end gap-3">
             <button
-              @click="close"
               class="px-4 py-2 rounded-lg text-sm font-medium text-ink/60 hover:bg-black/5 hover:text-ink transition-colors"
+              @click="close"
             >
               {{ cancelLabel || 'Cancel' }}
             </button>
             <button
-              @click="confirm"
               class="px-5 py-2 rounded-lg text-sm font-medium shadow-lg transition-all"
               :class="
                 isDestructive
                   ? 'bg-red-500 text-white hover:bg-red-600 shadow-red-500/20'
                   : 'bg-accent text-white hover:bg-accent-dark shadow-accent/20'
               "
+              @click="confirm"
             >
               {{ confirmLabel || 'Confirm' }}
             </button>

@@ -33,18 +33,18 @@ function updateMonth(index: number, key: keyof MonthConfig, value: string | numb
         <input
           type="text"
           :value="month.name"
-          @input="(e) => updateMonth(idx, 'name', (e.target as HTMLInputElement).value)"
           placeholder="Name"
           class="month-name"
+          @input="(e) => updateMonth(idx, 'name', (e.target as HTMLInputElement).value)"
         />
         <input
           type="number"
           :value="month.days"
-          @input="(e) => updateMonth(idx, 'days', parseInt((e.target as HTMLInputElement).value))"
           placeholder="Days"
           class="month-days"
+          @input="(e) => updateMonth(idx, 'days', parseInt((e.target as HTMLInputElement).value))"
         />
-        <button class="remove-btn" @click="removeMonth(idx)" title="Remove">&times;</button>
+        <button class="remove-btn" title="Remove" @click="removeMonth(idx)">&times;</button>
       </div>
     </div>
     <button class="add-btn" @click="addMonth">+ Add Month</button>

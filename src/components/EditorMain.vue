@@ -128,10 +128,10 @@ const editorStyles = computed(() => {
       <div v-if="activeChapter" class="mb-16 group relative">
         <input
           v-model="activeChapterName"
-          @blur="handleRename"
-          @keyup.enter="handleRename"
           class="w-full bg-transparent border-none outline-none text-5xl font-serif font-black text-ink/90 placeholder:text-ink/10 transition-all focus:text-accent selection:bg-accent/20"
           placeholder="Chapter Title"
+          @blur="handleRename"
+          @keyup.enter="handleRename"
         />
         <div
           class="absolute -bottom-4 left-0 w-12 h-1 bg-accent/20 group-focus-within:w-24 group-focus-within:bg-accent transition-all duration-500"

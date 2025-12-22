@@ -67,5 +67,5 @@
 </template>
 
 <script setup lang="ts">
-const emit = defineEmits(['open-settings', 'open-characters', 'open-timeline', 'change-project']);
+defineEmits(['open-settings', 'open-characters', 'open-timeline', 'change-project']);
 </script>

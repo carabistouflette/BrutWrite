@@ -31,6 +31,7 @@ export function useVisTimeline(
     isMounted.value = true;
     if (!containerRef.value) return;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     timeline.value = new Timeline(containerRef.value, items as any, groups as any, options);
 
     // Selection handler

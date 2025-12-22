@@ -64,12 +64,12 @@ defineExpose({
         <input
           ref="inputRef"
           :value="editName"
+          class="bg-transparent border-b border-accent text-[14.5px] leading-tight text-ink w-full focus:outline-none"
           @input="(e) => emit('update:editName', (e.target as HTMLInputElement).value)"
           @blur="emit('submit-rename', element.id)"
           @keydown.enter="emit('submit-rename', element.id)"
           @keydown.escape="emit('cancel-rename')"
           @click.stop
-          class="bg-transparent border-b border-accent text-[14.5px] leading-tight text-ink w-full focus:outline-none"
         />
       </template>
       <div v-else class="flex flex-1 items-center min-w-0 gap-2">
@@ -98,9 +98,9 @@ defineExpose({
       class="transition-all duration-300 flex items-center z-20 absolute right-2 opacity-0 translate-x-1 pointer-events-none group-hover/row:opacity-100 group-hover/row:translate-x-0 group-hover/row:pointer-events-auto"
     >
       <button
-        @click.stop="deleteNode(element.id)"
         class="w-8 h-8 flex items-center justify-center text-ink/20 hover:text-red-500 hover:bg-white border border-transparent hover:border-black/5 rounded-full transition-all duration-200 shadow-none hover:shadow-md hover:scale-110 active:scale-90"
         title="Delete"
+        @click.stop="deleteNode(element.id)"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

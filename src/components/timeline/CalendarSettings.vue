@@ -53,13 +53,13 @@ import './CalendarSettings.css';
           </div>
         </div>
 
-        <div class="form-group" v-if="activeTab !== 'gregorian'">
+        <div v-if="activeTab !== 'gregorian'" class="form-group">
           <label>Start Year (Epoch)</label>
           <div class="help-text">What year is 1970-01-01 in your world?</div>
-          <input type="number" v-model="localStartYear" />
+          <input v-model="localStartYear" type="number" />
         </div>
 
-        <div class="desc" v-if="activeTab === 'fixed360'">
+        <div v-if="activeTab === 'fixed360'" class="desc">
           <p><strong>Fixed 360</strong> uses 12 months of exactly 30 days each.</p>
           <p>
             Ideal for simple fantasy timelines where you don't want to track leap years or irregular

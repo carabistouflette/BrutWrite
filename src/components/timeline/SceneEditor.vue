@@ -64,17 +64,17 @@ import './SceneEditor.css';
     <div class="editor-body">
       <div class="form-group">
         <label>Start Date (ISO)</label>
-        <input type="datetime-local" v-model="editDate" @change="saveChanges" class="brut-input" />
+        <input v-model="editDate" type="datetime-local" class="brut-input" @change="saveChanges" />
       </div>
 
       <div class="form-group">
         <label>Duration</label>
         <input
-          type="text"
           v-model="editDuration"
+          type="text"
           placeholder="e.g. 2 hours, 3 days"
-          @change="saveChanges"
           class="brut-input"
+          @change="saveChanges"
         />
         <small class="hint">Natural language supported</small>
       </div>

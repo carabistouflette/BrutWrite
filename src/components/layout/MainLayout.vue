@@ -131,9 +131,9 @@ const handleChangeProject = async () => {
       <div ref="sidebarScrollRef" class="flex-1 overflow-y-auto px-3 py-2 scroll-smooth">
         <FileTree
           :model-value="projectData"
-          @update:model-value="updateStructure"
           :active-id="activeId"
           :editing-id="editingId"
+          @update:model-value="updateStructure"
           @context-menu="handleContextMenu"
           @request-rename="handleRenameRequest"
           @submit-rename="handleRenameSubmit"
@@ -145,10 +145,10 @@ const handleChangeProject = async () => {
 
       <!-- Context Menu -->
       <ContextMenu :show="showMenu" :x="menuPos.x" :y="menuPos.y" @close="closeMenu">
-        <div @click.stop="addSection" class="menu-item menu-item-default">Add Section</div>
-        <div @click.stop="startRenameTarget" class="menu-item menu-item-default">Rename</div>
+        <div class="menu-item menu-item-default" @click.stop="addSection">Add Section</div>
+        <div class="menu-item menu-item-default" @click.stop="startRenameTarget">Rename</div>
         <div class="h-px bg-ink/5 my-1 mx-2"></div>
-        <div @click.stop="deleteTarget" class="menu-item menu-item-danger">Delete</div>
+        <div class="menu-item menu-item-danger" @click.stop="deleteTarget">Delete</div>
       </ContextMenu>
 
       <SidebarFooter
@@ -164,9 +164,9 @@ const handleChangeProject = async () => {
 
       <!-- Resize Handle -->
       <div
-        @mousedown="startResize"
         class="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-accent/50 transition-colors z-20"
         :class="{ 'bg-accent/50': isResizing }"
+        @mousedown="startResize"
       ></div>
     </aside>
 

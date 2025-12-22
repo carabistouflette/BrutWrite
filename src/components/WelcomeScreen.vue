@@ -26,8 +26,8 @@
             <button
               v-for="path in recentProjects"
               :key="path"
-              @click="handleRecent(path)"
               class="w-full text-left p-4 rounded-xl border border-ink/5 hover:border-accent/30 hover:bg-white/50 transition-all group flex items-center justify-between cyber-glass"
+              @click="handleRecent(path)"
             >
               <div class="flex flex-col">
                 <span class="text-sm font-medium">{{ getFileName(path) }}</span>
@@ -87,8 +87,8 @@
         <!-- Main Actions -->
         <div class="w-full max-w-sm space-y-4">
           <button
-            @click="handleNewProject"
             class="w-full group relative overflow-hidden bg-ink text-paper py-5 px-8 rounded-2xl font-semibold transition-all hover:shadow-[0_20px_40px_rgba(0,0,0,0.15)] hover:-translate-y-1 flex items-center justify-center gap-4"
+            @click="handleNewProject"
           >
             <div class="relative z-10 flex items-center gap-3">
               <svg
@@ -112,8 +112,8 @@
           </button>
 
           <button
-            @click="handleOpenProject"
             class="w-full group relative overflow-hidden bg-white/40 border border-ink/10 hover:border-accent/40 text-ink py-5 px-8 rounded-2xl font-medium transition-all hover:bg-white/80 cyber-glass flex items-center justify-center gap-4"
+            @click="handleOpenProject"
           >
             <svg
               class="w-5 h-5 opacity-40 group-hover:text-accent group-hover:opacity-100 transition-all"
@@ -141,8 +141,8 @@
             <button
               v-for="path in recentProjects"
               :key="path"
-              @click="handleRecent(path)"
               class="whitespace-nowrap px-4 py-2 rounded-full border border-ink/10 text-xs hover:bg-ink hover:text-paper transition-all"
+              @click="handleRecent(path)"
             >
               {{ getFileName(path) }}
             </button>

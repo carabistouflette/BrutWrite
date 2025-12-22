@@ -38,6 +38,8 @@ export function useCalendar() {
         return 'Fixed 360 (12x30)';
       case 'custom':
         return 'Custom';
+      default:
+        return 'Unknown';
     }
   });
 

@@ -6,7 +6,7 @@ defineProps<{
   selectedId: string | null;
 }>();
 
-const emit = defineEmits(['select', 'create']);
+defineEmits(['select', 'create']);
 </script>
 
 <template>
@@ -14,9 +14,9 @@ const emit = defineEmits(['select', 'create']);
     <div class="p-6 flex justify-between items-center">
       <h2 class="font-serif text-xl font-bold italic tracking-tight">Dramatis Personae</h2>
       <button
-        @click="$emit('create')"
         class="p-2 hover:bg-accent/10 text-accent rounded-full transition-colors"
         title="Add Character"
+        @click="$emit('create')"
       >
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
@@ -33,13 +33,13 @@ const emit = defineEmits(['select', 'create']);
       <button
         v-for="char in characters"
         :key="char.id"
-        @click="$emit('select', char.id)"
         class="w-full text-left px-4 py-3 rounded-xl transition-all duration-200 group relative border border-transparent"
         :class="
           selectedId === char.id
             ? 'bg-ink shadow-lg shadow-black/10 border-ink/10'
             : 'hover:bg-ink/5'
         "
+        @click="$emit('select', char.id)"
       >
         <div
           class="font-medium transition-colors"

@@ -11,7 +11,16 @@ const emit = defineEmits(['update:modelValue', 'change', 'save', 'delete', 'clos
 // Roles for select
 const roles = Object.values(CharacterRole);
 
-const handleChange = () => {
+const updateField = (field: keyof Character, value: string) => {
+  emit('update:modelValue', { ...props.modelValue, [field]: value });
+  emit('change');
+};
+
+const updateEngineField = (field: string, value: string) => {
+  emit('update:modelValue', {
+    ...props.modelValue,
+    engine: { ...props.modelValue.engine, [field]: value },
+  });
   emit('change');
 };
 </script>
@@ -22,10 +31,10 @@ const handleChange = () => {
     <div class="px-8 py-4 border-b border-ink/5 flex justify-between items-center bg-paper/50">
       <div class="flex items-center gap-4">
         <input
-          v-model="modelValue.name"
-          @input="handleChange"
+          :value="modelValue.name"
           class="text-2xl font-serif font-bold bg-transparent border-none focus:ring-0 p-0 text-ink placeholder-ink/20 w-full max-w-md focus:outline-none"
           placeholder="Character Name"
+          @input="(e) => updateField('name', (e.target as HTMLInputElement).value)"
         />
         <span
           v-if="hasChanges"
@@ -35,8 +44,8 @@ const handleChange = () => {
       </div>
 
       <button
-        @click="$emit('close')"
         class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-ink/40 hover:text-ink transition-colors"
+        @click="$emit('close')"
       >
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
@@ -62,18 +71,13 @@ const handleChange = () => {
               <button
                 v-for="role in roles"
                 :key="role"
-                @click="
-                  () => {
-                    modelValue.role = role;
-                    handleChange();
-                  }
-                "
                 class="px-4 py-2 rounded-lg text-sm transition-all border font-bold"
                 :class="
                   modelValue.role === role
                     ? 'bg-ink text-paper! border-ink shadow-md'
                     : 'bg-transparent border-ink/10 text-ink/60 hover:border-ink/30'
                 "
+                @click="updateField('role', role)"
               >
                 {{ role.charAt(0).toUpperCase() + role.slice(1) }}
               </button>
@@ -85,10 +89,10 @@ const handleChange = () => {
               >Archetype</label
             >
             <input
-              v-model="modelValue.archetype"
-              @input="handleChange"
+              :value="modelValue.archetype"
               class="w-full bg-ink/5 border border-ink/10 rounded-xl px-4 py-3 focus:outline-none focus:bg-ink/10 focus:ring-2 focus:ring-accent/20 transition-all font-medium text-ink placeholder-ink/20"
               placeholder="e.g. The Reluctant Hero, The Mentor"
+              @input="(e) => updateField('archetype', (e.target as HTMLInputElement).value)"
             />
           </div>
         </section>
@@ -110,11 +114,11 @@ const handleChange = () => {
                 >Goal / Desire</label
               >
               <textarea
-                v-model="modelValue.engine!.desire"
-                @input="handleChange"
+                :value="modelValue.engine?.desire"
                 rows="3"
                 class="w-full bg-transparent resize-none focus:outline-none text-ink placeholder-ink/10 leading-relaxed font-medium"
                 placeholder="What do they want more than anything?"
+                @input="(e) => updateEngineField('desire', (e.target as HTMLTextAreaElement).value)"
               ></textarea>
             </div>
 
@@ -127,11 +131,11 @@ const handleChange = () => {
                 >Fear / Ghost</label
               >
               <textarea
-                v-model="modelValue.engine!.fear"
-                @input="handleChange"
+                :value="modelValue.engine?.fear"
                 rows="3"
                 class="w-full bg-transparent resize-none focus:outline-none text-ink/90 placeholder-ink/20 leading-relaxed"
                 placeholder="What are they running from?"
+                @input="(e) => updateEngineField('fear', (e.target as HTMLTextAreaElement).value)"
               ></textarea>
             </div>
 
@@ -144,11 +148,11 @@ const handleChange = () => {
                 >The Wound</label
               >
               <textarea
-                v-model="modelValue.engine!.wound"
-                @input="handleChange"
+                :value="modelValue.engine?.wound"
                 rows="3"
                 class="w-full bg-transparent resize-none focus:outline-none text-ink/90 placeholder-ink/20 leading-relaxed"
                 placeholder="The past trauma defining them..."
+                @input="(e) => updateEngineField('wound', (e.target as HTMLTextAreaElement).value)"
               ></textarea>
             </div>
 
@@ -161,11 +165,11 @@ const handleChange = () => {
                 >The Secret</label
               >
               <textarea
-                v-model="modelValue.engine!.secret"
-                @input="handleChange"
+                :value="modelValue.engine?.secret"
                 rows="3"
                 class="w-full bg-transparent resize-none focus:outline-none text-ink/90 placeholder-ink/20 leading-relaxed"
                 placeholder="What creates tension?"
+                @input="(e) => updateEngineField('secret', (e.target as HTMLTextAreaElement).value)"
               ></textarea>
             </div>
           </div>
@@ -179,11 +183,13 @@ const handleChange = () => {
               class="bg-ink/5 rounded-xl p-4 border border-ink/10 focus-within:ring-2 focus-within:ring-accent/10 transition-all"
             >
               <textarea
-                v-model="modelValue.physical_features"
-                @input="handleChange"
+                :value="modelValue.physical_features"
                 rows="4"
                 class="w-full bg-transparent resize-none focus:outline-none text-ink placeholder-ink/10 leading-relaxed font-medium"
                 placeholder="Distinguishing features, mannerisms, style..."
+                @input="
+                  (e) => updateField('physical_features', (e.target as HTMLTextAreaElement).value)
+                "
               ></textarea>
             </div>
           </div>
@@ -194,11 +200,11 @@ const handleChange = () => {
               class="bg-ink/5 rounded-xl p-4 border border-ink/10 focus-within:ring-2 focus-within:ring-accent/10 transition-all"
             >
               <textarea
-                v-model="modelValue.notes"
-                @input="handleChange"
+                :value="modelValue.notes"
                 rows="8"
                 class="w-full bg-transparent resize-none focus:outline-none text-ink placeholder-ink/10 leading-relaxed font-medium"
                 placeholder="General notes, ideas, character arc progression..."
+                @input="(e) => updateField('notes', (e.target as HTMLTextAreaElement).value)"
               ></textarea>
             </div>
           </div>
@@ -207,13 +213,12 @@ const handleChange = () => {
         <!-- Actions -->
         <div class="flex justify-end gap-4 pt-8 border-t border-ink/5">
           <button
-            @click="$emit('delete')"
             class="px-5 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+            @click="$emit('delete')"
           >
             Delete Character
           </button>
           <button
-            @click="$emit('save')"
             :disabled="!hasChanges"
             class="px-8 py-2.5 rounded-lg text-sm font-medium transition-all shadow-lg shadow-accent/20"
             :class="
@@ -221,6 +226,7 @@ const handleChange = () => {
                 ? 'bg-accent text-white hover:bg-accent-dark hover:shadow-accent/40'
                 : 'bg-stone text-ink/40 cursor-not-allowed'
             "
+            @click="$emit('save')"
           >
             Save Changes
           </button>

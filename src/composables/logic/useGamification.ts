@@ -33,7 +33,7 @@ export function useGamification() {
       try {
         const parsed = JSON.parse(stored);
         // migration for old state removing dailyGoal if exists in stored
-        const { dailyGoal, ...rest } = parsed;
+        const { dailyGoal: _, ...rest } = parsed;
         state.value = { ...DEFAULT_STATE, ...rest };
       } catch (e) {
         console.error('Failed to parse gamification data', e);

@@ -69,13 +69,13 @@ const tabs = [
               <button
                 v-for="tab in tabs"
                 :key="tab.id"
-                @click="activeTab = tab.id"
                 class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
                 :class="
                   activeTab === tab.id
                     ? 'bg-stone shadow-sm text-accent'
                     : 'text-ink/60 hover:bg-stone/50 hover:text-ink'
                 "
+                @click="activeTab = tab.id"
               >
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
@@ -104,8 +104,8 @@ const tabs = [
                 {{ tabs.find((t) => t.id === activeTab)?.label }}
               </h3>
               <button
-                @click="close"
                 class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-ink/40 hover:text-ink transition-colors"
+                @click="close"
               >
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
