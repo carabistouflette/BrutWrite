@@ -10,17 +10,23 @@ interface BaseSuggestionProps {
     clientRect?: (() => DOMRect | null) | null;
 }
 
+interface MentionItem {
+    id: string;
+    name: string;
+    role?: string;
+}
+
 interface SuggestionProps extends BaseSuggestionProps {
     editor: Editor;
     query: string;
-    items: any[];
-    command: (props: any) => void;
+    items: MentionItem[];
+    command: (props: { id: string; label: string }) => void;
     range: { from: number; to: number };
 }
 
 interface SuggestionKeyDownProps extends BaseSuggestionProps {
     event: KeyboardEvent;
-    view: any;
+    view: any; // ProseMirror view
     range: { from: number; to: number };
 }
 
@@ -55,7 +61,7 @@ export function useTiptapMentions() {
                         }
 
                         const instances = tippy(document.body, {
-                            getReferenceClientRect: props.clientRect as any,
+                            getReferenceClientRect: props.clientRect as () => DOMRect,
                             appendTo: () => document.body,
                             content: component.element as Element,
                             showOnCreate: true,
@@ -73,7 +79,7 @@ export function useTiptapMentions() {
                         }
 
                         popup.setProps({
-                            getReferenceClientRect: props.clientRect as any,
+                            getReferenceClientRect: props.clientRect as () => DOMRect,
                         });
                     },
                     onKeyDown(props: SuggestionKeyDownProps) {
