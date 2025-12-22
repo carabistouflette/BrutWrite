@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useCalendar, type CalendarSystem, type MonthConfig } from '../../composables/useCalendar';
+import CustomMonthEditor from './CustomMonthEditor.vue';
 
 const emit = defineEmits(['close']);
 
@@ -17,14 +18,6 @@ const activeTab = ref<CalendarSystem>(currentSystem.value);
 const localStartYear = ref(startYear.value);
 // Deep copy for editing
 const localCustomMonths = ref<MonthConfig[]>(JSON.parse(JSON.stringify(customMonths.value)));
-
-function addMonth() {
-    localCustomMonths.value.push({ name: 'New Month', days: 30 });
-}
-
-function removeMonth(index: number) {
-    localCustomMonths.value.splice(index, 1);
-}
 
 function apply() {
     setSystem(activeTab.value);
@@ -76,21 +69,10 @@ function apply() {
                 </div>
 
                 <!-- Custom Editor -->
-                <div class="custom-editor" v-if="activeTab === 'custom'">
-                    <label>Months Configuration</label>
-                    <div class="months-list">
-                        <div 
-                            v-for="(month, idx) in localCustomMonths" 
-                            :key="idx"
-                            class="month-row"
-                        >
-                            <input type="text" v-model="month.name" placeholder="Name" class="month-name" />
-                            <input type="number" v-model="month.days" placeholder="Days" class="month-days" />
-                            <button class="remove-btn" @click="removeMonth(idx)" title="Remove">&times;</button>
-                        </div>
-                    </div>
-                    <button class="add-btn" @click="addMonth">+ Add Month</button>
-                </div>
+                <CustomMonthEditor
+                    v-if="activeTab === 'custom'"
+                    v-model="localCustomMonths"
+                />
             </div>
 
             <footer>
@@ -209,59 +191,6 @@ input {
 
 .desc p { margin: 0 0 0.5rem 0; }
 .desc p:last-child { margin: 0; }
-
-/* Custom Editor Styles */
-.custom-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    border-top: 1px solid var(--border-color);
-    padding-top: 1rem;
-}
-
-.months-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    max-height: 350px;
-    overflow-y: auto;
-    padding-right: 4px;
-}
-
-.month-row {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.month-name { flex: 2; }
-.month-days { flex: 1; }
-
-.remove-btn {
-    background: transparent;
-    border: none;
-    color: var(--color-danger);
-    font-size: 1.25rem;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0 4px;
-}
-
-.add-btn {
-    align-self: flex-start;
-    background: transparent;
-    border: 1px dashed var(--border-color);
-    color: var(--text-secondary);
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    margin-top: 0.5rem;
-}
-
-.add-btn:hover {
-    border-color: var(--text-primary);
-    color: var(--text-primary);
-}
 
 footer {
     padding: 1rem;
