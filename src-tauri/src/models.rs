@@ -192,35 +192,39 @@ impl ProjectMetadata {
     }
 
     pub fn remove_node_recursively(&mut self, node_id: String) -> Vec<String> {
-        let mut ids_to_remove = vec![node_id.clone()];
-        let mut i = 0;
+        // Build efficient lookup
+        let mut children_map: std::collections::HashMap<Option<String>, Vec<String>> =
+            std::collections::HashMap::new();
 
-        // Find all descendants
-        while i < ids_to_remove.len() {
-            let current = ids_to_remove[i].clone();
-            for c in &self.manifest.chapters {
-                if c.parent_id == Some(current.clone()) {
-                    if !ids_to_remove.contains(&c.id) {
-                        ids_to_remove.push(c.id.clone());
-                    }
-                }
-            }
-            i += 1;
+        for c in &self.manifest.chapters {
+            children_map
+                .entry(c.parent_id.clone())
+                .or_default()
+                .push(c.id.clone());
         }
 
-        // Collect filenames
-        let filenames: Vec<String> = self
-            .manifest
-            .chapters
-            .iter()
-            .filter(|c| ids_to_remove.contains(&c.id))
-            .map(|c| c.filename.clone())
-            .collect();
+        let mut ids_to_remove = std::collections::HashSet::new();
+        let mut stack = vec![node_id];
 
-        // Remove them
-        self.manifest
-            .chapters
-            .retain(|c| !ids_to_remove.contains(&c.id));
+        while let Some(current_id) = stack.pop() {
+            if ids_to_remove.insert(current_id.clone()) {
+                if let Some(children) = children_map.get(&Some(current_id)) {
+                    stack.extend(children.clone());
+                }
+            }
+        }
+
+        // Collect filenames and remove chapters
+        // efficient retain
+        let mut filenames = Vec::new();
+        self.manifest.chapters.retain(|c| {
+            if ids_to_remove.contains(&c.id) {
+                filenames.push(c.filename.clone());
+                false
+            } else {
+                true
+            }
+        });
 
         filenames
     }
