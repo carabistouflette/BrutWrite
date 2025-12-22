@@ -6,6 +6,7 @@ pub struct ResearchArtifact {
     pub path: String,
     pub name: String,
     pub file_type: String, // "pdf", "image", "markdown", "text", "other"
+    pub tags: Vec<String>,
 }
 
 impl ResearchArtifact {
@@ -15,6 +16,7 @@ impl ResearchArtifact {
             path,
             name,
             file_type,
+            tags: Vec::new(),
         }
     }
 }
