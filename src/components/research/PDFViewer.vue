@@ -139,7 +139,7 @@ watch(
 <template>
   <div
     ref="containerRef"
-    class="flex-1 overflow-auto bg-surface-200 relative custom-scrollbar cursor-grab active:cursor-grabbing flex"
+    class="flex-1 overflow-auto bg-stone/20 relative custom-scrollbar cursor-grab active:cursor-grabbing flex"
     @mousedown="onMouseDown"
     @mousemove="onMouseMove"
     @mouseup="onMouseUp"
@@ -147,10 +147,10 @@ watch(
   >
     <!-- Floating Toolbar -->
     <div
-      class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1a1a1a] shadow-xl border border-white/20 rounded-full px-4 py-2 flex items-center gap-4 z-50 backdrop-blur-md bg-opacity-90"
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-paper shadow-xl border border-ink/10 rounded-full px-4 py-2 flex items-center gap-4 z-50 backdrop-blur-md"
     >
       <button
-        class="text-white/70 hover:text-white hover:scale-110 transition-all font-mono text-xs"
+        class="text-ink/60 hover:text-ink hover:scale-110 transition-all font-mono text-xs"
         title="Zoom Out"
         @click="handleZoomOut"
       >
@@ -170,11 +170,11 @@ watch(
           <line x1="8" y1="11" x2="14" y2="11"></line>
         </svg>
       </button>
-      <span class="text-[10px] font-bold text-white/50 w-8 text-center"
+      <span class="text-[10px] font-bold text-ink/40 w-8 text-center"
         >{{ Math.round(scale * 100) }}%</span
       >
       <button
-        class="text-white/70 hover:text-white hover:scale-110 transition-all font-mono text-xs"
+        class="text-ink/60 hover:text-ink hover:scale-110 transition-all font-mono text-xs"
         title="Zoom In"
         @click="handleZoomIn"
       >
@@ -197,7 +197,7 @@ watch(
       </button>
       <!-- Fit Width -->
       <button
-        class="text-white/70 hover:text-white hover:scale-110 transition-all font-mono text-xs border-l border-white/20 pl-4 ml-1"
+        class="text-ink/60 hover:text-ink hover:scale-110 transition-all font-mono text-xs border-l border-ink/10 pl-4 ml-1"
         title="Fit Width"
         @click="handleFitWidth"
       >
@@ -222,7 +222,7 @@ watch(
 
     <div
       v-if="isLoading"
-      class="absolute inset-0 flex flex-col items-center justify-center bg-surface-50/80 backdrop-blur-sm z-10"
+      class="absolute inset-0 flex flex-col items-center justify-center bg-paper/80 backdrop-blur-sm z-10"
     >
       <div class="w-12 h-1 border-2 border-ink bg-ink/10 relative overflow-hidden mb-4">
         <div
@@ -236,7 +236,7 @@ watch(
 
     <div
       v-if="error"
-      class="max-w-md w-full p-6 border-4 border-ink bg-white shadow-[8px_8px_0_var(--color-ink)] m-auto"
+      class="max-w-md w-full p-6 border-4 border-ink bg-paper shadow-[8px_8px_0_var(--color-ink)] m-auto"
     >
       <div class="text-2xl mb-2">⚠️</div>
       <div class="text-xs font-black uppercase tracking-widest text-red-500 mb-2">
@@ -246,10 +246,10 @@ watch(
     </div>
 
     <div v-show="!isLoading && !error" class="relative group m-auto p-8">
-      <div class="absolute inset-0 bg-ink translate-x-2 translate-y-2 opacity-10"></div>
+      <div class="absolute inset-0 bg-ink translate-x-2 translate-y-2 opacity-5"></div>
       <canvas
         ref="canvasRef"
-        class="relative border-2 border-ink shadow-2xl bg-white"
+        class="relative border-2 border-ink shadow-2xl bg-paper"
         :style="{ maxWidth: 'none' }"
       ></canvas>
     </div>
@@ -273,10 +273,10 @@ watch(
   width: 10px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: var(--color-surface-200);
+  background: var(--stone);
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color-ink);
-  border: 3px solid var(--color-surface-200);
+  background: var(--ink);
+  opacity: 0.2;
 }
 </style>
