@@ -52,25 +52,8 @@ export function useProjectNodeOperations() {
   const deleteNode = async (id: string) => {
     if (!projectId.value) return;
 
-    const node = nodeMap.value.get(id);
-    if (!node) return;
-
-    const collectFilenames = (n: FileNode, acc: string[]) => {
-      if (n.filename) acc.push(n.filename);
-      if (n.children) {
-        n.children.forEach((child) => collectFilenames(child, acc));
-      }
-    };
-
-    const filesToDelete: string[] = [];
-    collectFilenames(node, filesToDelete);
-
     try {
-      const metadata = await projectApi.deleteNode(
-        projectId.value,
-        id,
-        filesToDelete
-      );
+      const metadata = await projectApi.deleteNode(projectId.value, id);
 
       // Atomic sync from backend
       projectData.value = reconstructHierarchy(metadata.manifest.chapters);

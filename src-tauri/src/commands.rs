@@ -251,23 +251,27 @@ pub async fn delete_node(
     state: State<'_, AppState>,
     project_id: Uuid,
     id: String,
-    filenames_to_delete: Vec<String>,
 ) -> Result<ProjectMetadata, String> {
     let (root_path, _) = get_project_context(&state, project_id)?;
 
-    // 1. Delete files from disk
-    for filename in filenames_to_delete {
+    let mut filenames = Vec::new();
+
+    // 1. Remove from manifest recursively and get filenames
+    let new_metadata = mutate_project_metadata(&state, project_id, |metadata| {
+        filenames = metadata.remove_node_recursively(id);
+        Ok(())
+    })?;
+
+    // 2. Delete files from disk
+    for filename in filenames {
         let file_path = root_path.join("manuscript").join(filename);
         if file_path.exists() {
-            std::fs::remove_file(file_path).map_err(|e| e.to_string())?;
+            // Log error but don't fail the request if file deletion fails (orphaned file is better than broken state)
+            let _ = std::fs::remove_file(file_path);
         }
     }
 
-    // 2. Remove from manifest recursively
-    mutate_project_metadata(&state, project_id, |metadata| {
-        metadata.remove_node_recursively(id);
-        Ok(())
-    })
+    Ok(new_metadata)
 }
 
 #[tauri::command]

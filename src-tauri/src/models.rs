@@ -191,7 +191,7 @@ impl ProjectMetadata {
         }
     }
 
-    pub fn remove_node_recursively(&mut self, node_id: String) {
+    pub fn remove_node_recursively(&mut self, node_id: String) -> Vec<String> {
         let mut ids_to_remove = vec![node_id.clone()];
         let mut i = 0;
 
@@ -208,10 +208,21 @@ impl ProjectMetadata {
             i += 1;
         }
 
+        // Collect filenames
+        let filenames: Vec<String> = self
+            .manifest
+            .chapters
+            .iter()
+            .filter(|c| ids_to_remove.contains(&c.id))
+            .map(|c| c.filename.clone())
+            .collect();
+
         // Remove them
         self.manifest
             .chapters
             .retain(|c| !ids_to_remove.contains(&c.id));
+
+        filenames
     }
 }
 
@@ -227,5 +238,56 @@ mod tests {
         assert_eq!(count_words("Hello  world"), 2); // multiple spaces
         assert_eq!(count_words(""), 0);
         assert_eq!(count_words("<div>Nested <span>content</span></div>"), 2);
+    }
+
+    fn create_dummy_chapter(id: &str, parent: Option<&str>, filename: &str) -> Chapter {
+        Chapter {
+            id: id.to_string(),
+            parent_id: parent.map(|s| s.to_string()),
+            title: "Title".to_string(),
+            filename: filename.to_string(),
+            word_count: 0,
+            order: 0,
+            chronological_date: None,
+            abstract_timeframe: None,
+            duration: None,
+            plotline_tag: None,
+            depends_on: None,
+            pov_character_id: None,
+        }
+    }
+
+    #[test]
+    fn test_remove_node_recursively() {
+        let mut metadata = ProjectMetadata::new("Test".to_string(), "Author".to_string());
+
+        // Tree:
+        // root
+        //  - c1 (c1.md)
+        //     - c1_1 (c1_1.md)
+        //  - c2 (c2.md)
+
+        metadata
+            .manifest
+            .chapters
+            .push(create_dummy_chapter("c1", None, "c1.md"));
+        metadata
+            .manifest
+            .chapters
+            .push(create_dummy_chapter("c1_1", Some("c1"), "c1_1.md"));
+        metadata
+            .manifest
+            .chapters
+            .push(create_dummy_chapter("c2", None, "c2.md"));
+
+        let removed_files = metadata.remove_node_recursively("c1".to_string());
+
+        assert_eq!(removed_files.len(), 2);
+        assert!(removed_files.contains(&"c1.md".to_string()));
+        assert!(removed_files.contains(&"c1_1.md".to_string()));
+        assert!(!removed_files.contains(&"c2.md".to_string()));
+
+        assert_eq!(metadata.manifest.chapters.len(), 1);
+        assert_eq!(metadata.manifest.chapters[0].id, "c2");
     }
 }
