@@ -77,6 +77,16 @@ export const useResearchStore = defineStore('research', () => {
     }
   }
 
+  async function renameArtifact(id: string, newName: string) {
+    try {
+      await invoke('rename_research_artifact', { id, newName });
+      await fetchArtifacts();
+    } catch (error) {
+      console.error('Failed to rename artifact:', error);
+      throw error;
+    }
+  }
+
   // Listen for backend updates
   listen('research-update', () => {
     fetchArtifacts();
@@ -92,5 +102,6 @@ export const useResearchStore = defineStore('research', () => {
     updateArtifact,
     createNote,
     saveNoteContent,
+    renameArtifact,
   };
 });
