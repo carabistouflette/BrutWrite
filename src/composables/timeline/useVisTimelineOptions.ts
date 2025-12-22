@@ -1,4 +1,4 @@
-import { useCalendar } from '../useCalendar';
+import { useCalendar } from './useCalendar';
 import { type VisTimelineItem } from './useVisTimelineData';
 
 

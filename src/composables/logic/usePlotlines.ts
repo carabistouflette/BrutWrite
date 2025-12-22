@@ -1,4 +1,4 @@
-import { useProjectData } from '../useProjectData';
+import { useProjectData } from './useProjectData';
 import type { Plotline } from '../../types';
 
 // Default plotline colors for auto-assignment

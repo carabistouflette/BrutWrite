@@ -1,5 +1,5 @@
-import type { FileNode } from '../types';
-import { useProjectData } from './useProjectData';
+import type { FileNode } from '../../types';
+import { useProjectData } from '../logic/useProjectData';
 
 export function useTimelineSort() {
     const { projectData, updateStructure } = useProjectData();

@@ -1,7 +1,7 @@
 import { projectCharacters } from '../state/projectState';
 import { projectApi } from '../../api/project';
 import type { Character } from '../../types';
-import { useAppStatus } from '../useAppStatus';
+import { useAppStatus } from '../ui/useAppStatus';
 
 export function useCharacters() {
     const { notifyError } = useAppStatus();

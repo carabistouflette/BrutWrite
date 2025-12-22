@@ -1,5 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue';
-import type { ContextMenuPosition } from '../types';
+import type { ContextMenuPosition } from '../../types';
 
 export function useContextMenu() {
     const showMenu = ref(false);

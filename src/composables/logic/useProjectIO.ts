@@ -1,6 +1,6 @@
 import { projectApi } from '../../api/project';
-import { useAppStatus } from '../useAppStatus';
-import { useCharacters } from '../useCharacters';
+import { useAppStatus } from '../ui/useAppStatus';
+import { useCharacters } from './useCharacters';
 import { reconstructHierarchy } from '../../utils/tree';
 import type { ProjectSettings, Plotline } from '../../types';
 import { 

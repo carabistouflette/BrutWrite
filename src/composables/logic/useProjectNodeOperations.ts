@@ -1,6 +1,6 @@
 import type { FileNode } from '../../types';
 import { projectApi } from '../../api/project';
-import { useAppStatus } from '../useAppStatus';
+import { useAppStatus } from '../ui/useAppStatus';
 import { reconstructHierarchy } from '../../utils/tree';
 import { projectData, projectId, activeId, nodeMap } from '../state/projectState';
 import { useProjectSync } from './useProjectSync';

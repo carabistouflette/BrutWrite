@@ -2,7 +2,7 @@ import { ref, computed, watch } from 'vue';
 import { useProjectData } from './useProjectData';
 import { useCharacters } from './useCharacters';
 import { CharacterRole, type Character } from '../../types';
-import { useAppStatus } from '../useAppStatus';
+import { useAppStatus } from '../ui/useAppStatus';
 
 export function useCharacterSheetLogic(emit: (event: 'close') => void) {
     const { projectId } = useProjectData();

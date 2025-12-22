@@ -1,6 +1,6 @@
 import { type Ref, watch } from 'vue';
 import { DataSet } from 'vis-data';
-import { useTimeline } from '../useTimeline';
+import { useTimeline } from './useTimeline';
 import { useTimeHelpers } from '../logic/useTimeHelpers';
 import { Timeline, type TimelineItemType } from 'vis-timeline';
 import type { Plotline } from '../../types';

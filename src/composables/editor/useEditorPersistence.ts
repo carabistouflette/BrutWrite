@@ -1,7 +1,7 @@
 import { type Editor } from '@tiptap/vue-3';
 import { projectApi } from '../../api/project';
-import { useAppStatus } from '../useAppStatus';
-import { useProjectData } from '../useProjectData';
+import { useAppStatus } from '../../composables/ui/useAppStatus';
+import { useProjectData } from '../../composables/logic/useProjectData';
 import type { Chapter } from '../../types';
 import type { Ref } from 'vue';
 

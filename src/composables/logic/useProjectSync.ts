@@ -1,5 +1,5 @@
 import { projectApi } from '../../api/project';
-import { useAppStatus } from '../useAppStatus';
+import { useAppStatus } from '../ui/useAppStatus';
 import { projectToManifest } from '../../utils/tree';
 import { 
     projectData, 
