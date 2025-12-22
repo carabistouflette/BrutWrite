@@ -153,8 +153,12 @@ pub fn save_chapter_content<P: AsRef<Path>>(
         // 1. Write content
         fs::write(&chapter_path, content)?;
 
-        // 2. Calculate word count server-side
-        let word_count = content.split_whitespace().count() as u32;
+        // 2. Calculate word count server-side (strip HTML)
+        let plain_text = {
+            let re = regex::Regex::new(r"<[^>]*>").unwrap();
+            re.replace_all(content, " ")
+        };
+        let word_count = plain_text.split_whitespace().count() as u32;
 
         // 3. Update Manifest Word Count
         if let Some(chapter) = metadata

@@ -207,7 +207,12 @@ pub async fn save_chapter(
             .iter_mut()
             .find(|c| c.id == chapter_id)
         {
-            chapter.word_count = content.split_whitespace().count() as u32;
+            // Strip HTML tags before counting words
+            let plain_text = {
+                let re = regex::Regex::new(r"<[^>]*>").unwrap();
+                re.replace_all(&content, " ")
+            };
+            chapter.word_count = plain_text.split_whitespace().count() as u32;
             Ok(())
         } else {
             Err("Chapter not found in manifest".to_string())
