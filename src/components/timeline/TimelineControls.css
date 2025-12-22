@@ -1,0 +1,95 @@
+/* TimelineControls Styles */
+
+.timeline-controls {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.controls-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.group-label {
+    font-size: 0.688rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    margin-right: 6px;
+}
+
+.control-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.control-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.control-btn.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.control-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.btn-label {
+    display: none;
+}
+
+@media (min-width: 900px) {
+    .btn-label {
+        display: inline;
+    }
+}
+
+.zoom-controls {
+    display: flex;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.zoom-controls .control-btn {
+    border: none;
+    border-radius: 0;
+    padding: 6px 8px;
+}
+
+.zoom-controls .control-btn:first-child {
+    border-right: 1px solid var(--border-color);
+}
+
+.action-btn {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: var(--color-primary);
+}
+
+.action-btn:hover {
+    background: var(--color-primary);
+    color: white;
+}
