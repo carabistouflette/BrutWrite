@@ -111,3 +111,49 @@ pub async fn update_note_content(
         Err(crate::errors::Error::ArtifactNotFound(id))
     }
 }
+#[tauri::command]
+pub async fn rename_research_artifact(
+    state: State<'_, ResearchState>,
+    id: String,
+    new_name: String,
+) -> crate::errors::Result<()> {
+    let mut inner = state.inner.lock().await;
+    if let Some(artifact) = inner.artifacts.get_mut(&id) {
+        let old_path = PathBuf::from(&artifact.path);
+        let parent = old_path
+            .parent()
+            .ok_or_else(|| crate::errors::Error::Research("Invalid artifact path".to_string()))?;
+
+        let mut new_filename = new_name.clone();
+        // Preserving extension if missing in new name
+        if let Some(ext) = old_path.extension() {
+            if !new_name
+                .to_lowercase()
+                .ends_with(&ext.to_string_lossy().to_lowercase())
+            {
+                new_filename.push('.');
+                new_filename.push_str(&ext.to_string_lossy());
+            }
+        }
+
+        let new_path = parent.join(&new_filename);
+        if new_path.exists() {
+            return Err(crate::errors::Error::Research(
+                "Destination already exists".to_string(),
+            ));
+        }
+
+        tokio::fs::rename(&old_path, &new_path).await?;
+
+        artifact.name = new_name;
+        artifact.path = new_path.to_string_lossy().to_string();
+
+        // Persist
+        if let Some(path) = &inner.root_path {
+            storage::save_index(path, &inner.artifacts)?;
+        }
+        Ok(())
+    } else {
+        Err(crate::errors::Error::ArtifactNotFound(id))
+    }
+}
