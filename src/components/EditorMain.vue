@@ -7,7 +7,6 @@ import { useTiptapEditor } from '../composables/useTiptapEditor'
 import { useSettings } from '../composables/useSettings'
 
 const { activeId, activeChapter, projectId, renameNode, updateNodeStats } = useProjectData()
-const currentProjectId = projectId.value; // Capture the ID for use in unmount/cleanup
 const { addWords } = useGamification()
 const { settings } = useSettings()
 
@@ -45,13 +44,13 @@ const {
 // Watch Active ID to reload content
 watch(activeId, async (newId, oldId) => {
     // 1. Save old chapter if it exists and has changes
-    if (oldId && currentProjectId) {
-        await saveChapter(currentProjectId, oldId);
+    if (oldId && projectId.value) {
+        await saveChapter(projectId.value, oldId);
     }
 
     // 2. Load new chapter
-    if (newId && currentProjectId) {
-       await loadChapter(currentProjectId, newId);
+    if (newId && projectId.value) {
+       await loadChapter(projectId.value, newId);
        
        // Focus editor after load to ensure seamless writing experience
        setTimeout(() => {
@@ -66,8 +65,8 @@ let saveInterval: ReturnType<typeof setInterval> | undefined;
         if (saveInterval) clearInterval(saveInterval);
         const intervalMs = (settings.value.general.autoSaveInterval || 30) * 1000;
         saveInterval = setInterval(async () => {
-            if (activeId.value && currentProjectId) {
-                await saveChapter(currentProjectId, activeId.value);
+            if (activeId.value && projectId.value) {
+                await saveChapter(projectId.value, activeId.value);
             }
         }, intervalMs);
     };
@@ -88,8 +87,8 @@ onBeforeUnmount(async () => {
     clearInterval(saveInterval)
     
     // Final save on unmount if there are changes
-    if (activeId.value && currentProjectId) {
-        await saveChapter(currentProjectId, activeId.value);
+    if (activeId.value && projectId.value) {
+        await saveChapter(projectId.value, activeId.value);
     }
     
     editor.value?.destroy()

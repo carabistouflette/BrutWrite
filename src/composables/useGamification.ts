@@ -121,7 +121,9 @@ export function useGamification() {
     const bestDay = computed(() => getBestDay(state.value.history));
 
     // Init
-    loadState();
+    if (!state.value.history.length && state.value.lastSessionDate === DEFAULT_STATE.lastSessionDate) {
+        loadState();
+    }
 
     return {
         dailyGoal: computed(() => settings.value.general.dailyGoal),
