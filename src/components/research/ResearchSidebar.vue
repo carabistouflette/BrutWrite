@@ -237,7 +237,7 @@
     <!-- Context Menu -->
     <ContextMenu :show="showMenu" :x="menuPos.x" :y="menuPos.y" @close="closeMenu">
       <div
-        class="px-3 py-2 text-[10px] font-black uppercase text-zinc-500 border-b border-zinc-800/50 mb-1"
+        class="px-3 py-2 text-[10px] font-black uppercase text-ink/40 border-b border-ink/10 mb-1"
       >
         ACTIONS
       </div>

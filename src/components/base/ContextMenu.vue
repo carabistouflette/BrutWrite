@@ -52,11 +52,9 @@ const handleClose = () => {
 @reference "../../style.css";
 
 .context-menu-glass {
-  background-color: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  @apply bg-paper/90 backdrop-blur-xl;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+  border: 1px solid theme('colors.ink / 10%');
 }
 
 :deep(.menu-item) {
