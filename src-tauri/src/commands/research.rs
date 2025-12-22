@@ -1,25 +1,34 @@
 use crate::models::research::ResearchArtifact;
 use crate::research::ResearchState;
-use crate::{errors::Result, storage};
+use crate::storage;
 use std::path::PathBuf;
 use tauri::State;
 
 #[tauri::command]
 pub async fn get_research_artifacts(
     state: State<'_, ResearchState>,
-) -> Result<Vec<ResearchArtifact>> {
-    let artifacts = state.artifacts.lock().await;
-    Ok(artifacts.values().cloned().collect())
+) -> crate::errors::Result<Vec<ResearchArtifact>> {
+    let inner = state.inner.lock().await;
+    Ok(inner.artifacts.values().cloned().collect())
 }
 
 #[tauri::command]
-pub async fn add_research_files(state: State<'_, ResearchState>, paths: Vec<String>) -> Result<()> {
-    let root_path = state.root_path.lock().await.clone();
+pub async fn add_research_files(
+    state: State<'_, ResearchState>,
+    paths: Vec<String>,
+) -> crate::errors::Result<()> {
+    let root_path = {
+        let inner = state.inner.lock().await;
+        inner.root_path.clone()
+    };
+
     if let Some(root) = root_path {
         for path_str in paths {
             let path = PathBuf::from(&path_str);
             if path.exists() {
-                let file_name = path.file_name().unwrap();
+                let file_name = path.file_name().ok_or_else(|| {
+                    crate::errors::Error::Validation("Invalid file path".to_string())
+                })?;
                 let dest = root.join(file_name);
                 tokio::fs::copy(path, dest).await?;
             }
@@ -32,15 +41,14 @@ pub async fn add_research_files(state: State<'_, ResearchState>, paths: Vec<Stri
 pub async fn update_research_artifact(
     state: State<'_, ResearchState>,
     artifact: ResearchArtifact,
-) -> Result<()> {
-    let mut artifacts = state.artifacts.lock().await;
-    if artifacts.contains_key(&artifact.id) {
-        artifacts.insert(artifact.id.clone(), artifact);
+) -> crate::errors::Result<()> {
+    let mut inner = state.inner.lock().await;
+    if inner.artifacts.contains_key(&artifact.id) {
+        inner.artifacts.insert(artifact.id.clone(), artifact);
 
         // Persist
-        let root = state.root_path.lock().await.clone();
-        if let Some(path) = root {
-            storage::save_index(&path, &artifacts)?;
+        if let Some(path) = &inner.root_path {
+            storage::save_index(path, &inner.artifacts)?;
         }
     }
     Ok(())
@@ -50,9 +58,9 @@ pub async fn update_research_artifact(
 pub async fn create_research_note(
     state: State<'_, ResearchState>,
     name: String,
-) -> Result<ResearchArtifact> {
-    let root = state.root_path.lock().await.clone();
-    if let Some(path) = root {
+) -> crate::errors::Result<ResearchArtifact> {
+    let mut inner = state.inner.lock().await;
+    if let Some(path) = inner.root_path.clone() {
         let mut final_name = name;
         if !final_name.ends_with(".md") {
             final_name.push_str(".md");
@@ -75,11 +83,10 @@ pub async fn create_research_note(
         );
 
         // The watcher will eventually pick it up, but we can add it to state now for responsiveness
-        {
-            let mut artifacts = state.artifacts.lock().await;
-            artifacts.insert(artifact.id.clone(), artifact.clone());
-            storage::save_index(&path, &artifacts)?;
-        }
+        inner
+            .artifacts
+            .insert(artifact.id.clone(), artifact.clone());
+        storage::save_index(&path, &inner.artifacts)?;
 
         return Ok(artifact);
     }
@@ -91,10 +98,10 @@ pub async fn update_note_content(
     state: State<'_, ResearchState>,
     id: String,
     content: String,
-) -> Result<()> {
+) -> crate::errors::Result<()> {
     let artifact = {
-        let artifacts = state.artifacts.lock().await;
-        artifacts.get(&id).cloned()
+        let inner = state.inner.lock().await;
+        inner.artifacts.get(&id).cloned()
     };
 
     if let Some(artifact) = artifact {
