@@ -1,12 +1,13 @@
 import { ref, shallowRef } from 'vue';
-import type { FileNode, ProjectSettings } from '../../types';
+import type { FileNode, ProjectSettings, Character, Plotline } from '../../types';
 
 // Singleton state
 export const projectData = ref<FileNode[]>([]);
 export const activeId = ref<string | undefined>(undefined);
 export const projectId = ref<string | undefined>(undefined); // Store active project UUID
 export const projectSettings = ref<ProjectSettings | null>(null);
-export const projectPlotlines = ref<any[]>([]);
+export const projectPlotlines = ref<Plotline[]>([]);
+export const projectCharacters = ref<Character[]>([]);
 
 // Optimized lookups
 export const nodeMap = shallowRef(new Map<string, FileNode>());
@@ -14,3 +15,5 @@ export const flatNodes = shallowRef<FileNode[]>([]);
 
 // Shared debouncers and pending updates (Singleton)
 export const pendingMetadataUpdates = new Map<string, any>();
+export const syncManifestTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+export const metadataTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
