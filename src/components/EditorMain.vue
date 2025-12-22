@@ -6,7 +6,7 @@ import { useGamification } from '../composables/useGamification'
 import { useTiptapEditor } from '../composables/useTiptapEditor'
 import { useSettings } from '../composables/useSettings'
 
-const { activeId, activeChapter, projectId, renameNode } = useProjectData()
+const { activeId, activeChapter, projectId, renameNode, updateNodeStats } = useProjectData()
 const currentProjectId = projectId.value; // Capture the ID for use in unmount/cleanup
 const { addWords } = useGamification()
 const { settings } = useSettings()
@@ -33,7 +33,13 @@ const {
   loadChapter, 
   saveChapter 
 } = useTiptapEditor(
-    (delta) => addWords(delta) // Callback for gamification
+    (delta) => {
+        addWords(delta);
+        if (activeId.value) {
+            const currentCount = activeChapter.value?.word_count || 0;
+            updateNodeStats(activeId.value, currentCount + delta);
+        }
+    }
 )
 
 // Watch Active ID to reload content

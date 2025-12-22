@@ -4,7 +4,7 @@ import ConfirmationModal from '../base/ConfirmationModal.vue';
 import { useProjectData } from '../../composables/useProjectData';
 import { useTimeline } from '../../composables/useTimeline';
 
-const { updateStructure } = useProjectData();
+const { updateStructure, nodeMap } = useProjectData();
 const { assignedScenes } = useTimeline();
 
 const showModal = ref(false);
@@ -29,21 +29,17 @@ async function applyChronologicalOrder() {
         });
 
         // Rebuild project data in chronological order
-        // This preserves the tree structure but reorders roots
-        const newOrder = sorted.map((scene, idx) => ({
-            ...scene,
-            order: idx,
-        }));
-
-        // For simplicity, we create a flat structure
-        // A more sophisticated implementation would preserve parent-child relationships
-        const reorderedData = newOrder.map(scene => ({
-            id: scene.id,
-            name: scene.title,
-            filename: scene.filename,
-            word_count: scene.word_count,
-            children: [],
-        }));
+        // We use the nodeMap to get the full node data
+        const reorderedData = sorted.map(scene => {
+            const fullNode = nodeMap.value.get(scene.id);
+            return fullNode || {
+                id: scene.id,
+                name: scene.title,
+                children: [],
+                filename: `${scene.id}.md`,
+                word_count: 0
+            };
+        });
 
         await updateStructure(reorderedData);
         close();

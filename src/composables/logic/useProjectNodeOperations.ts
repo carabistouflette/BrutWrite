@@ -2,7 +2,7 @@ import type { FileNode } from '../../types';
 import { projectApi } from '../../api/project';
 import { useAppStatus } from '../useAppStatus';
 import { reconstructHierarchy } from '../../utils/tree';
-import { projectData, projectId, activeId } from '../state/projectState';
+import { projectData, projectId, activeId, nodeMap } from '../state/projectState';
 import { useProjectSync } from './useProjectSync';
 
 export function useProjectNodeOperations() {
@@ -36,10 +36,10 @@ export function useProjectNodeOperations() {
         }
     };
 
-    const deleteNode = async (id: string, nodeMap: Map<string, FileNode>) => {
+    const deleteNode = async (id: string) => {
         if (!projectId.value) return;
 
-        const node = nodeMap.get(id);
+        const node = nodeMap.value.get(id);
         if (!node) return;
 
         const collectFilenames = (n: FileNode, acc: string[]) => {
@@ -64,8 +64,8 @@ export function useProjectNodeOperations() {
         }
     };
 
-    const renameNode = async (id: string, newName: string, nodeMap: Map<string, FileNode>) => {
-        const node = nodeMap.get(id);
+    const renameNode = async (id: string, newName: string) => {
+        const node = nodeMap.value.get(id);
         if (node && node.name !== newName) {
             node.name = newName;
             syncNodeMetadataDebounced(id, { title: newName });
@@ -77,15 +77,15 @@ export function useProjectNodeOperations() {
         syncManifestDebounced();
     };
 
-    const updateNodeStats = (id: string, wordCount: number, nodeMap: Map<string, FileNode>) => {
-        const node = nodeMap.get(id);
+    const updateNodeStats = (id: string, wordCount: number) => {
+        const node = nodeMap.value.get(id);
         if (node && node.word_count !== wordCount) {
             node.word_count = wordCount;
         }
     };
 
-    const updateNodeTemporal = async (id: string, updates: Partial<FileNode>, nodeMap: Map<string, FileNode>) => {
-        const node = nodeMap.get(id);
+    const updateNodeTemporal = async (id: string, updates: Partial<FileNode>) => {
+        const node = nodeMap.value.get(id);
         if (node) {
             // Only allow temporal updates here
             const allowed = ['chronological_date', 'abstract_timeframe', 'duration', 'plotline_tag', 'depends_on', 'pov_character_id'] as const;

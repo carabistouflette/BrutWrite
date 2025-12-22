@@ -5,6 +5,7 @@ const numberFormatter = new Intl.NumberFormat();
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { FileNode } from '../types';
+import { useProjectData } from '../composables/useProjectData';
 
 const props = defineProps<{
   element: FileNode;
@@ -16,14 +17,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:editName', value: string): void;
-  (e: 'select', id: string): void;
   (e: 'context-menu', payload: { e: MouseEvent, id: string }): void;
-  (e: 'delete', id: string): void;
   (e: 'submit-rename', id: string): void;
   (e: 'cancel-rename'): void;
   (e: 'request-rename', id: string): void;
 }>();
 
+const { selectNode, deleteNode } = useProjectData();
 const inputRef = ref<HTMLInputElement | null>(null);
 
 
@@ -36,7 +36,7 @@ defineExpose({
   <div 
     class="group relative flex justify-between items-center py-2 px-3 transition-all duration-300 ease-out active:scale-[0.98]"
     :class="{ 'active-pop': isActive }"
-    @click.stop="emit('select', element.id)"
+    @click.stop="selectNode(element.id)"
     @contextmenu.prevent="(e) => emit('context-menu', { e, id: element.id })"
   >
     <!-- Soft Background Highlight on Hover -->
@@ -96,7 +96,7 @@ defineExpose({
       class="transition-all duration-300 flex items-center z-20 absolute right-2 opacity-0 translate-x-1 pointer-events-none group-hover/row:opacity-100 group-hover/row:translate-x-0 group-hover/row:pointer-events-auto"
     >
         <button 
-            @click.stop="emit('delete', element.id)"
+            @click.stop="deleteNode(element.id)"
             class="w-8 h-8 flex items-center justify-center text-ink/20 hover:text-red-500 hover:bg-white border border-transparent hover:border-black/5 rounded-full transition-all duration-200 shadow-none hover:shadow-md hover:scale-110 active:scale-90"
             title="Delete"
         >

@@ -26,7 +26,6 @@ const { width: sidebarWidth, isResizing, startResize } = useResizable({
 const { 
   projectData, 
   activeId, 
-  selectNode: handleSelect, 
   addChapter: addChapterLogic, 
   addSection: addSectionLogic, 
   deleteNode: handleDelete,
@@ -129,8 +128,6 @@ const handleChangeProject = async () => {
             @update:model-value="updateStructure" 
             :active-id="activeId"
             :editing-id="editingId"
-            @select="handleSelect"
-            @delete="handleDelete"
             @context-menu="handleContextMenu"
             @request-rename="handleRenameRequest"
             @submit-rename="handleRenameSubmit"

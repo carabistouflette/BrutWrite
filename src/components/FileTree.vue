@@ -21,8 +21,6 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: FileNode[]): void;
-  (e: 'select', id: string): void;
-  (e: 'delete', id: string): void;
   (e: 'context-menu', payload: { e: MouseEvent, id: string }): void;
   (e: 'request-rename', id: string): void;
   (e: 'submit-rename', payload: { id: string, name: string }): void;
@@ -104,9 +102,7 @@ const handleRenameSubmit = (id: string) => {
         :is-editing="editingId === element.id"
         :depth="depth"
         v-model:edit-name="editName"
-        @select="(id) => emit('select', id)"
         @context-menu="(p) => emit('context-menu', p)"
-        @delete="(id) => emit('delete', id)"
         @submit-rename="handleRenameSubmit"
         @cancel-rename="emit('cancel-rename')"
         @request-rename="(id) => emit('request-rename', id)"
@@ -133,8 +129,6 @@ const handleRenameSubmit = (id: string) => {
             :active-id="activeId"
             :editing-id="editingId"
             :depth="depth + 1"
-            @select="(id) => emit('select', id)" 
-            @delete="(id) => emit('delete', id)"
             @context-menu="(p) => emit('context-menu', p)"
             @request-rename="(id) => emit('request-rename', id)"
             @submit-rename="(p) => emit('submit-rename', p)"

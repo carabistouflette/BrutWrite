@@ -1,21 +1,19 @@
-import { ref, computed, watch } from 'vue';
+import { computed, watch } from 'vue';
 import type { FileNode } from '../types';
 import { 
     projectData, 
     activeId, 
     projectId, 
     projectSettings, 
-    projectPlotlines 
+    projectPlotlines,
+    nodeMap,
+    flatNodes
 } from './state/projectState';
 import { useProjectIO } from './logic/useProjectIO';
 import { useProjectNodeOperations } from './logic/useProjectNodeOperations';
 
 export function useProjectData() {
     
-    // --- Optimized Lookups ---
-    const _nodeMap = ref(new Map<string, FileNode>());
-    const _flatNodes = ref<FileNode[]>([]);
-
     const rebuildMap = () => {
         const map = new Map<string, FileNode>();
         const list: FileNode[] = [];
@@ -27,14 +25,12 @@ export function useProjectData() {
             }
         };
         traverseNodes(projectData.value);
-        _nodeMap.value = map;
-        _flatNodes.value = list;
+        nodeMap.value = map;
+        flatNodes.value = list;
     };
 
     // Only rebuild on structural changes (when projectData.value is replaced)
     watch(projectData, rebuildMap, { immediate: true });
-
-    const flatNodes = computed(() => _flatNodes.value);
 
     // Initialize logic composables
     const { 
@@ -57,12 +53,12 @@ export function useProjectData() {
 
     const activeChapter = computed(() => {
         if (!activeId.value) return undefined;
-        return _nodeMap.value.get(activeId.value);
+        return nodeMap.value.get(activeId.value);
     });
 
     const totalWords = computed(() => {
         let total = 0;
-        _flatNodes.value.forEach(node => {
+        flatNodes.value.forEach(node => {
             total += (node.word_count || 0);
         });
         return total;
@@ -71,12 +67,6 @@ export function useProjectData() {
     const selectNode = (id: string) => {
         activeId.value = id;
     };
-
-    // Wrapper functions to pass nodeMap where needed
-    const wrappedDeleteNode = (id: string) => deleteNode(id, _nodeMap.value);
-    const wrappedRenameNode = (id: string, newName: string) => renameNode(id, newName, _nodeMap.value);
-    const wrappedUpdateNodeStats = (id: string, wordCount: number) => updateNodeStats(id, wordCount, _nodeMap.value);
-    const wrappedUpdateNodeTemporal = (id: string, updates: Partial<FileNode>) => updateNodeTemporal(id, updates, _nodeMap.value);
 
     return {
         projectData,
@@ -90,14 +80,15 @@ export function useProjectData() {
         selectNode,
         addChapter,
         addSection,
-        deleteNode: wrappedDeleteNode,
-        renameNode: wrappedRenameNode,
+        deleteNode,
+        renameNode,
         updateStructure,
         updateSettings,
         updatePlotlines,
-        updateNodeStats: wrappedUpdateNodeStats,
-        updateNodeTemporal: wrappedUpdateNodeTemporal,
-        flatNodes,
+        updateNodeStats,
+        updateNodeTemporal,
+        flatNodes: computed(() => flatNodes.value),
+        nodeMap: computed(() => nodeMap.value),
         plotlines: computed(() => projectPlotlines.value),
         closeProject
     };
