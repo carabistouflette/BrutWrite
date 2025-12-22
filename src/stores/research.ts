@@ -8,6 +8,7 @@ export interface ResearchArtifact {
   path: string;
   name: string;
   file_type: 'pdf' | 'image' | 'text' | 'other';
+  tags: string[];
 }
 
 export const useResearchStore = defineStore('research', () => {
@@ -40,6 +41,42 @@ export const useResearchStore = defineStore('research', () => {
     }
   }
 
+  async function updateArtifact(artifact: ResearchArtifact) {
+    try {
+      await invoke('update_research_artifact', { artifact });
+      // Optimistically update local state
+      const index = artifacts.value.findIndex((a) => a.id === artifact.id);
+      if (index !== -1) {
+        artifacts.value[index] = artifact;
+      }
+      if (activeArtifact.value?.id === artifact.id) {
+        activeArtifact.value = artifact;
+      }
+    } catch (error) {
+      console.error('Failed to update artifact:', error);
+    }
+  }
+
+  async function createNote(name: string) {
+    try {
+      const artifact = await invoke<ResearchArtifact>('create_research_note', { name });
+      artifacts.value.push(artifact);
+      setActiveArtifact(artifact);
+      return artifact;
+    } catch (error) {
+      console.error('Failed to create note:', error);
+      throw error;
+    }
+  }
+
+  async function saveNoteContent(id: string, content: string) {
+    try {
+      await invoke('update_note_content', { id, content });
+    } catch (error) {
+      console.error('Failed to save note content:', error);
+    }
+  }
+
   // Listen for backend updates
   listen('research-update', () => {
     fetchArtifacts();
@@ -52,5 +89,8 @@ export const useResearchStore = defineStore('research', () => {
     fetchArtifacts,
     setActiveArtifact,
     addFiles,
+    updateArtifact,
+    createNote,
+    saveNoteContent,
   };
 });
