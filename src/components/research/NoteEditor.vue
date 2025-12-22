@@ -1,21 +1,29 @@
 <template>
-  <div class="flex flex-col h-full bg-zinc-900/50">
+  <div class="flex flex-col h-full bg-paper">
     <!-- Toolbar -->
-    <div class="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-zinc-900/50">
+    <div class="flex items-center justify-between px-4 py-2 border-b border-ink/5 bg-stone/40">
       <div class="flex items-center gap-2">
-        <span class="text-xs font-bold uppercase tracking-widest text-zinc-500">Editing</span>
-        <span class="text-sm font-medium text-zinc-300">{{ store.activeArtifact?.name }}</span>
+        <span class="text-[10px] font-bold uppercase tracking-widest text-ink/40">Editing</span>
+        <span class="text-sm font-medium text-ink">{{ store.activeArtifact?.name }}</span>
       </div>
       <div class="flex items-center gap-2">
-        <span v-if="saving" class="text-xs text-zinc-500 animate-pulse">Saving...</span>
-        <span v-else-if="saved" class="text-xs text-green-500">Saved</span>
+        <span
+          v-if="saving"
+          class="text-[10px] uppercase font-bold tracking-tighter text-accent animate-pulse"
+          >Saving...</span
+        >
+        <span
+          v-else-if="saved"
+          class="text-[10px] uppercase font-bold tracking-tighter text-green-600"
+          >Saved</span
+        >
       </div>
     </div>
 
     <!-- Editor Area -->
     <textarea
       v-model="content"
-      class="flex-1 w-full bg-transparent p-6 resize-none outline-none text-zinc-300 font-mono text-sm leading-relaxed custom-scrollbar placeholder-zinc-700"
+      class="flex-1 w-full bg-transparent p-6 resize-none outline-none text-ink font-mono text-sm leading-relaxed custom-scrollbar placeholder-ink/20"
       placeholder="Start typing your note here..."
       @input="handleInput"
     ></textarea>
@@ -75,7 +83,11 @@ watch(() => props.path, loadContent, { immediate: true });
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--stone);
   border-radius: 99px;
+}
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: var(--ink-rgb);
+  opacity: 0.2;
 }
 </style>
