@@ -61,3 +61,11 @@ export function computeTimeGap(date1?: string, date2?: string): number | null {
         return null;
     }
 }
+
+export function useTimeHelpers() {
+    return {
+        parseDurationToMillis,
+        formatDurationFromMillis,
+        computeTimeGap
+    };
+}

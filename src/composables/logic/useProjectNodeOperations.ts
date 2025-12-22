@@ -2,7 +2,7 @@ import type { FileNode } from '../../types';
 import { projectApi } from '../../api/project';
 import { useAppStatus } from '../useAppStatus';
 import { reconstructHierarchy } from '../../utils/tree';
-import { projectData, projectId, activeId, pendingMetadataUpdates } from '../state/projectState';
+import { projectData, projectId, activeId } from '../state/projectState';
 import { useProjectSync } from './useProjectSync';
 
 export function useProjectNodeOperations() {
