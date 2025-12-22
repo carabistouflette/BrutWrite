@@ -1,7 +1,38 @@
 <template>
   <aside
-    class="flex flex-col h-full w-full bg-zinc-950 text-zinc-300 overflow-hidden font-sans border-r border-white/5"
+    class="flex flex-col h-full w-full bg-zinc-950 text-zinc-300 overflow-hidden font-sans border-r border-white/5 relative"
+    @dragover.prevent="isDragging = true"
+    @dragleave.prevent="isDragging = false"
+    @drop.prevent="handleDrop"
   >
+    <!-- Drop Overlay -->
+    <div
+      v-if="isDragging"
+      class="absolute inset-0 z-50 bg-accent/20 backdrop-blur-sm border-2 border-accent border-dashed m-2 rounded-xl flex items-center justify-center pointer-events-none"
+    >
+      <div class="bg-zinc-950 p-4 rounded-xl shadow-xl flex flex-col items-center gap-2">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="text-accent"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
+        <span class="text-xs font-bold uppercase tracking-widest text-zinc-100"
+          >Drop to Import</span
+        >
+      </div>
+    </div>
+
     <!-- Header Area -->
     <div class="pt-8 pb-6 px-8 flex flex-col gap-1 shrink-0">
       <div class="flex items-center justify-between">
@@ -40,7 +71,7 @@
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Filter sources..."
+          placeholder="Filter sources or #tags..."
           class="w-full bg-zinc-900/50 hover:bg-zinc-900 transition-all duration-300 text-xs font-medium text-zinc-200 py-3 pl-10 pr-4 rounded-lg border border-transparent focus:border-zinc-700 focus:bg-zinc-900 focus:outline-none placeholder-zinc-700"
         />
       </div>
@@ -58,6 +89,7 @@
             : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40',
         ]"
         @click="store.setActiveArtifact(item)"
+        @contextmenu.prevent="handleContextMenu($event, item)"
       >
         <!-- Active Indicator -->
         <div
@@ -125,29 +157,42 @@
           </svg>
         </div>
 
-        <!-- Label -->
-        <div class="min-w-0 flex-1 flex flex-col justify-center">
+        <!-- Label & Tags -->
+        <div class="min-w-0 flex-1 flex flex-col justify-center gap-0.5">
           <span class="text-[13px] font-medium truncate leading-tight transition-colors">
             {{ item.name }}
           </span>
-          <span
-            class="text-[9px] font-mono uppercase tracking-wider mt-0.5"
-            :class="
-              store.activeArtifact?.id === item.id
-                ? 'text-zinc-500'
-                : 'text-zinc-700 group-hover:text-zinc-600'
-            "
-          >
-            {{ item.file_type }}
-          </span>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span
+              class="text-[9px] font-mono uppercase tracking-wider"
+              :class="
+                store.activeArtifact?.id === item.id
+                  ? 'text-zinc-500'
+                  : 'text-zinc-700 group-hover:text-zinc-600'
+              "
+            >
+              {{ item.file_type }}
+            </span>
+            <!-- Tags -->
+            <span
+              v-for="tag in item.tags.slice(0, 3)"
+              :key="tag"
+              class="text-[9px] font-bold px-1.5 py-px rounded-sm bg-zinc-800 text-zinc-400"
+            >
+              #{{ tag }}
+            </span>
+            <span v-if="item.tags.length > 3" class="text-[9px] text-zinc-600"
+              >+{{ item.tags.length - 3 }}</span
+            >
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Bottom Action -->
-    <div class="p-6 shrink-0 border-t border-white/5 bg-zinc-950/50 backdrop-blur-sm">
+    <div class="p-6 shrink-0 border-t border-white/5 bg-zinc-950/50 backdrop-blur-sm flex gap-2">
       <button
-        class="group relative w-full overflow-hidden rounded-xl bg-zinc-100 text-zinc-950 py-3.5 px-4 text-xs font-bold uppercase tracking-widest transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:-translate-y-0.5"
+        class="group relative flex-1 overflow-hidden rounded-xl bg-zinc-100 text-zinc-950 py-3.5 px-2 text-xs font-bold uppercase tracking-widest transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:-translate-y-0.5"
         @click="$emit('add')"
       >
         <span class="relative z-10 flex items-center justify-center gap-2">
@@ -164,31 +209,147 @@
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
-          Add Source
+          Add
         </span>
         <div
           class="absolute inset-0 z-0 bg-white opacity-0 transition-opacity duration-300 group-hover:opacity-100 mix-blend-overlay"
         ></div>
       </button>
+
+      <button
+        class="group relative flex-1 overflow-hidden rounded-xl bg-zinc-800 text-zinc-300 border border-zinc-700 py-3.5 px-2 text-xs font-bold uppercase tracking-widest transition-all duration-300 hover:bg-zinc-700 hover:text-zinc-100 hover:-translate-y-0.5"
+        @click="handleNewNote"
+      >
+        <span class="relative z-10 flex items-center justify-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-3.5 h-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          Note
+        </span>
+      </button>
     </div>
+
+    <!-- Context Menu -->
+    <ContextMenu :show="showMenu" :x="menuPos.x" :y="menuPos.y" @close="closeMenu">
+      <div
+        class="px-3 py-2 text-[10px] font-black uppercase text-zinc-500 border-b border-zinc-800/50 mb-1"
+      >
+        ACTIONS
+      </div>
+      <div class="menu-item menu-item-default" @click="handleRename">Rename (Not Impl)</div>
+      <div class="menu-item menu-item-default" @click="handleAddTag">Add Tag</div>
+    </ContextMenu>
   </aside>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useResearchStore } from '../../stores/research';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useResearchStore, type ResearchArtifact } from '../../stores/research';
+import { listen } from '@tauri-apps/api/event';
+import ContextMenu from '../base/ContextMenu.vue';
 
 const store = useResearchStore();
 const searchQuery = ref('');
+const isDragging = ref(false);
 
 defineEmits(['add']);
 
+// --- Drag and Drop ---
+const handleDrop = () => {
+  isDragging.value = false;
+  // Fallback if Tauri doesn't intercept
+  // In pure webview, we might rely on the listen('tauri://drag-drop')
+};
+
+let unlisten: (() => void) | undefined;
+
+onMounted(async () => {
+  // Listen for file drops globally and check if we are the target (UI check is hard, so we just accept global drops for now as "Add to Vault")
+  // Or we rely on the fact that if the user drops here, it triggers the event.
+  // Actually, tauri://drag-drop payload contains paths.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  unlisten = await listen('tauri://drag-drop', (event: any) => {
+    const paths = event.payload.paths;
+    if (paths && paths.length > 0) {
+      store.addFiles(paths);
+    }
+    isDragging.value = false;
+  });
+
+  // We also need drag-enter to show UI. 'tauri://drag-enter' ?
+  // Tauri v2 might not have 'tauri://drag-enter' exposed easily without plugins.
+  // So we use the HTML5 events on the container for visual feedback (which works if the webview allows DnD)
+});
+
+onUnmounted(() => {
+  if (unlisten) {
+    unlisten();
+  }
+});
+
+// --- Filtering ---
 const filteredArtifacts = computed(() => {
   if (!searchQuery.value) return store.artifacts;
-  return store.artifacts.filter((a) =>
-    a.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
+  const q = searchQuery.value.toLowerCase();
+
+  return store.artifacts.filter((a) => {
+    const matchesName = a.name.toLowerCase().includes(q);
+    const matchesTag = a.tags && a.tags.some((t) => t.toLowerCase().includes(q.replace('#', '')));
+    return matchesName || matchesTag;
+  });
 });
+
+// --- Context Menu ---
+const showMenu = ref(false);
+const menuPos = ref({ x: 0, y: 0 });
+const targetArtifact = ref<ResearchArtifact | null>(null);
+
+const handleContextMenu = (e: MouseEvent, item: ResearchArtifact) => {
+  e.preventDefault();
+  targetArtifact.value = item;
+  menuPos.value = { x: e.clientX, y: e.clientY };
+  showMenu.value = true;
+};
+
+const closeMenu = () => {
+  showMenu.value = false;
+  targetArtifact.value = null;
+};
+
+const handleAddTag = () => {
+  if (!targetArtifact.value) return;
+  const tag = window.prompt('Enter tag:');
+  if (tag && tag.trim()) {
+    const item = targetArtifact.value;
+    if (!item.tags.includes(tag.trim())) {
+      item.tags.push(tag.trim());
+      store.updateArtifact(JSON.parse(JSON.stringify(item))); // clone to be safe
+    }
+  }
+  closeMenu();
+};
+
+const handleNewNote = async () => {
+  const name = window.prompt('Note Name:');
+  if (name && name.trim()) {
+    await store.createNote(name.trim());
+  }
+};
+
+const handleRename = () => {
+  // TODO: Implement Rename
+  closeMenu();
+};
 </script>
 
 <style scoped>

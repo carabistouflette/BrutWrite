@@ -80,6 +80,16 @@
           :path="store.activeArtifact.path"
           class="flex-1 w-full h-full object-contain p-8"
         />
+        <NoteEditor
+          v-else-if="
+            ['text', 'md'].includes(store.activeArtifact.file_type) ||
+            store.activeArtifact.name.endsWith('.md') ||
+            store.activeArtifact.name.endsWith('.txt')
+          "
+          :id="store.activeArtifact.id"
+          :path="store.activeArtifact.path"
+          class="flex-1 w-full h-full"
+        />
         <!-- Unsupported Format -->
         <div v-else class="flex-1 flex flex-col items-center justify-center opacity-60">
           <svg
@@ -152,6 +162,7 @@
 import { useResearchStore } from '../../stores/research';
 import PDFViewer from './PDFViewer.vue';
 import ImageViewer from './ImageViewer.vue';
+import NoteEditor from './NoteEditor.vue';
 
 const store = useResearchStore();
 
