@@ -9,3 +9,4 @@ pub use character::{Character, CharacterEngine, CharacterRole};
 pub use manifest::Manifest;
 pub use project::{Plotline, ProjectMetadata, ProjectSettings};
 pub use utils::count_words;
+pub mod research;

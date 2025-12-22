@@ -6,7 +6,26 @@
   "permissions": [
     "core:default",
     "opener:default",
-    "fs:allow-exists",
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [{ "path": "$HOME/**" }, { "path": "/**" }]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [{ "path": "$HOME/**" }, { "path": "/**" }]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [{ "path": "$HOME/**" }, { "path": "/**" }]
+    },
+    {
+      "identifier": "fs:allow-read-dir",
+      "allow": [{ "path": "$HOME/**" }, { "path": "/**" }]
+    },
+    {
+      "identifier": "fs:allow-stat",
+      "allow": [{ "path": "$HOME/**" }, { "path": "/**" }]
+    },
     "fs:allow-appconfig-read-recursive",
     "fs:allow-appconfig-write-recursive",
     "fs:allow-appconfig-meta-recursive",

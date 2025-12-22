@@ -1,6 +1,6 @@
 use crate::models::{Plotline, ProjectMetadata, ProjectSettings};
-use crate::storage;
 use crate::AppState;
+use crate::{research, storage};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::State;
@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 #[tauri::command]
 pub async fn create_project(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     path: String,
     name: String,
@@ -23,7 +24,7 @@ pub async fn create_project(
         .open_projects
         .lock()
         .await
-        .insert(metadata.id, root_path);
+        .insert(metadata.id, root_path.clone());
 
     state
         .project_cache
@@ -31,11 +32,14 @@ pub async fn create_project(
         .await
         .insert(metadata.id, Arc::new(Mutex::new(metadata.clone())));
 
+    research::init_research_watcher(&app, root_path);
+
     Ok(metadata)
 }
 
 #[tauri::command]
 pub async fn load_project(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     path: String,
 ) -> Result<ProjectMetadata, String> {
@@ -48,13 +52,15 @@ pub async fn load_project(
         .open_projects
         .lock()
         .await
-        .insert(metadata.id, root_path);
+        .insert(metadata.id, root_path.clone());
 
     state
         .project_cache
         .lock()
         .await
         .insert(metadata.id, Arc::new(Mutex::new(metadata.clone())));
+
+    research::init_research_watcher(&app, root_path);
 
     Ok(metadata)
 }

@@ -1,6 +1,8 @@
 pub mod commands;
 pub mod errors;
 pub mod models;
+
+pub mod research;
 pub mod storage;
 
 use std::collections::HashMap;
@@ -86,6 +88,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::new())
+        .manage(research::ResearchState::new())
         .invoke_handler(tauri::generate_handler![
             commands::create_project,
             commands::load_project,
@@ -98,7 +101,9 @@ pub fn run() {
             commands::update_project_settings,
             commands::update_plotlines,
             commands::create_node,
-            commands::update_node_metadata
+            commands::update_node_metadata,
+            research::get_research_artifacts,
+            research::add_research_files
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
