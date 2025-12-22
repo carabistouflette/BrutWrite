@@ -3,24 +3,27 @@ import { Timeline } from 'vis-timeline';
 import { useTimeline } from '../useTimeline';
 import { useTimeHelpers } from '../logic/useTimeHelpers';
 import { DataSet } from 'vis-data';
+import { type VisTimelineItem, type VisTimelineGroup } from './useVisTimelineData';
 
 export function useVisTimelineEvents(
     timeline: Ref<Timeline | null>,
-    groups: DataSet<any>
+    groups: DataSet<VisTimelineGroup>
 ) {
     const { updateNodeTemporal } = useTimeline();
     const { formatDurationFromMillis } = useTimeHelpers();
 
-    async function handleItemMove(item: any, callback: (item: any) => void) {
+    async function handleItemMove(item: VisTimelineItem, callback: (item: VisTimelineItem | null) => void) {
         try {
-            const updates: any = {
-                chronological_date: item.start.toISOString(),
-                plotline_tag: item.group
+            const startDate = item.start instanceof Date ? item.start : new Date(item.start);
+            const updates: Record<string, string | undefined> = {
+                chronological_date: startDate.toISOString(),
+                plotline_tag: item.group ? String(item.group) : undefined
             };
 
             if (item.end) {
-                const startMs = item.start.getTime();
-                const endMs = item.end.getTime();
+                const endDate = item.end instanceof Date ? item.end : new Date(item.end);
+                const startMs = startDate.getTime();
+                const endMs = endDate.getTime();
                 const durationMillis = endMs - startMs;
                 
                 // Only update duration if it's positive
@@ -29,7 +32,7 @@ export function useVisTimelineEvents(
                 }
             }
 
-            await updateNodeTemporal(item.id, updates);
+            await updateNodeTemporal(String(item.id), updates);
             callback(item);
         } catch (e) {
             console.error('Failed to move scene:', e);

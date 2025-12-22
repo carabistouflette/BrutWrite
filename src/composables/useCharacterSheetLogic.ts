@@ -4,7 +4,7 @@ import { useCharacters } from './useCharacters';
 import { CharacterRole, type Character } from '../types';
 import { useAppStatus } from './useAppStatus';
 
-export function useCharacterSheetLogic(emit: (event: 'close', ...args: any[]) => void) {
+export function useCharacterSheetLogic(emit: (event: 'close') => void) {
     const { projectId } = useProjectData();
     const { characters, saveCharacter, deleteCharacter } = useCharacters();
     const { notifyError, notifySuccess } = useAppStatus();
