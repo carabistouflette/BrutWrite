@@ -2,6 +2,12 @@ use crate::errors::{Error, Result};
 use crate::models::ProjectMetadata;
 use std::path::{Path, PathBuf};
 
+pub const MANUSCRIPT_DIR: &str = "manuscript";
+pub const CHARACTERS_DIR: &str = "characters";
+pub const RESEARCH_DIR: &str = "research";
+pub const SNAPSHOTS_DIR: &str = ".snapshots";
+pub const METADATA_FILENAME: &str = "project.json";
+
 pub async fn create_project_structure<P: AsRef<Path>>(
     root_path: P,
     title: &str,
@@ -17,14 +23,14 @@ pub async fn create_project_structure<P: AsRef<Path>>(
     tokio::fs::create_dir_all(root).await?;
 
     // Create subdirectories
-    let dirs = ["manuscript", "characters", "research", ".snapshots"];
+    let dirs = [MANUSCRIPT_DIR, CHARACTERS_DIR, RESEARCH_DIR, SNAPSHOTS_DIR];
     for dir in dirs {
         tokio::fs::create_dir(root.join(dir)).await?;
     }
 
     // Initialize project metadata
     let metadata = ProjectMetadata::new(title.to_string(), author.to_string());
-    let metadata_path = root.join("project.json");
+    let metadata_path = root.join(METADATA_FILENAME);
 
     let json = serde_json::to_string_pretty(&metadata)?;
     tokio::fs::write(metadata_path, json).await?;
@@ -34,7 +40,7 @@ pub async fn create_project_structure<P: AsRef<Path>>(
 
 pub async fn load_project_metadata<P: AsRef<Path>>(root_path: P) -> Result<ProjectMetadata> {
     let root = root_path.as_ref();
-    let metadata_path = root.join("project.json");
+    let metadata_path = root.join(METADATA_FILENAME);
 
     if !metadata_path.exists() {
         return Err(Error::Io(std::io::Error::new(
@@ -64,7 +70,7 @@ pub fn resolve_chapter_path<P: AsRef<Path>>(
         .map(|c| c.filename.clone());
 
     if let Some(fname) = filename {
-        Ok(root.join("manuscript").join(fname))
+        Ok(root.join(MANUSCRIPT_DIR).join(fname))
     } else {
         Err(Error::ChapterNotFound(chapter_id.to_string()))
     }
@@ -89,7 +95,7 @@ pub async fn save_project_metadata<P: AsRef<Path>>(
     root_path: P,
     metadata: &ProjectMetadata,
 ) -> Result<()> {
-    let metadata_path = root_path.as_ref().join("project.json");
+    let metadata_path = root_path.as_ref().join(METADATA_FILENAME);
     let json = serde_json::to_string_pretty(metadata)?;
     tokio::fs::write(metadata_path, json).await?;
     Ok(())
@@ -101,7 +107,7 @@ pub async fn write_chapter_file<P: AsRef<Path>>(
     content: &str,
 ) -> Result<()> {
     let root = root_path.as_ref();
-    let manuscript_dir = root.join("manuscript");
+    let manuscript_dir = root.join(MANUSCRIPT_DIR);
 
     if !manuscript_dir.exists() {
         tokio::fs::create_dir_all(&manuscript_dir).await?;
@@ -113,7 +119,7 @@ pub async fn write_chapter_file<P: AsRef<Path>>(
 }
 
 pub async fn delete_chapter_file<P: AsRef<Path>>(root_path: P, filename: &str) -> Result<()> {
-    let file_path = root_path.as_ref().join("manuscript").join(filename);
+    let file_path = root_path.as_ref().join(MANUSCRIPT_DIR).join(filename);
     if tokio::fs::try_exists(&file_path).await.unwrap_or(false) {
         tokio::fs::remove_file(file_path).await?;
     }
