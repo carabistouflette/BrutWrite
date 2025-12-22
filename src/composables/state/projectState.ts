@@ -1,5 +1,11 @@
-import { ref, shallowRef, watch } from 'vue';
-import type { FileNode, ProjectSettings, Character, Plotline, Chapter } from '../../types';
+import { ref, shallowRef, watch } from "vue";
+import type {
+  FileNode,
+  ProjectSettings,
+  Character,
+  Plotline,
+  Chapter,
+} from "../../types";
 
 // Singleton state
 export const projectData = ref<FileNode[]>([]);
@@ -15,26 +21,39 @@ export const flatNodes = shallowRef<FileNode[]>([]);
 
 // Shared debouncers and pending updates (Singleton)
 export const pendingMetadataUpdates = new Map<string, Partial<Chapter>>();
-export const syncManifestTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+export const syncManifestTimeout = ref<ReturnType<typeof setTimeout> | null>(
+  null
+);
 export const metadataTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
-// Internal helper for rebuilding maps
+// Internal helper for rebuilding maps (Iterative to avoid stack overflow)
 const rebuildMap = (nodes: FileNode[]) => {
-    const map = new Map<string, FileNode>();
-    const list: FileNode[] = [];
-    const traverseNodes = (nodes: FileNode[]) => {
-        for (const node of nodes) {
-            map.set(node.id, node);
-            list.push(node);
-            if (node.children) traverseNodes(node.children);
-        }
-    };
-    traverseNodes(nodes);
-    nodeMap.value = map;
-    flatNodes.value = list;
+  const map = new Map<string, FileNode>();
+  const list: FileNode[] = [];
+  const stack: FileNode[] = [...nodes].reverse(); // Stack for DFS
+
+  while (stack.length > 0) {
+    const node = stack.pop()!;
+    map.set(node.id, node);
+    list.push(node);
+
+    if (node.children && node.children.length > 0) {
+      // Push children in reverse order so they are processed in original order
+      for (let i = node.children.length - 1; i >= 0; i--) {
+        stack.push(node.children[i]);
+      }
+    }
+  }
+
+  nodeMap.value = map;
+  flatNodes.value = list;
 };
 
 // Global watcher to keep lookups in sync
-watch(projectData, (newVal) => {
+watch(
+  projectData,
+  (newVal) => {
     rebuildMap(newVal);
-}, { immediate: true, deep: false }); // deep: false because we only care about structural changes (replacement of projectData)
+  },
+  { immediate: true, deep: false }
+); // deep: false because we only care about structural changes (replacement of projectData)
