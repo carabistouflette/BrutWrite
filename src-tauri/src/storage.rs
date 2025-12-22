@@ -1,5 +1,5 @@
 use crate::errors::{Error, Result};
-use crate::models::{Manifest, ProjectMetadata};
+use crate::models::ProjectMetadata;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -50,54 +50,6 @@ pub fn load_project_metadata<P: AsRef<Path>>(root_path: P) -> Result<ProjectMeta
     Ok(metadata)
 }
 
-pub fn update_project_manifest<P: AsRef<Path>>(
-    root_path: P,
-    manifest: Manifest,
-) -> Result<ProjectMetadata> {
-    modify_metadata(root_path, |metadata| {
-        metadata.manifest = manifest;
-        Ok(())
-    })
-}
-
-pub fn update_project_settings<P: AsRef<Path>>(
-    root_path: P,
-    settings: crate::models::ProjectSettings,
-) -> Result<ProjectMetadata> {
-    modify_metadata(root_path, |metadata| {
-        metadata.settings = settings;
-        Ok(())
-    })
-}
-
-pub fn delete_chapter_file<P: AsRef<Path>>(root_path: P, filename: &str) -> Result<()> {
-    let root = root_path.as_ref();
-    let file_path = root.join("manuscript").join(filename);
-
-    if file_path.exists() {
-        fs::remove_file(file_path)?;
-    }
-    Ok(())
-}
-
-/// Internal helper to load, modify, and save project metadata in one go.
-fn modify_metadata<P, F>(root_path: P, modifier: F) -> Result<ProjectMetadata>
-where
-    P: AsRef<Path>,
-    F: FnOnce(&mut ProjectMetadata) -> Result<()>,
-{
-    let root = root_path.as_ref();
-    let mut metadata = load_project_metadata(root)?;
-
-    modifier(&mut metadata)?;
-
-    metadata.updated_at = chrono::Utc::now();
-    save_project_metadata(root, &metadata)?;
-
-    Ok(metadata)
-}
-
-/// Helper to find chapter filename from metadata and return full path
 pub fn resolve_chapter_path<P: AsRef<Path>>(
     root_path: P,
     metadata: &ProjectMetadata,
@@ -134,64 +86,6 @@ pub fn read_chapter_content<P: AsRef<Path>>(
     Ok(content)
 }
 
-pub fn save_chapter_content<P: AsRef<Path>>(
-    root_path: P,
-    chapter_id: &str,
-    content: &str,
-) -> Result<ProjectMetadata> {
-    let root = root_path.as_ref();
-
-    modify_metadata(root, |metadata| {
-        let chapter_path = resolve_chapter_path(root, metadata, chapter_id)?;
-
-        // Ensure manuscript directory exists
-        let manuscript_dir = root.join("manuscript");
-        if !manuscript_dir.exists() {
-            fs::create_dir_all(&manuscript_dir)?;
-        }
-
-        // 1. Write content
-        fs::write(&chapter_path, content)?;
-
-        // 2. Calculate word count server-side (strip HTML)
-        let word_count = crate::models::count_words(content);
-
-        // 3. Update Manifest Word Count
-        if let Some(chapter) = metadata
-            .manifest
-            .chapters
-            .iter_mut()
-            .find(|c| c.id == chapter_id)
-        {
-            chapter.word_count = word_count;
-            Ok(())
-        } else {
-            Err(Error::ChapterNotFound(chapter_id.to_string()))
-        }
-    })
-}
-
-pub fn save_character<P: AsRef<Path>>(
-    root_path: P,
-    character: crate::models::Character,
-) -> Result<ProjectMetadata> {
-    modify_metadata(root_path, |metadata| {
-        metadata.add_or_update_character(character);
-        Ok(())
-    })
-}
-
-pub fn delete_character<P: AsRef<Path>>(
-    root_path: P,
-    character_id: uuid::Uuid,
-) -> Result<ProjectMetadata> {
-    modify_metadata(root_path, |metadata| {
-        metadata
-            .remove_character(character_id)
-            .map_err(|_| Error::CharacterNotFound(character_id.to_string()))
-    })
-}
-
 pub fn save_project_metadata<P: AsRef<Path>>(
     root_path: P,
     metadata: &ProjectMetadata,
@@ -200,16 +94,6 @@ pub fn save_project_metadata<P: AsRef<Path>>(
     let json = serde_json::to_string_pretty(metadata)?;
     fs::write(metadata_path, json)?;
     Ok(())
-}
-
-pub fn update_plotlines<P: AsRef<Path>>(
-    root_path: P,
-    plotlines: Vec<crate::models::Plotline>,
-) -> Result<ProjectMetadata> {
-    modify_metadata(root_path, |metadata| {
-        metadata.plotlines = plotlines;
-        Ok(())
-    })
 }
 
 pub fn create_chapter_node<P: AsRef<Path>>(
@@ -271,7 +155,6 @@ pub fn create_chapter_node<P: AsRef<Path>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Chapter, Manifest};
     use tempfile::tempdir;
 
     #[test]
@@ -290,78 +173,19 @@ mod tests {
     }
 
     #[test]
-    fn test_save_chapter_by_filename() {
+    fn test_save_metadata_io() {
         let dir = tempdir().unwrap();
-        let project_path = dir.path().join("MyNovel");
+        let project_path = dir.path().join("MetaTest");
 
-        // Create Project
-        create_project_structure(&project_path, "Novel", "Author").unwrap();
+        // Setup
+        let mut meta = create_project_structure(&project_path, "Meta", "Author").unwrap();
+        meta.title = "Updated Title".to_string();
 
-        // Manually update manifest to have a chapter "c1" -> "c1.md"
-        let manifest = Manifest {
-            chapters: vec![Chapter {
-                id: "c1".to_string(),
-                parent_id: None,
-                title: "Ch1".to_string(),
-                filename: "c1.md".to_string(),
-                word_count: 0,
-                order: 0,
-                chronological_date: None,
-                abstract_timeframe: None,
-                duration: None,
-                plotline_tag: None,
-                depends_on: None,
-                pov_character_id: None,
-            }],
-        };
-        update_project_manifest(&project_path, manifest).unwrap();
-
-        // Save Content using chapter_id
-        let content = "# Chapter 1\nIt was a dark and stormy night.";
-        let updated_meta = save_chapter_content(&project_path, "c1", content).unwrap();
-
-        // Read Content
-        let read_back = read_chapter_content(&project_path, &updated_meta, "c1").unwrap();
-        assert_eq!(read_back, content);
-
-        // Verify Manifest Match
-        let chapter = updated_meta
-            .manifest
-            .chapters
-            .iter()
-            .find(|c| c.id == "c1")
-            .unwrap();
-        assert_eq!(chapter.word_count, 10);
-    }
-    #[test]
-    fn test_save_character_and_load() {
-        let dir = tempdir().unwrap();
-        let project_path = dir.path().join("CharTest");
-
-        // Create
-        create_project_structure(&project_path, "Char Book", "Me").unwrap();
-
-        // Save Character
-        let char_id = uuid::Uuid::new_v4();
-        let character = crate::models::Character {
-            id: char_id,
-            name: "Hero".to_string(),
-            role: crate::models::CharacterRole::Protagonist,
-            archetype: "".to_string(),
-            description: "A brave hero".to_string(),
-            engine: Default::default(),
-            physical_features: "".to_string(),
-            traits: vec![],
-            arc: "".to_string(),
-            notes: "".to_string(),
-        };
-
-        save_character(&project_path, character.clone()).unwrap();
+        // Save
+        save_project_metadata(&project_path, &meta).unwrap();
 
         // Load and Verify
         let loaded = load_project_metadata(&project_path).unwrap();
-        assert_eq!(loaded.characters.len(), 1);
-        assert_eq!(loaded.characters[0].name, "Hero");
-        assert_eq!(loaded.characters[0].id, char_id);
+        assert_eq!(loaded.title, "Updated Title");
     }
 }
