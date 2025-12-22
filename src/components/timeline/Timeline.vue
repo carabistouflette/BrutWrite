@@ -1,445 +1,75 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
-import { DataSet } from 'vis-data';
-import { Timeline } from 'vis-timeline';
-import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
+import { ref } from 'vue';
 import { useTimeline } from '../../composables/useTimeline';
 import HoldingPen from './HoldingPen.vue';
 import SceneEditor from './SceneEditor.vue';
 import CalendarSettings from './CalendarSettings.vue';
 import TimelineControls from './TimelineControls.vue';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-import { useProjectData } from '../../composables/useProjectData';
-import { useCalendar } from '../../composables/useCalendar';
-import type { FileNode } from '../../types';
-
-// Local type definitions for vis-timeline items
-interface VisTimelineItem {
-    id: string;
-    group?: string | number;
-    content: string;
-    start: Date;
-    end?: Date;
-    type?: string;
-    className?: string;
-    title?: string;
-}
+import { useTimelineExport } from '../../composables/useTimelineExport';
+import { useTimelineSort } from '../../composables/useTimelineSort';
+import { useNarrativeConnectors } from '../../composables/useNarrativeConnectors';
+import { useVisTimeline } from '../../composables/useVisTimeline';
 
 const {
-    plotlines,
-    assignedScenes,
     unassignedScenes,
-    paradoxWarnings,
     narrativeConnectors,
-    selectNode,
-    updateNodeTemporal,
-    parseDurationToMillis,
-    formatDurationFromMillis
+    selectNode
 } = useTimeline();
 
-const { formatDate, getYear } = useCalendar();
+const { exportTimeline } = useTimelineExport();
+const { applyChronologicalSort } = useTimelineSort();
 
 // Refs
 const containerRef = ref<HTMLElement | null>(null);
-const timeline = ref<Timeline | null>(null);
-const showNarrativeConnectors = ref(false);
 const showCalendarSettings = ref(false);
 const selectedSceneId = ref<string | null>(null);
 const hoveredScene = ref<{ id: string; x: number; y: number } | null>(null);
-const isMounted = ref(false);
 
-// vis-timeline datasets
-const items = new DataSet<any>([]);
-const groups = new DataSet<any>([]);
-
-// Initialize timeline
-onMounted(() => {
-    isMounted.value = true;
-    if (!containerRef.value) return;
-
-    const options = {
-        orientation: { axis: 'top', item: 'top' },
-        stack: true, 
-        showCurrentTime: false,
-        zoomable: true,
-        moveable: true,
-        editable: {
-            updateTime: true, // Allow resizing/dragging
-            updateGroup: true, // Allow moving between swimlanes
-            remove: false, // Use the editor to remove
-            add: false,
-        },
-        groupOrder: 'id',
-        margin: { item: { horizontal: 5, vertical: 20 } },
-        snap: null,
-        onMove: handleItemMove,
-        format: {
-            minorLabels: (date: Date, _scale: string, _step: number) => {
-                 return formatDate(date);
-            },
-            majorLabels: (date: Date, _scale: string, _step: number) => {
-                 // For major labels we often want just the Year
-                 return getYear(date);
-            }
-        }
-    };
-
-    timeline.value = new Timeline(containerRef.value, items, groups, options);
-
-    // Selection handler
-    timeline.value.on('select', (props: { items: string[] }) => {
-        if (props.items.length > 0) {
-            selectedSceneId.value = props.items[0];
-            selectNode(props.items[0]); // Sync with project store
+// Initialize vis-timeline using our new composable
+const { 
+    isMounted,
+    fit: fitTimeline,
+    zoomIn: timelineZoomIn,
+    zoomOut: timelineZoomOut,
+    handleDrop
+} = useVisTimeline(
+    containerRef,
+    (sceneId) => {
+        if (sceneId) {
+            selectedSceneId.value = sceneId;
+            selectNode(sceneId);
         } else {
             selectedSceneId.value = null;
         }
-    });
-
-    // Hover handler (optional, can keep for tooltips)
-    timeline.value.on('itemover', (props: { item: string; event: MouseEvent }) => {
-         hoveredScene.value = {
-            id: props.item,
-            x: props.event.clientX,
-            y: props.event.clientY,
-        };
-    });
-
-    timeline.value.on('itemout', () => {
-        hoveredScene.value = null;
-    });
-    
-    // Zoom/Scroll listener to redraw connectors
-    timeline.value.on('rangechange', () => {
-        if (showNarrativeConnectors.value) {
+    },
+    (info) => {
+        hoveredScene.value = info;
+    },
+    () => {
+         if (showNarrativeConnectors.value) {
             requestAnimationFrame(updateConnectorPositions);
         }
-    });
-
-    // Initial sync
-    syncData();
-});
-
-onUnmounted(() => {
-    isMounted.value = false;
-    if (connectorAnimationFrame) cancelAnimationFrame(connectorAnimationFrame);
-    timeline.value?.destroy();
-    timeline.value = null;
-});
-
-// Watch for data changes
-watch([plotlines, assignedScenes], syncData, { deep: true });
-watch(showNarrativeConnectors, (val) => {
-    if (val) requestAnimationFrame(updateConnectorPositions);
-});
-
-function syncData() {
-    if (!isMounted.value || !timeline.value) return;
-    // Sync groups
-    const groupsData = plotlines.value.map(pl => ({
-        id: pl.id,
-        content: pl.name,
-        style: `border-left: 4px solid ${pl.color}; background: linear-gradient(90deg, ${pl.color}10 0%, transparent 100%);`,
-    }));
-    
-    const existingGroupIds = groups.getIds();
-    const newGroupIds = groupsData.map((g: any) => g.id);
-    const toRemoveGroups = existingGroupIds.filter((id: any) => !newGroupIds.includes(id));
-    
-    groups.remove(toRemoveGroups);
-    groups.update(groupsData);
-    
-    if (groups.length === 0) {
-        groups.add({ id: 'main', content: 'Main Plot' });
     }
+);
 
-    // Sync items
-    const itemsData: VisTimelineItem[] = assignedScenes.value.map(scene => {
-        const warnings = paradoxWarnings.value.filter(w => w.sceneIds.includes(scene.id));
-        const hasWarning = warnings.length > 0;
-        const start = scene.chronological_date
-            ? new Date(scene.chronological_date)
-            : parseAbstractTimeframe(scene.abstract_timeframe);
-            
-        let durationMillis = parseDurationToMillis(scene.duration);
-        // Default to 2 hours if no duration, so it appears as a resizable range
-        const isProjectedDuration = durationMillis <= 0;
-        if (isProjectedDuration) {
-            durationMillis = 1000 * 60 * 60 * 2; // 2 Hours default visualization
-        }
-
-        const end = new Date(start.getTime() + durationMillis);
-
-        const group = scene.plotline_tag && groups.get(scene.plotline_tag) ? scene.plotline_tag : groups.getIds()[0];
-
-        return {
-            id: scene.id,
-            group: group,
-            content: `<span class="scene-item-content">${scene.title}</span>`,
-            start,
-            end,
-            type: 'range', // Always range to allow resizing
-            className: hasWarning ? 'timeline-item--warning' : (isProjectedDuration ? 'timeline-item--projected' : 'timeline-item--normal'),
-            title: warnings.map(w => w.message).join('\n') || scene.title,
-        };
-    });
-
-    const existingItemIds = items.getIds();
-    const newItemIds = itemsData.map(i => i.id);
-    const toRemoveItems = existingItemIds.filter((id: any) => !newItemIds.includes(id));
-
-    items.remove(toRemoveItems);
-    items.update(itemsData);
-    
-    if (showNarrativeConnectors.value) {
-        requestAnimationFrame(updateConnectorPositions);
-    }
-}
-
-function parseAbstractTimeframe(timeframe?: string): Date {
-    if (!timeframe) return new Date();
-    const match = timeframe.match(/(day|week|month|year)\s*(\d+)/i);
-    if (match) {
-        const unit = match[1].toLowerCase();
-        const num = parseInt(match[2], 10);
-        const base = new Date('2000-01-01');
-
-        if (unit === 'day') base.setDate(base.getDate() + num - 1);
-        else if (unit === 'week') base.setDate(base.getDate() + (num - 1) * 7);
-        else if (unit === 'month') base.setMonth(base.getMonth() + num - 1);
-        else if (unit === 'year') base.setFullYear(base.getFullYear() + num - 1);
-
-        return base;
-    }
-    return new Date();
-}
-
-async function handleItemMove(item: any, callback: (item: any) => void) {
-    try {
-        const updates: any = {
-            chronological_date: item.start.toISOString(),
-            plotline_tag: item.group
-        };
-
-        if (item.end) {
-            const startMs = item.start.getTime();
-            const endMs = item.end.getTime();
-            const durationMillis = endMs - startMs;
-            
-            // Only update duration if it's positive
-            if (durationMillis > 0) {
-                updates.duration = formatDurationFromMillis(durationMillis);
-            }
-        }
-
-        await updateNodeTemporal(item.id, updates);
-        callback(item);
-    } catch (e) {
-        console.error('Failed to move scene:', e);
-        callback(null);
-    }
-}
-
-async function handleDrop(event: DragEvent) {
-    const sceneId = event.dataTransfer?.getData('text/plain');
-    if (!sceneId || !timeline.value) return;
-
-    const props = (timeline.value as any).getEventProperties(event);
-    const time = props.time;
-    let targetGroup = props.group;
-    
-    if (!targetGroup && groups.length > 0) {
-        targetGroup = groups.getIds()[0];
-    }
-
-    if (time) {
-        await updateNodeTemporal(sceneId, {
-            chronological_date: time.toISOString(),
-            plotline_tag: String(targetGroup)
-        });
-    }
-}
-
-function toggleNarrativeConnectors() {
-    showNarrativeConnectors.value = !showNarrativeConnectors.value;
-}
-
-function fitTimeline() {
-    timeline.value?.fit();
-}
+const { 
+    connectorPaths, 
+    showNarrativeConnectors, 
+    toggleConnectors: toggleNarrativeConnectors, 
+    updateConnectorPositions 
+} = useNarrativeConnectors(containerRef, narrativeConnectors, isMounted);
 
 function zoomIn() {
-    timeline.value?.zoomIn(0.5);
+    timelineZoomIn(0.5);
 }
 
 function zoomOut() {
-    timeline.value?.zoomOut(0.5);
+    timelineZoomOut(0.5);
 }
-
-// Connector Overlay Logic
-const connectorPaths = ref<{ d: string; color: string; isFlashback: boolean }[]>([]);
-
-// Optimization: Throttle connector updates to avoid layout thrashing
-let connectorAnimationFrame: number | null = null;
-let lastConnectorUpdate = 0;
-const CONNECTOR_UPDATE_THROTTLE = 16; // ms
-
-function updateConnectorPositions() {
-    if (!isMounted.value || !timeline.value || !showNarrativeConnectors.value) {
-        connectorPaths.value = [];
-        return;
-    }
-
-    const now = performance.now();
-    if (now - lastConnectorUpdate < CONNECTOR_UPDATE_THROTTLE) {
-        if (connectorAnimationFrame) cancelAnimationFrame(connectorAnimationFrame);
-        connectorAnimationFrame = requestAnimationFrame(updateConnectorPositions);
-        return;
-    }
-    lastConnectorUpdate = now;
-
-    const paths: { d: string; color: string; isFlashback: boolean }[] = [];
-    const canvasRef = containerRef.value;
-    if (!canvasRef) return;
-
-    const containerRect = canvasRef.getBoundingClientRect();
-    const connectors = narrativeConnectors.value;
-    if (connectors.length === 0) {
-        connectorPaths.value = [];
-        return;
-    }
-
-    // Get unique connected IDs
-    const connectedIds = new Set<string>();
-    connectors.forEach(conn => {
-        connectedIds.add(conn.from);
-        connectedIds.add(conn.to);
-    });
-
-    // Create a lookup for item positions
-    const itemRects = new Map<string, DOMRect>();
-    connectedIds.forEach(id => {
-        const el = canvasRef.querySelector(`[data-id="${id}"]`);
-        if (el) itemRects.set(id, el.getBoundingClientRect());
-    });
-
-    connectors.forEach(conn => {
-        const fromRect = itemRects.get(conn.from);
-        const toRect = itemRects.get(conn.to);
-
-        if (fromRect && toRect) {
-            const x1 = fromRect.right - containerRect.left;
-            const y1 = fromRect.top + fromRect.height / 2 - containerRect.top;
-            const x2 = toRect.left - containerRect.left;
-            const y2 = toRect.top + toRect.height / 2 - containerRect.top;
-
-            // Simple curve calculation
-            const dist = Math.abs(x2 - x1);
-            const cp1x = x1 + dist * 0.4; // Slightly tighter curves
-            const cp1y = y1;
-            const cp2x = x2 - dist * 0.4;
-            const cp2y = y2;
-            
-            const isFlashback = x2 < x1;
-            const pathD = `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`;
-
-            paths.push({
-                d: pathD,
-                color: isFlashback ? 'var(--color-warning)' : 'var(--color-primary)',
-                isFlashback
-            });
-        }
-    });
-
-    connectorPaths.value = paths;
-}
-
-// --- Export & Sort Logic ---
-
-const { projectData, updateStructure } = useProjectData();
-
-function sortNodesChronologically(nodes: FileNode[]): FileNode[] {
-    return [...nodes].sort((a, b) => {
-        const dateA = a.chronological_date || a.abstract_timeframe || '';
-        const dateB = b.chronological_date || b.abstract_timeframe || '';
-        if (!dateA && !dateB) return 0;
-        if (!dateA) return 1;
-        if (!dateB) return -1;
-        return dateA.localeCompare(dateB);
-    }).map(node => {
-        if (node.children) {
-            return { ...node, children: sortNodesChronologically(node.children) };
-        }
-        return node;
-    });
-}
-
-async function handleApplyChronological() {
-    if (confirm('This will reorder your manuscript chapters based on their chronological time. This cannot be undone easily. Continue?')) {
-        const sorted = sortNodesChronologically(projectData.value);
-        await updateStructure(sorted);
-    }
-}
-
-import { save } from '@tauri-apps/plugin-dialog';
-import { writeFile } from '@tauri-apps/plugin-fs';
-
-// ... (existing imports)
 
 async function handleExport(format: 'png' | 'pdf') {
     if (!containerRef.value) return;
-    try {
-        const canvas = await html2canvas(containerRef.value, {
-            scale: 2,
-            backgroundColor: '#1a1a1a', 
-            ignoreElements: (element: Element) => element.classList.contains('narrative-overlay'),
-        });
-        
-        if (!isMounted.value) return;
-
-        const defaultName = `timeline_export_${new Date().toISOString().split('T')[0]}`;
-        let fileData: Uint8Array;
-        let filters = [];
-
-        if (format === 'png') {
-            const dataUrl = canvas.toDataURL('image/png');
-            // Convert DataURL to Uint8Array
-            const res = await fetch(dataUrl);
-            const blob = await res.blob();
-            if (!isMounted.value) return;
-            fileData = new Uint8Array(await blob.arrayBuffer());
-            filters = [{ name: 'PNG Image', extensions: ['png'] }];
-        } else {
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
-                orientation: 'landscape',
-                unit: 'px',
-                format: [canvas.width, canvas.height] 
-            });
-            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-            fileData = new Uint8Array(pdf.output('arraybuffer'));
-            filters = [{ name: 'PDF Document', extensions: ['pdf'] }];
-        }
-
-        // Open Save Dialog
-        const path = await save({
-            defaultPath: defaultName,
-            filters: filters
-        });
-        
-        if (!isMounted.value) return;
-
-        if (path) {
-            await writeFile(path, fileData);
-            console.log(`Export saved to ${path}`);
-        }
-
-    } catch (e) {
-        console.error('Export failed:', e);
-        // Fallback or User Notification could be added here
-        alert('Failed to export: ' + e);
-    }
+    await exportTimeline(containerRef.value, format);
 }
 </script>
 
@@ -452,7 +82,7 @@ async function handleExport(format: 'png' | 'pdf') {
             @fit="fitTimeline"
             @zoom-in="zoomIn"
             @zoom-out="zoomOut"
-            @apply-chronological="handleApplyChronological"
+            @apply-chronological="applyChronologicalSort"
             @export="handleExport"
             @open-calendar="showCalendarSettings = true"
         />
