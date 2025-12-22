@@ -6,58 +6,6 @@ use std::sync::{Arc, Mutex};
 use tauri::State;
 use uuid::Uuid;
 
-// --- Helpers ---
-
-fn get_project_context(
-    state: &State<'_, AppState>,
-    project_id: Uuid,
-) -> Result<(PathBuf, Arc<Mutex<ProjectMetadata>>), String> {
-    let root_path = {
-        let projects = state
-            .open_projects
-            .lock()
-            .map_err(|_| "Failed to lock projects")?;
-        projects
-            .get(&project_id)
-            .cloned()
-            .ok_or_else(|| "Project not loaded".to_string())?
-    };
-
-    let cache = state
-        .project_cache
-        .lock()
-        .map_err(|_| "Failed to lock cache")?;
-    let metadata = cache
-        .get(&project_id)
-        .cloned()
-        .ok_or_else(|| "Metadata not in cache".to_string())?;
-
-    Ok((root_path, metadata))
-}
-
-fn mutate_project_metadata<F>(
-    state: &State<'_, AppState>,
-    project_id: Uuid,
-    mutation: F,
-) -> Result<ProjectMetadata, String>
-where
-    F: FnOnce(&mut ProjectMetadata) -> Result<(), String>,
-{
-    let (root_path, metadata_arc) = get_project_context(state, project_id)?;
-
-    // Lock the specific project logic
-    let mut metadata = metadata_arc.lock().map_err(|_| "Failed to lock metadata")?;
-
-    mutation(&mut metadata)?;
-
-    metadata.updated_at = chrono::Utc::now();
-    storage::save_project_metadata(&root_path, &metadata).map_err(|e| e.to_string())?;
-
-    // No need to update cache explicitly as we modified the Arc contents in place.
-
-    Ok(metadata.clone())
-}
-
 // --- Commands ---
 
 #[tauri::command]
@@ -115,7 +63,7 @@ pub async fn update_manifest(
     project_id: Uuid,
     manifest: Manifest,
 ) -> Result<ProjectMetadata, String> {
-    mutate_project_metadata(&state, project_id, |metadata| {
+    state.mutate_project(project_id, |metadata| {
         metadata.manifest = manifest;
         Ok(())
     })
@@ -128,7 +76,7 @@ pub async fn update_node_metadata(
     node_id: String,
     update: crate::models::NodeMetadataUpdate,
 ) -> Result<ProjectMetadata, String> {
-    mutate_project_metadata(&state, project_id, |metadata| {
+    state.mutate_project(project_id, |metadata| {
         if let Some(node) = metadata
             .manifest
             .chapters
@@ -169,7 +117,7 @@ pub async fn update_project_settings(
     project_id: Uuid,
     settings: crate::models::ProjectSettings,
 ) -> Result<ProjectMetadata, String> {
-    mutate_project_metadata(&state, project_id, |metadata| {
+    state.mutate_project(project_id, |metadata| {
         metadata.settings = settings;
         Ok(())
     })
@@ -181,7 +129,7 @@ pub async fn update_plotlines(
     project_id: Uuid,
     plotlines: Vec<crate::models::Plotline>,
 ) -> Result<ProjectMetadata, String> {
-    mutate_project_metadata(&state, project_id, |metadata| {
+    state.mutate_project(project_id, |metadata| {
         metadata.plotlines = plotlines;
         Ok(())
     })
@@ -193,7 +141,7 @@ pub async fn load_chapter_content(
     project_id: Uuid,
     chapter_id: String,
 ) -> Result<String, String> {
-    let (root_path, metadata_arc) = get_project_context(&state, project_id)?;
+    let (root_path, metadata_arc) = state.get_context(project_id)?;
     let metadata = metadata_arc.lock().map_err(|_| "Failed to lock metadata")?;
     storage::read_chapter_content(root_path, &metadata, &chapter_id).map_err(|e| e.to_string())
 }
@@ -205,12 +153,12 @@ pub async fn save_chapter(
     chapter_id: String,
     content: String,
 ) -> Result<ProjectMetadata, String> {
-    let (root_path, _) = get_project_context(&state, project_id)?;
+    let (root_path, _) = state.get_context(project_id)?;
 
     // 1. Resolve Path and Write content (using storage helper to avoid duplication of path logic if possible,
     // but save_chapter_content in storage.rs also tries to modify metadata which we want to control here to keep mutate_project_metadata)
 
-    mutate_project_metadata(&state, project_id, |metadata| {
+    state.mutate_project(project_id, |metadata| {
         let chapter_path = storage::resolve_chapter_path(&root_path, metadata, &chapter_id)
             .map_err(|e| e.to_string())?;
 
@@ -238,9 +186,9 @@ pub async fn create_node(
     parent_id: Option<String>,
     name: String,
 ) -> Result<ProjectMetadata, String> {
-    let (root_path, _) = get_project_context(&state, project_id)?;
+    let (root_path, _) = state.get_context(project_id)?;
 
-    mutate_project_metadata(&state, project_id, |metadata| {
+    state.mutate_project(project_id, |metadata| {
         storage::create_chapter_node(&root_path, metadata, parent_id, name)
             .map_err(|e| e.to_string())
     })
@@ -252,12 +200,12 @@ pub async fn delete_node(
     project_id: Uuid,
     id: String,
 ) -> Result<ProjectMetadata, String> {
-    let (root_path, _) = get_project_context(&state, project_id)?;
+    let (root_path, _) = state.get_context(project_id)?;
 
     let mut filenames = Vec::new();
 
     // 1. Remove from manifest recursively and get filenames
-    let new_metadata = mutate_project_metadata(&state, project_id, |metadata| {
+    let new_metadata = state.mutate_project(project_id, |metadata| {
         filenames = metadata.remove_node_recursively(id);
         Ok(())
     })?;
@@ -280,7 +228,7 @@ pub async fn save_character(
     project_id: Uuid,
     character: crate::models::Character,
 ) -> Result<ProjectMetadata, String> {
-    mutate_project_metadata(&state, project_id, |metadata| {
+    state.mutate_project(project_id, |metadata| {
         metadata.add_or_update_character(character);
         Ok(())
     })
@@ -292,7 +240,7 @@ pub async fn delete_character(
     project_id: Uuid,
     character_id: Uuid,
 ) -> Result<ProjectMetadata, String> {
-    mutate_project_metadata(&state, project_id, |metadata| {
+    state.mutate_project(project_id, |metadata| {
         metadata.remove_character(character_id)
     })
 }
