@@ -2,8 +2,8 @@ import { ref, watch } from 'vue';
 import { BaseDirectory, readTextFile, writeTextFile, exists, mkdir } from '@tauri-apps/plugin-fs';
 import { type AppSettings, defaultSettings } from '../config/defaultSettings';
 
-function isObject(item: any) {
-    return (item && typeof item === 'object' && !Array.isArray(item));
+function isObject(item: unknown): item is Record<string, unknown> {
+    return !!(item && typeof item === 'object' && !Array.isArray(item));
 }
 
 // Global state
@@ -79,7 +79,7 @@ export function useSettings() {
 
     // Helper for merging defaults (source) with loaded (override)
     function recursiveMerge(defaults: any, loaded: any): any {
-        const result: any = { ...defaults };
+        const result = { ...defaults };
 
         for (const key in loaded) {
             if (key in defaults) {

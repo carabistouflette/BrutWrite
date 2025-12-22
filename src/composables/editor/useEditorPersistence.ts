@@ -2,10 +2,12 @@ import { type Editor } from '@tiptap/vue-3';
 import { projectApi } from '../../api/project';
 import { useAppStatus } from '../useAppStatus';
 import { useProjectData } from '../useProjectData';
+import type { Chapter } from '../../types';
+import type { Ref } from 'vue';
 
 export function useEditorPersistence(
-    editor:  { value: Editor | undefined }, // Pass as ref-like object or just use Ref<Editor | undefined> in implementation
-    isDirty: { value: boolean },
+    editor: Ref<Editor | undefined>, 
+    isDirty: Ref<boolean>,
     resetWordCountState: () => void
 ) {
     const { notifyError } = useAppStatus();
@@ -38,7 +40,7 @@ export function useEditorPersistence(
 
             // Sync frontend state from the metadata returned by backend
             if (activeId.value) {
-                const chapter = metadata.manifest.chapters.find((c: any) => c.id === chapterId);
+                const chapter = metadata.manifest.chapters.find((c: Chapter) => c.id === chapterId);
                 if (chapter) {
                     updateNodeStats(chapterId, chapter.word_count);
                 }

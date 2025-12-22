@@ -1,8 +1,9 @@
 import { useCalendar } from '../useCalendar';
+import { type VisTimelineItem } from './useVisTimelineData';
 
 
 export function useVisTimelineOptions(
-    onMove: (item: any, callback: (item: any) => void) => void
+    onMove: (item: VisTimelineItem, callback: (item: VisTimelineItem | null) => void) => void
 ) {
     const { formatDate, getYear } = useCalendar();
 

@@ -1,4 +1,6 @@
 import { ref } from 'vue';
+import type { Editor } from '@tiptap/core';
+import type { Node as ProsemirrorNode } from '@tiptap/pm/model';
 
 export function useEditorWordCount(
     onContentChange?: (count: number) => void
@@ -12,7 +14,7 @@ export function useEditorWordCount(
             : text.split(/\s+/).filter(w => w.length > 0).length;
     };
 
-    const debouncedWordCountUpdate = (doc: any) => {
+    const debouncedWordCountUpdate = (doc: ProsemirrorNode) => {
         clearTimeout(wordCountTimeout);
         wordCountTimeout = setTimeout(() => {
             const text = doc.textContent;
@@ -26,7 +28,7 @@ export function useEditorWordCount(
         }, 500); // 500ms debounce
     };
 
-    const resetWordCountState = (editor: any) => {
+    const resetWordCountState = (editor: Editor | null | undefined) => {
         if (!editor) return;
         lastWordCount.value = calculateWordCount(editor.state.doc.textContent);
     };

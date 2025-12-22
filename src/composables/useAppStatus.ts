@@ -23,7 +23,7 @@ export function useAppStatus() {
         }
     };
 
-    const notifyError = (message: string, error?: any) => {
+    const notifyError = (message: string, error?: unknown) => {
         console.error(message, error);
         notify(message, 'error', 5000);
     };

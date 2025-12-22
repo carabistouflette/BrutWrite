@@ -2,23 +2,32 @@ import { type Ref, watch } from 'vue';
 import { DataSet } from 'vis-data';
 import { useTimeline } from '../useTimeline';
 import { useTimeHelpers } from '../logic/useTimeHelpers';
+import { Timeline, type TimelineItemType } from 'vis-timeline';
 
 export interface VisTimelineItem {
-    id: string;
+    id: string | number;
     group?: string | number;
-    content: string;
-    start: Date;
-    end?: Date;
-    type?: string;
+    content: string | HTMLElement;
+    start: Date | number | string;
+    end?: Date | number | string;
+    type?: TimelineItemType;
     className?: string;
     title?: string;
 }
 
+export interface VisTimelineGroup {
+    id: string | number;
+    content: string;
+    style?: string;
+}
+
+
+
 export function useVisTimelineData(
-    items: DataSet<any>,
-    groups: DataSet<any>,
+    items: DataSet<VisTimelineItem>,
+    groups: DataSet<VisTimelineGroup>,
     isMounted: Ref<boolean>,
-    timeline: Ref<any>
+    timeline: Ref<Timeline | null>
 ) {
     const { plotlines, assignedScenes, paradoxWarnings } = useTimeline();
     const { parseDurationToMillis, parseAbstractTimeframe } = useTimeHelpers();
@@ -26,15 +35,15 @@ export function useVisTimelineData(
     function syncData() {
         if (!isMounted.value || !timeline.value) return;
         // Sync groups
-        const groupsData = plotlines.value.map(pl => ({
+        const groupsData: VisTimelineGroup[] = plotlines.value.map(pl => ({
             id: pl.id,
             content: pl.name,
             style: `border-left: 4px solid ${pl.color}; background: linear-gradient(90deg, ${pl.color}10 0%, transparent 100%);`,
         }));
         
         const existingGroupIds = groups.getIds();
-        const newGroupIds = groupsData.map((g: any) => g.id);
-        const toRemoveGroups = existingGroupIds.filter((id: any) => !newGroupIds.includes(id));
+        const newGroupIds = groupsData.map((g: VisTimelineGroup) => g.id);
+        const toRemoveGroups = existingGroupIds.filter((id: string | number) => !newGroupIds.includes(id));
         
         groups.remove(toRemoveGroups);
         groups.update(groupsData);
@@ -76,7 +85,7 @@ export function useVisTimelineData(
 
         const existingItemIds = items.getIds();
         const newItemIds = itemsData.map(i => i.id);
-        const toRemoveItems = existingItemIds.filter((id: any) => !newItemIds.includes(id));
+        const toRemoveItems = existingItemIds.filter((id: string | number) => !newItemIds.includes(id));
 
         items.remove(toRemoveItems);
         items.update(itemsData);

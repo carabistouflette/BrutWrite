@@ -1,9 +1,25 @@
 import { VueRenderer } from '@tiptap/vue-3';
 import Mention from '@tiptap/extension-mention';
-import tippy from 'tippy.js';
+import tippy, { type Instance } from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
 import MentionList from '../../components/base/MentionList.vue';
 import { useCharacters } from '../useCharacters';
+import type { Editor } from '@tiptap/core';
+
+interface BaseSuggestionProps {
+    clientRect?: (() => DOMRect | null) | null;
+}
+
+interface SuggestionProps extends BaseSuggestionProps {
+    editor: Editor;
+    [key: string]: any;
+}
+
+interface SuggestionKeyDownProps extends BaseSuggestionProps {
+    event: KeyboardEvent;
+    [key: string]: any;
+}
+
 
 export function useTiptapMentions() {
     const { characters } = useCharacters();
@@ -21,10 +37,10 @@ export function useTiptapMentions() {
             },
             render: () => {
                 let component: VueRenderer;
-                let popup: any;
+                let popup: Instance | null = null;
 
                 return {
-                    onStart: (props: any) => {
+                    onStart: (props: SuggestionProps) => {
                         component = new VueRenderer(MentionList, {
                             props: props,
                             editor: props.editor,
@@ -34,8 +50,8 @@ export function useTiptapMentions() {
                             return;
                         }
 
-                        popup = tippy(document.body, {
-                            getReferenceClientRect: props.clientRect,
+                        const instances = tippy(document.body, {
+                            getReferenceClientRect: props.clientRect as any,
                             appendTo: () => document.body,
                             content: component.element as Element,
                             showOnCreate: true,
@@ -43,27 +59,28 @@ export function useTiptapMentions() {
                             trigger: 'manual',
                             placement: 'bottom-start',
                         });
+                        popup = Array.isArray(instances) ? instances[0] : instances;
                     },
-                    onUpdate(props: any) {
+                    onUpdate(props: SuggestionProps) {
                         component.updateProps(props);
 
-                        if (!props.clientRect) {
+                        if (!props.clientRect || !popup) {
                             return;
                         }
 
-                        popup[0].setProps({
-                            getReferenceClientRect: props.clientRect,
+                        popup.setProps({
+                            getReferenceClientRect: props.clientRect as any,
                         });
                     },
-                    onKeyDown(props: any) {
-                        if (props.event.key === 'Escape') {
-                            popup[0].hide();
+                    onKeyDown(props: SuggestionKeyDownProps) {
+                        if (props.event?.key === 'Escape' && popup) {
+                            popup.hide();
                             return true;
                         }
                         return component.ref?.onKeyDown(props);
                     },
                     onExit() {
-                        popup[0].destroy();
+                        popup?.destroy();
                         component.destroy();
                     },
                 };

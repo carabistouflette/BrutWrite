@@ -2,12 +2,17 @@ import { projectApi } from '../../api/project';
 import { useAppStatus } from '../useAppStatus';
 import { projectToManifest } from '../../utils/tree';
 import { projectData, projectId, pendingMetadataUpdates } from '../state/projectState';
+import type { Chapter } from '../../types';
 
 let syncManifestTimeout: ReturnType<typeof setTimeout> | null = null;
 let metadataTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export function useProjectSync() {
-    const { notifyError } = useAppStatus();
+    const { notifyError: originalNotifyError } = useAppStatus();
+
+    const notifyError = (message: string, error?: unknown) => {
+        originalNotifyError(message, error);
+    };
 
     const syncManifestDebounced = () => {
         if (syncManifestTimeout) clearTimeout(syncManifestTimeout);
@@ -25,7 +30,7 @@ export function useProjectSync() {
         }, 1500); // 1.5s debounce for structural changes
     };
 
-    const syncNodeMetadataDebounced = (nodeId: string, updates: any) => {
+    const syncNodeMetadataDebounced = (nodeId: string, updates: Partial<Chapter>) => {
         // Merge updates for the same node
         const current = pendingMetadataUpdates.get(nodeId) || {};
         pendingMetadataUpdates.set(nodeId, { ...current, ...updates });

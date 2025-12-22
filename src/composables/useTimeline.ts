@@ -58,7 +58,7 @@ export function useTimeline() {
         // Return pairs of scene IDs in reading order (manuscript order)
         // Only include scenes that are ASSIGNED to the timeline.
         const assignedIds = new Set(assignedScenes.value.map(s => s.id));
-        const ordered = allChapters.value.filter((c: any) => assignedIds.has(c.id));
+        const ordered = allChapters.value.filter((c) => assignedIds.has(c.id));
         
         const pairs: { from: string; to: string; isFlashback: boolean }[] = [];
 

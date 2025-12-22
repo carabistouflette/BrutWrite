@@ -55,7 +55,7 @@ watch(activeId, async (newId, oldId) => {
 }, { immediate: true });
 
 // Auto-save logic
-let saveInterval: any
+let saveInterval: ReturnType<typeof setInterval> | undefined;
     const setupAutoSave = () => {
         if (saveInterval) clearInterval(saveInterval);
         const intervalMs = (settings.value.general.autoSaveInterval || 30) * 1000;

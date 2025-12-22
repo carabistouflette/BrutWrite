@@ -2,6 +2,7 @@ import { projectApi } from '../../api/project';
 import { useAppStatus } from '../useAppStatus';
 import { useCharacters } from '../useCharacters';
 import { reconstructHierarchy } from '../../utils/tree';
+import type { ProjectSettings, Plotline } from '../../types';
 import { 
     projectData, 
     projectId, 
@@ -84,7 +85,7 @@ export function useProjectIO() {
         localStorage.removeItem('last_opened_project_path');
     };
 
-    const updateSettings = async (settings: any) => {
+    const updateSettings = async (settings: ProjectSettings) => {
         if (!projectId.value) return;
         try {
             const metadata = await projectApi.updateSettings(projectId.value, settings);
@@ -94,7 +95,7 @@ export function useProjectIO() {
         }
     };
 
-    const updatePlotlines = async (plotlines: any[]) => {
+    const updatePlotlines = async (plotlines: Plotline[]) => {
         if (!projectId.value) return;
         try {
             const metadata = await projectApi.updatePlotlines(projectId.value, plotlines);

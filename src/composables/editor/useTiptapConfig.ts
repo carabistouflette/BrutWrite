@@ -1,9 +1,10 @@
 import StarterKit from '@tiptap/starter-kit';
 import Focus from '@tiptap/extension-focus';
 import { useTiptapMentions } from './useTiptapMentions';
+import type { Transaction } from '@tiptap/pm/state';
 
 export function useTiptapConfig(
-    onUpdate: (props: { transaction: any }) => void,
+    onUpdate: (props: { transaction: Transaction }) => void,
     onSelectionUpdate: () => void
 ) {
     const { mentionExtension } = useTiptapMentions();

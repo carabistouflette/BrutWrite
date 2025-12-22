@@ -90,7 +90,7 @@ export function useProjectNodeOperations() {
             // Only allow temporal updates here
             const allowed = ['chronological_date', 'abstract_timeframe', 'duration', 'plotline_tag', 'depends_on', 'pov_character_id'];
             let changed = false;
-            const updateForBackend: any = {};
+            const updateForBackend: Partial<FileNode> = {};
             
             allowed.forEach(key => {
                 if (key in updates && (node as any)[key] !== (updates as any)[key]) {
