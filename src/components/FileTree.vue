@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VueDraggableNext } from 'vue-draggable-next';
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, type ComponentPublicInstance } from 'vue';
 import { useDragState } from '../composables/useDragState';
 import type { FileNode } from '../types';
 import FileTreeItem from './FileTreeItem.vue';
@@ -49,7 +49,7 @@ const handleNestedUpdate = (index: number, newChildren: FileNode[]) => {
 
 const editName = ref('');
 const itemRefs = new Map<string, InstanceType<typeof FileTreeItem>>();
-const setItemRef = (el: any, id: string) => {
+const setItemRef = (el: Element | ComponentPublicInstance | null, id: string) => {
   if (el) itemRefs.set(id, el as InstanceType<typeof FileTreeItem>);
   else itemRefs.delete(id);
 };

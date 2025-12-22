@@ -5,6 +5,7 @@ import 'tippy.js/dist/tippy.css';
 import MentionList from '../../components/base/MentionList.vue';
 import { useCharacters } from '../useCharacters';
 import type { Editor } from '@tiptap/core';
+import type { EditorView } from '@tiptap/pm/view';
 
 interface BaseSuggestionProps {
     clientRect?: (() => DOMRect | null) | null;
@@ -26,7 +27,7 @@ interface SuggestionProps extends BaseSuggestionProps {
 
 interface SuggestionKeyDownProps extends BaseSuggestionProps {
     event: KeyboardEvent;
-    view: any; // ProseMirror view
+    view: EditorView;
     range: { from: number; to: number };
 }
 
