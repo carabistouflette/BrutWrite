@@ -176,15 +176,7 @@ pub fn save_character<P: AsRef<Path>>(
     character: crate::models::Character,
 ) -> Result<ProjectMetadata> {
     modify_metadata(root_path, |metadata| {
-        if let Some(idx) = metadata
-            .characters
-            .iter()
-            .position(|c| c.id == character.id)
-        {
-            metadata.characters[idx] = character;
-        } else {
-            metadata.characters.push(character);
-        }
+        metadata.add_or_update_character(character);
         Ok(())
     })
 }
@@ -194,13 +186,9 @@ pub fn delete_character<P: AsRef<Path>>(
     character_id: uuid::Uuid,
 ) -> Result<ProjectMetadata> {
     modify_metadata(root_path, |metadata| {
-        let initial_len = metadata.characters.len();
-        metadata.characters.retain(|c| c.id != character_id);
-
-        if metadata.characters.len() == initial_len {
-            return Err(Error::CharacterNotFound(character_id.to_string()));
-        }
-        Ok(())
+        metadata
+            .remove_character(character_id)
+            .map_err(|_| Error::CharacterNotFound(character_id.to_string()))
     })
 }
 

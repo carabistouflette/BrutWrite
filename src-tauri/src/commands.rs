@@ -265,24 +265,7 @@ pub async fn delete_node(
 
     // 2. Remove from manifest recursively
     mutate_project_metadata(&state, project_id, |metadata| {
-        let mut ids_to_remove = vec![id.clone()];
-        let mut i = 0;
-        while i < ids_to_remove.len() {
-            let current = ids_to_remove[i].clone();
-            for c in &metadata.manifest.chapters {
-                if c.parent_id == Some(current.clone()) {
-                    if !ids_to_remove.contains(&c.id) {
-                        ids_to_remove.push(c.id.clone());
-                    }
-                }
-            }
-            i += 1;
-        }
-
-        metadata
-            .manifest
-            .chapters
-            .retain(|c| !ids_to_remove.contains(&c.id));
+        metadata.remove_node_recursively(id);
         Ok(())
     })
 }
@@ -294,15 +277,7 @@ pub async fn save_character(
     character: crate::models::Character,
 ) -> Result<ProjectMetadata, String> {
     mutate_project_metadata(&state, project_id, |metadata| {
-        if let Some(idx) = metadata
-            .characters
-            .iter()
-            .position(|c| c.id == character.id)
-        {
-            metadata.characters[idx] = character;
-        } else {
-            metadata.characters.push(character);
-        }
+        metadata.add_or_update_character(character);
         Ok(())
     })
 }
@@ -314,12 +289,6 @@ pub async fn delete_character(
     character_id: Uuid,
 ) -> Result<ProjectMetadata, String> {
     mutate_project_metadata(&state, project_id, |metadata| {
-        let initial_len = metadata.characters.len();
-        metadata.characters.retain(|c| c.id != character_id);
-
-        if metadata.characters.len() == initial_len {
-            return Err("Character not found".to_string());
-        }
-        Ok(())
+        metadata.remove_character(character_id)
     })
 }

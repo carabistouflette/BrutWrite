@@ -171,6 +171,48 @@ impl ProjectMetadata {
             }],
         }
     }
+
+    pub fn add_or_update_character(&mut self, character: Character) {
+        if let Some(idx) = self.characters.iter().position(|c| c.id == character.id) {
+            self.characters[idx] = character;
+        } else {
+            self.characters.push(character);
+        }
+    }
+
+    pub fn remove_character(&mut self, character_id: Uuid) -> Result<(), String> {
+        let initial_len = self.characters.len();
+        self.characters.retain(|c| c.id != character_id);
+
+        if self.characters.len() == initial_len {
+            Err("Character not found".to_string())
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn remove_node_recursively(&mut self, node_id: String) {
+        let mut ids_to_remove = vec![node_id.clone()];
+        let mut i = 0;
+
+        // Find all descendants
+        while i < ids_to_remove.len() {
+            let current = ids_to_remove[i].clone();
+            for c in &self.manifest.chapters {
+                if c.parent_id == Some(current.clone()) {
+                    if !ids_to_remove.contains(&c.id) {
+                        ids_to_remove.push(c.id.clone());
+                    }
+                }
+            }
+            i += 1;
+        }
+
+        // Remove them
+        self.manifest
+            .chapters
+            .retain(|c| !ids_to_remove.contains(&c.id));
+    }
 }
 
 #[cfg(test)]
