@@ -35,11 +35,32 @@
     <div class="pt-8 pb-6 px-8 flex flex-col gap-1 shrink-0">
       <div class="flex items-center justify-between">
         <h2 class="font-serif text-2xl text-ink tracking-tight font-medium">Research</h2>
-        <span
-          class="text-[10px] tracking-widest uppercase font-bold text-ink/40 border border-stone px-2 py-0.5 rounded-full"
-        >
-          {{ store.artifacts.length }}
-        </span>
+        <div class="flex items-center gap-2">
+          <span
+            class="text-[10px] tracking-widest uppercase font-bold text-ink/40 border border-stone px-2 py-0.5 rounded-full"
+          >
+            {{ store.artifacts.length }}
+          </span>
+          <button
+            class="p-1 rounded-md text-ink/30 hover:text-ink hover:bg-stone transition-colors"
+            @click="$emit('close')"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
       </div>
       <p class="text-[11px] text-ink/40 uppercase tracking-widest font-semibold mt-1">
         Vault Content
@@ -257,7 +278,7 @@ const store = useResearchStore();
 const searchQuery = ref('');
 const isDragging = ref(false);
 
-defineEmits(['add']);
+defineEmits(['add', 'close']);
 
 // --- Drag and Drop ---
 const handleDrop = () => {

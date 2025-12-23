@@ -64,6 +64,26 @@
           </svg>
           Open
         </button>
+        <div class="h-4 w-px bg-ink/10 mx-1"></div>
+        <button
+          class="p-1.5 rounded-md text-ink/30 hover:text-ink hover:bg-stone transition-colors"
+          @click="$emit('close')"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -166,5 +186,5 @@ import NoteEditor from './NoteEditor.vue';
 
 const store = useResearchStore();
 
-defineEmits(['add']);
+defineEmits(['add', 'close']);
 </script>

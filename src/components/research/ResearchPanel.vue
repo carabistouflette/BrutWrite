@@ -7,6 +7,8 @@ import ResearchContent from './ResearchContent.vue';
 
 const store = useResearchStore();
 
+defineEmits(['close']);
+
 onMounted(() => {
   store.fetchArtifacts();
 });
@@ -35,12 +37,15 @@ const openAddDialog = async () => {
 
 <template>
   <div class="h-full w-full bg-paper overflow-hidden relative">
-    <Transition name="fade-slide" mode="out-in">
-      <!-- View 1: List / Sidebar -->
-      <ResearchSidebar v-if="!store.activeArtifact" class="w-full h-full" @add="openAddDialog" />
+    <!-- View 1: List / Sidebar -->
+    <ResearchSidebar
+      v-if="!store.activeArtifact"
+      class="w-full h-full"
+      @add="openAddDialog"
+      @close="$emit('close')"
+    />
 
-      <!-- View 2: Content Viewer -->
-      <ResearchContent v-else class="w-full h-full" @add="openAddDialog" />
-    </Transition>
+    <!-- View 2: Content Viewer -->
+    <ResearchContent v-else class="w-full h-full" @add="openAddDialog" @close="$emit('close')" />
   </div>
 </template>
