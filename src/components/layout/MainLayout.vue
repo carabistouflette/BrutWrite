@@ -15,7 +15,7 @@ import { defineAsyncComponent } from 'vue';
 const SettingsModal = defineAsyncComponent(() => import('../SettingsModal.vue'));
 const CharacterSheet = defineAsyncComponent(() => import('../characters/CharacterSheet.vue'));
 const TimelineView = defineAsyncComponent(() => import('../timeline/Timeline.vue'));
-const ResearchPanel = defineAsyncComponent(() => import('../research/ResearchPanel.vue'));
+import ResearchPanel from '../research/ResearchPanel.vue';
 
 // --- Composables ---
 const {
@@ -26,6 +26,17 @@ const {
   initialWidth: 256,
   minWidth: 200,
   maxWidth: 600,
+});
+
+const {
+  width: researchWidth,
+  isResizing: isResizingResearch,
+  startResize: startResizeResearch,
+} = useResizable({
+  initialWidth: 400,
+  minWidth: 300,
+  maxWidth: 800,
+  edge: 'right',
 });
 
 const {
@@ -206,15 +217,40 @@ const handleChangeProject = async () => {
     </main>
 
     <!-- Research Sidebar -->
-    <aside
-      v-if="showResearch"
-      class="w-80 border-l border-stone/50 h-full cyber-glass relative z-10 transition-all duration-300"
-    >
-      <ResearchPanel />
-    </aside>
+    <Transition name="slide-right">
+      <aside
+        v-if="showResearch"
+        class="border-l border-stone/50 h-full cyber-glass relative z-10 shadow-[-4px_0_24px_rgba(0,0,0,0.02)]"
+        :style="{ width: `${researchWidth}px` }"
+      >
+        <!-- Resize Handle -->
+        <div
+          class="absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-accent/50 transition-colors z-20"
+          :class="{ 'bg-accent/50': isResizingResearch }"
+          @mousedown="startResizeResearch"
+        ></div>
+
+        <ResearchPanel @close="showResearch = false" />
+      </aside>
+    </Transition>
   </div>
 </template>
 
 <style scoped>
 /* Brutalist specific overrides if tailwind isn't enough */
+
+/* Research Panel Animation */
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition:
+    transform 0.35s ease-out,
+    opacity 0.35s ease;
+  will-change: transform, opacity;
+}
+
+.slide-right-enter-from,
+.slide-right-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
 </style>
