@@ -87,6 +87,19 @@ export const useResearchStore = defineStore('research', () => {
     }
   }
 
+  async function deleteArtifact(id: string) {
+    try {
+      await invoke('delete_research_artifact', { id });
+      artifacts.value = artifacts.value.filter((a) => a.id !== id);
+      if (activeArtifact.value?.id === id) {
+        activeArtifact.value = null;
+      }
+    } catch (error) {
+      console.error('Failed to delete artifact:', error);
+      throw error;
+    }
+  }
+
   // Listen for backend updates
   listen('research-update', () => {
     fetchArtifacts();
@@ -103,5 +116,6 @@ export const useResearchStore = defineStore('research', () => {
     createNote,
     saveNoteContent,
     renameArtifact,
+    deleteArtifact,
   };
 });

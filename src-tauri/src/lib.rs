@@ -108,7 +108,8 @@ pub fn run() {
             commands::update_research_artifact,
             commands::create_research_note,
             commands::update_note_content,
-            commands::rename_research_artifact
+            commands::rename_research_artifact,
+            commands::delete_research_artifact
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

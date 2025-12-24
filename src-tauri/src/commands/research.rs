@@ -157,3 +157,24 @@ pub async fn rename_research_artifact(
         Err(crate::errors::Error::ArtifactNotFound(id))
     }
 }
+#[tauri::command]
+pub async fn delete_research_artifact(
+    state: State<'_, ResearchState>,
+    id: String,
+) -> crate::errors::Result<()> {
+    let mut inner = state.inner.lock().await;
+    if let Some(artifact) = inner.artifacts.remove(&id) {
+        let path = PathBuf::from(&artifact.path);
+        if path.exists() {
+            tokio::fs::remove_file(path).await?;
+        }
+
+        // Persist
+        if let Some(root_path) = &inner.root_path {
+            storage::save_index(root_path, &inner.artifacts)?;
+        }
+        Ok(())
+    } else {
+        Err(crate::errors::Error::ArtifactNotFound(id))
+    }
+}
