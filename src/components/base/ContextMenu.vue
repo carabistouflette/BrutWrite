@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useSettings } from '../../composables/logic/useSettings';
 
 const props = defineProps<{
   show: boolean;
@@ -11,10 +12,17 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const style = computed(() => ({
-  top: `${props.y}px`,
-  left: `${props.x}px`,
-}));
+const { settings } = useSettings();
+
+const style = computed(() => {
+  const scale = settings.value.interface.uiScaling / 100;
+  return {
+    top: `${props.y}px`,
+    left: `${props.x}px`,
+    transform: `scale(${scale})`,
+    transformOrigin: 'top left',
+  };
+});
 
 const handleClose = () => {
   emit('close');
@@ -22,7 +30,7 @@ const handleClose = () => {
 </script>
 
 <template>
-  <Teleport to="#app-scale-root">
+  <Teleport to="body">
     <div
       v-if="show"
       class="fixed inset-0 z-90"

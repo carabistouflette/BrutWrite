@@ -50,7 +50,13 @@ const {
   closeProject,
 } = useProjectData();
 
-const { showMenu, menuPos, targetNodeId, openMenu, closeMenu } = useContextMenu();
+const {
+  showMenu,
+  menuPos,
+  contextData: targetNodeId,
+  openMenu,
+  closeMenu,
+} = useContextMenu<string>();
 
 // --- Local State ---
 const editingId = ref<string | null>(null);
