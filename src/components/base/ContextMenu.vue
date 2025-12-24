@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useSettings } from '../../composables/logic/useSettings';
+import { storeToRefs } from 'pinia';
+import { useSettingsStore } from '../../stores/settings';
 
 const props = defineProps<{
   show: boolean;
@@ -12,7 +13,8 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const { settings } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 
 const style = computed(() => {
   const scale = settings.value.interface.uiScaling / 100;
