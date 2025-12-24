@@ -263,8 +263,19 @@
         ACTIONS
       </div>
       <div class="menu-item menu-item-default" @click="handleRename">Rename</div>
-      <div class="menu-item menu-item-default" @click="handleAddTag">Add Tag</div>
+      <div class="menu-item menu-item-default" @click="handleEditTags">Edit Tags</div>
+      <div class="border-t border-ink/5 my-1"></div>
+      <div class="menu-item menu-item-danger" @click="handleDelete">Delete</div>
     </ContextMenu>
+
+    <!-- Tag Manager Modal -->
+    <TagManagerModal
+      :show="showTagManager"
+      :initial-tags="managingArtifact?.tags || []"
+      :artifact-name="managingArtifact?.name || ''"
+      @close="showTagManager = false"
+      @save="handleSaveTags"
+    />
   </aside>
 </template>
 
@@ -273,12 +284,23 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useResearchStore, type ResearchArtifact } from '../../stores/research';
 import { listen } from '@tauri-apps/api/event';
 import ContextMenu from '../base/ContextMenu.vue';
+import TagManagerModal from './TagManagerModal.vue';
+import { useContextMenu } from '../../composables/ui/useContextMenu';
 
 const store = useResearchStore();
 const searchQuery = ref('');
 const isDragging = ref(false);
 
 defineEmits(['add', 'close']);
+
+// --- Context Menu Composable ---
+const {
+  showMenu,
+  menuPos,
+  contextData: targetArtifact,
+  openMenu,
+  closeMenu,
+} = useContextMenu<ResearchArtifact>();
 
 // --- Drag and Drop ---
 const handleDrop = () => {
@@ -325,34 +347,29 @@ const filteredArtifacts = computed(() => {
   });
 });
 
-// --- Context Menu ---
-const showMenu = ref(false);
-const menuPos = ref({ x: 0, y: 0 });
-const targetArtifact = ref<ResearchArtifact | null>(null);
-
+// --- Context Menu Handlers ---
 const handleContextMenu = (e: MouseEvent, item: ResearchArtifact) => {
-  e.preventDefault();
-  targetArtifact.value = item;
-  menuPos.value = { x: e.clientX, y: e.clientY };
-  showMenu.value = true;
+  openMenu(e, item);
 };
 
-const closeMenu = () => {
-  showMenu.value = false;
-  targetArtifact.value = null;
-};
+// --- Tag Management ---
+const showTagManager = ref(false);
+const managingArtifact = ref<ResearchArtifact | null>(null);
 
-const handleAddTag = () => {
+const handleEditTags = () => {
   if (!targetArtifact.value) return;
-  const tag = window.prompt('Enter tag:');
-  if (tag && tag.trim()) {
-    const item = targetArtifact.value;
-    if (!item.tags.includes(tag.trim())) {
-      item.tags.push(tag.trim());
-      store.updateArtifact(JSON.parse(JSON.stringify(item))); // clone to be safe
-    }
-  }
+  managingArtifact.value = targetArtifact.value;
+  showTagManager.value = true;
   closeMenu();
+};
+
+const handleSaveTags = (newTags: string[]) => {
+  if (!managingArtifact.value) return;
+  const item = JSON.parse(JSON.stringify(managingArtifact.value));
+  item.tags = newTags;
+  store.updateArtifact(item);
+  showTagManager.value = false;
+  managingArtifact.value = null;
 };
 
 const handleNewNote = async () => {
@@ -367,6 +384,17 @@ const handleRename = async () => {
   const name = window.prompt('New Name:', targetArtifact.value.name);
   if (name && name.trim() && name !== targetArtifact.value.name) {
     await store.renameArtifact(targetArtifact.value.id, name.trim());
+  }
+  closeMenu();
+};
+
+const handleDelete = async () => {
+  if (!targetArtifact.value) return;
+  const confirm = window.confirm(
+    `Are you sure you want to delete "${targetArtifact.value.name}"? This will permanently remove the file.`
+  );
+  if (confirm) {
+    await store.deleteArtifact(targetArtifact.value.id);
   }
   closeMenu();
 };
