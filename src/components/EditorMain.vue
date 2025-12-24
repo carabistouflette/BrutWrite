@@ -65,23 +65,28 @@ const { editor, containerRef, loadChapter, saveChapter } = useTiptapEditor((delt
   }
 });
 
-// Watch Active ID to reload content
+// Watch Active ID and Editor instance to reload content
+let lastLoadedId = '';
 watch(
-  activeId,
-  async (newId, oldId) => {
+  [activeId, projectId, editor],
+  async ([newId, pPid, pEd], [oldId]) => {
     // 1. Save old chapter if it exists and has changes
-    if (oldId && projectId.value) {
-      await saveChapter(projectId.value, oldId);
+    if (oldId && pPid && pEd && oldId !== newId) {
+      await saveChapter(pPid, oldId);
     }
 
     // 2. Load new chapter
-    if (newId && projectId.value) {
-      await loadChapter(projectId.value, newId);
+    if (newId && pPid && pEd) {
+      // Only load if the ID has changed or we haven't loaded anything yet
+      if (newId !== lastLoadedId) {
+        await loadChapter(pPid, newId);
+        lastLoadedId = newId;
 
-      // Focus editor after load to ensure seamless writing experience
-      setTimeout(() => {
-        editor.value?.commands.focus();
-      }, 50);
+        // Focus editor after load to ensure seamless writing experience
+        setTimeout(() => {
+          pEd.commands.focus();
+        }, 50);
+      }
     }
   },
   { immediate: true }
