@@ -40,14 +40,17 @@
 }
 
 .control-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: rgba(59, 130, 246, 0.05);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: rgba(
+    var(--color-accent-rgb),
+    0.05
+  ); /* Using rgb var if available or just opacity on hex if supported or hardcode */
 }
 
 .control-btn.active {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
   color: white;
 }
 
@@ -84,12 +87,12 @@
 }
 
 .action-btn {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.3);
-  color: var(--color-primary);
+  background: rgba(var(--color-accent-rgb), 0.1);
+  border-color: rgba(var(--color-accent-rgb), 0.3);
+  color: var(--color-accent);
 }
 
 .action-btn:hover {
-  background: var(--color-primary);
+  background: var(--color-accent);
   color: white;
 }
