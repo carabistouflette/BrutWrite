@@ -29,4 +29,14 @@ export default defineConfig(async () => ({
       ignored: ['**/src-tauri/**'],
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-core': ['vue', 'pinia'],
+          'vendor-markdown': ['marked'],
+        },
+      },
+    },
+  },
 }));
