@@ -28,11 +28,12 @@ pub async fn handle_fs_change(
     state: &ResearchState,
     event: notify::Event,
 ) -> crate::errors::Result<()> {
-    let mut inner = state.inner.lock().await;
-    let root = if let Some(r) = &inner.root_path {
-        r.clone()
-    } else {
-        return Ok(());
+    // 1. Determine root path safely
+    let root = state.get_root_path_safe().await.ok();
+    // If vault is not initialized, we can't process events (and probably shouldn't receive them, but safe guard)
+    let root = match root {
+        Some(r) => r,
+        None => return Ok(()),
     };
 
     // We only care about file events in the root directory
@@ -53,45 +54,48 @@ pub async fn handle_fs_change(
         let path_str = path.to_string_lossy().to_string();
 
         if path.exists() {
-            // Upsert
-            let existing_id = {
-                inner.artifacts.iter().find_map(|(k, v)| {
-                    if v.path == path_str {
-                        Some(k.clone())
+            // Updated or Created
+            state
+                .mutate_and_persist(move |inner| {
+                    // Check if exists by path
+                    let existing_id = inner.artifacts.iter().find_map(|(k, v)| {
+                        if v.path == path_str {
+                            Some(k.clone())
+                        } else {
+                            None
+                        }
+                    });
+
+                    if let Some(_id) = existing_id {
+                        // Exists, do nothing
                     } else {
-                        None
+                        // New file detected
+                        let file_type = ResearchArtifact::determine_type(&file_name);
+                        let artifact =
+                            ResearchArtifact::new(path_str.clone(), file_name, file_type);
+                        inner.artifacts.insert(artifact.id.clone(), artifact);
                     }
+                    Ok(())
                 })
-            };
-
-            if let Some(_id) = existing_id {
-                // It exists, no action needed
-            } else {
-                // New file detected!
-                let file_type = ResearchArtifact::determine_type(&file_name);
-
-                let artifact = ResearchArtifact::new(path_str, file_name, file_type);
-                inner.artifacts.insert(artifact.id.clone(), artifact);
-                // Persist immediately on detection
-                crate::storage::save_index(&root, &inner.artifacts).await?;
-            }
+                .await?;
         } else {
-            // File gone?
-            let found_id = {
-                inner.artifacts.iter().find_map(|(k, v)| {
-                    if v.path == path_str {
-                        Some(k.clone())
-                    } else {
-                        None
-                    }
-                })
-            };
+            // Deleted
+            state
+                .mutate_and_persist(move |inner| {
+                    let found_id = inner.artifacts.iter().find_map(|(k, v)| {
+                        if v.path == path_str {
+                            Some(k.clone())
+                        } else {
+                            None
+                        }
+                    });
 
-            if let Some(id) = found_id {
-                inner.artifacts.remove(&id);
-                // Persist
-                crate::storage::save_index(&root, &inner.artifacts).await?;
-            }
+                    if let Some(id) = found_id {
+                        inner.artifacts.remove(&id);
+                    }
+                    Ok(())
+                })
+                .await?;
         }
     }
     Ok(())

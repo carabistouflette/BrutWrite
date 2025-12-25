@@ -93,19 +93,19 @@ pub async fn rename_artifact(
     tokio::fs::rename(&old_path, &new_path).await?;
 
     // Update state
-    {
-        let mut inner = state.inner.lock().await;
-        if let Some(artifact) = inner.artifacts.get_mut(&id) {
-            artifact.name = new_name;
-            artifact.path = new_path.to_string_lossy().to_string();
-            crate::storage::save_index(&root, &inner.artifacts).await?;
-        }
-    }
+    state
+        .mutate_and_persist(|inner| {
+            if let Some(artifact) = inner.artifacts.get_mut(&id) {
+                artifact.name = new_name;
+                artifact.path = new_path.to_string_lossy().to_string();
+            }
+            Ok(())
+        })
+        .await?;
     Ok(())
 }
 
 pub async fn delete_artifact(state: &ResearchState, id: String) -> crate::errors::Result<()> {
-    let root = state.get_root_path_safe().await?;
     let path_to_delete = {
         let inner = state.inner.lock().await;
         inner.artifacts.get(&id).map(|a| PathBuf::from(&a.path))
@@ -118,12 +118,12 @@ pub async fn delete_artifact(state: &ResearchState, id: String) -> crate::errors
     }
 
     // Update state
-    {
-        let mut inner = state.inner.lock().await;
-        if inner.artifacts.remove(&id).is_some() {
-            crate::storage::save_index(&root, &inner.artifacts).await?;
-        }
-    }
+    state
+        .mutate_and_persist(|inner| {
+            inner.artifacts.remove(&id);
+            Ok(())
+        })
+        .await?;
     Ok(())
 }
 

@@ -8,10 +8,16 @@ pub struct ResearchInner {
     pub watcher: Option<RecommendedWatcher>,
     pub artifacts: HashMap<String, ResearchArtifact>,
     pub root_path: Option<PathBuf>,
+    pub version: u64,
+}
+
+pub struct PersistenceState {
+    pub last_saved_version: u64,
 }
 
 pub struct ResearchState {
     pub inner: Mutex<ResearchInner>,
+    pub persistence: Mutex<PersistenceState>,
 }
 
 impl Default for ResearchState {
@@ -21,6 +27,10 @@ impl Default for ResearchState {
                 watcher: None,
                 artifacts: HashMap::new(),
                 root_path: None,
+                version: 0,
+            }),
+            persistence: Mutex::new(PersistenceState {
+                last_saved_version: 0,
             }),
         }
     }
@@ -77,17 +87,44 @@ impl ResearchState {
             .cloned()
     }
 
+    /// Helper to mutate state and persist changes safely
+    /// This avoids holding the main state lock during I/O
+    pub async fn mutate_and_persist<F>(&self, mutation: F) -> crate::errors::Result<()>
+    where
+        F: FnOnce(&mut ResearchInner) -> crate::errors::Result<()>,
+    {
+        // 1. Mutate securely and capture snapshot
+        let (root, artifacts, version) = {
+            let mut inner = self.inner.lock().await;
+            mutation(&mut inner)?;
+            inner.version += 1;
+            let root = inner
+                .root_path
+                .as_ref()
+                .ok_or(crate::errors::Error::ResearchVaultNotInitialized)?
+                .clone();
+            (root, inner.artifacts.clone(), inner.version)
+        };
+
+        // 2. Persist with serialization
+        let mut persistence = self.persistence.lock().await;
+        if version <= persistence.last_saved_version {
+            // Already saved a newer or equal version
+            return Ok(());
+        }
+
+        crate::storage::save_index(&root, &artifacts).await?;
+        persistence.last_saved_version = version;
+
+        Ok(())
+    }
+
     /// Helper to insert an artifact and save the index
     pub async fn persist_artifact(&self, artifact: ResearchArtifact) -> crate::errors::Result<()> {
-        let mut inner = self.inner.lock().await;
-        let root = inner
-            .root_path
-            .as_ref()
-            .ok_or(crate::errors::Error::ResearchVaultNotInitialized)?
-            .clone();
-
-        inner.artifacts.insert(artifact.id.clone(), artifact);
-        crate::storage::save_index(&root, &inner.artifacts).await?;
-        Ok(())
+        self.mutate_and_persist(|inner| {
+            inner.artifacts.insert(artifact.id.clone(), artifact);
+            Ok(())
+        })
+        .await
     }
 }
