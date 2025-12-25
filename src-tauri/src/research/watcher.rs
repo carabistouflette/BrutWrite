@@ -4,6 +4,7 @@ use crate::storage;
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::sync::mpsc;
 
@@ -28,11 +29,11 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
         scan_artifacts(&research_path, &state).await;
 
         // Setup Watcher
-        let (tx, mut rx) = mpsc::channel(1);
+        let (tx, mut rx) = mpsc::unbounded_channel();
 
         let mut watcher = RecommendedWatcher::new(
             move |res| {
-                let _ = tx.blocking_send(res);
+                let _ = tx.send(res);
             },
             Config::default(),
         )
@@ -45,30 +46,43 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
             inner.watcher = Some(watcher);
         }
 
-        // Handle events
-        while let Some(res) = rx.recv().await {
-            match res {
-                Ok(event) => {
-                    // Filter out changes to the index file itself to prevent loops
-                    let is_index_change = event.paths.iter().any(|p| {
-                        p.file_name()
-                            .map(|n| n.to_string_lossy() == ".research-index.json")
-                            .unwrap_or(false)
-                    });
+        // Handle events with debounce
+        let mut debounce_deadline = tokio::time::Instant::now();
+        let mut is_dirty = false;
 
-                    if !is_index_change {
-                        let path_to_scan = {
-                            let inner = state.inner.lock().await;
-                            inner.root_path.clone()
-                        };
+        loop {
+            tokio::select! {
+                Some(res) = rx.recv() => {
+                    match res {
+                        Ok(event) => {
+                            // Filter out changes to the index file itself to prevent loops
+                            let is_index_change = event.paths.iter().any(|p| {
+                                p.file_name()
+                                    .map(|n| n.to_string_lossy() == ".research-index.json")
+                                    .unwrap_or(false)
+                            });
 
-                        if let Some(path) = path_to_scan {
-                            scan_artifacts(&path, &state).await;
+                            if !is_index_change {
+                                is_dirty = true;
+                                debounce_deadline = tokio::time::Instant::now() + Duration::from_millis(500);
+                            }
                         }
-                        let _ = app_handle.emit("research-update", ());
+                        Err(e) => println!("watch error: {:?}", e),
                     }
                 }
-                Err(e) => println!("watch error: {:?}", e),
+                _ = tokio::time::sleep_until(debounce_deadline), if is_dirty => {
+                    is_dirty = false;
+                    let path_to_scan = {
+                        let inner = state.inner.lock().await;
+                        inner.root_path.clone()
+                    };
+
+                    if let Some(path) = path_to_scan {
+                        scan_artifacts(&path, &state).await;
+                    }
+                    let _ = app_handle.emit("research-update", ());
+                }
+                else => break, // Channel closed
             }
         }
     });
