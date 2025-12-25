@@ -3,6 +3,7 @@ import { watch } from 'vue';
 import { useProjectStore } from '../../stores/project';
 import { useCharacters } from './useCharacters';
 import type { FileNode, ProjectSettings, Plotline, Character } from '../../types';
+import { APP_CONSTANTS } from '../../config/constants';
 
 export interface SessionData {
   id: string;
@@ -17,7 +18,7 @@ export function useProjectSession() {
   const projectStore = useProjectStore();
   const { plotlines: projectPlotlines } = storeToRefs(projectStore);
 
-  const getCacheKey = (path: string) => `project_session_${path}`;
+  const getCacheKey = (path: string) => `${APP_CONSTANTS.CACHE.KEY_PREFIX}${path}`;
 
   const saveToCache = (path: string, data: SessionData) => {
     try {
@@ -39,8 +40,10 @@ export function useProjectSession() {
       if (!cached) return false;
 
       const data = JSON.parse(cached) as SessionData & { timestamp: number };
-      // Optional: Check if cache is too old (e.g. > 7 days)
-      if (Date.now() - data.timestamp > 7 * 24 * 60 * 60 * 1000) {
+      const expiryMs = APP_CONSTANTS.CACHE.EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+
+      // Optional: Check if cache is too old
+      if (Date.now() - data.timestamp > expiryMs) {
         localStorage.removeItem(getCacheKey(path));
         return false;
       }
@@ -84,7 +87,7 @@ export function useProjectSession() {
     watch(
       [nodes, settings, plotlines, characters, activeId],
       () => {
-        // Debounce: 2s
+        // Debounce
         if (timeout) clearTimeout(timeout);
 
         timeout = setTimeout(() => {
@@ -101,7 +104,7 @@ export function useProjectSession() {
           });
 
           console.debug('Project session auto-saved to cache');
-        }, 2000);
+        }, APP_CONSTANTS.CACHE.DEBOUNCE_MS);
       },
       { deep: true }
     );

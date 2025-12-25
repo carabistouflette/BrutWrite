@@ -20,6 +20,13 @@ export const APP_CONSTANTS = {
     },
   },
 
+  // Caching Defaults
+  CACHE: {
+    DEBOUNCE_MS: 2000,
+    EXPIRY_DAYS: 7,
+    KEY_PREFIX: 'project_session_',
+  },
+
   // Editor Defaults
   EDITOR: {
     DEFAULT_FONT_SIZE: 16,

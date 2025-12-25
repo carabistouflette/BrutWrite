@@ -4,6 +4,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import { nextTick } from 'vue';
 import { useProjectStore } from '../../../stores/project';
 import { useProjectSession } from '../useProjectSession';
+import { APP_CONSTANTS } from '../../../config/constants';
 
 describe('useProjectSession Auto-Save', () => {
   let setItemSpy: ReturnType<typeof vi.spyOn>;
@@ -59,14 +60,15 @@ describe('useProjectSession Auto-Save', () => {
     expect(setItemSpy).not.toHaveBeenCalled();
 
     // Fast forward part way
-    vi.advanceTimersByTime(1000);
+    vi.advanceTimersByTime(APP_CONSTANTS.CACHE.DEBOUNCE_MS / 2);
     expect(setItemSpy).not.toHaveBeenCalled();
 
     // Complete debounce
-    vi.advanceTimersByTime(1001);
+    vi.advanceTimersByTime(APP_CONSTANTS.CACHE.DEBOUNCE_MS / 2 + 10);
 
+    const expectedKey = `${APP_CONSTANTS.CACHE.KEY_PREFIX}/path/to/p1`;
     expect(setItemSpy).toHaveBeenCalledWith(
-      'project_session_/path/to/p1',
+      expectedKey,
       expect.stringContaining('"daily_target":100')
     );
   });
@@ -87,7 +89,7 @@ describe('useProjectSession Auto-Save', () => {
 
     await nextTick();
 
-    vi.advanceTimersByTime(3000);
+    vi.advanceTimersByTime(APP_CONSTANTS.CACHE.DEBOUNCE_MS + 100);
 
     expect(setItemSpy).not.toHaveBeenCalled();
   });
@@ -104,12 +106,10 @@ describe('useProjectSession Auto-Save', () => {
 
     await nextTick();
 
-    vi.advanceTimersByTime(2500);
+    vi.advanceTimersByTime(APP_CONSTANTS.CACHE.DEBOUNCE_MS + 100);
 
-    expect(setItemSpy).toHaveBeenCalledWith(
-      'project_session_/path/to/p1',
-      expect.stringContaining('New Node')
-    );
+    const expectedKey = `${APP_CONSTANTS.CACHE.KEY_PREFIX}/path/to/p1`;
+    expect(setItemSpy).toHaveBeenCalledWith(expectedKey, expect.stringContaining('New Node'));
   });
 
   it('updates cache when activeId changes', async () => {
@@ -126,10 +126,11 @@ describe('useProjectSession Auto-Save', () => {
 
     await nextTick();
 
-    vi.advanceTimersByTime(2500);
+    vi.advanceTimersByTime(APP_CONSTANTS.CACHE.DEBOUNCE_MS + 100);
 
+    const expectedKey = `${APP_CONSTANTS.CACHE.KEY_PREFIX}/path/to/p1`;
     expect(setItemSpy).toHaveBeenCalledWith(
-      'project_session_/path/to/p1',
+      expectedKey,
       expect.stringContaining('"activeId":"n1"')
     );
   });
