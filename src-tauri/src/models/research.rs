@@ -19,4 +19,20 @@ impl ResearchArtifact {
             tags: Vec::new(),
         }
     }
+
+    pub fn determine_type(file_name: &str) -> String {
+        let ext = std::path::Path::new(file_name)
+            .extension()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+
+        match ext.to_lowercase().as_str() {
+            "pdf" => "pdf",
+            "png" | "jpg" | "jpeg" | "webp" => "image",
+            "md" | "txt" => "text",
+            _ => "other",
+        }
+        .to_string()
+    }
 }

@@ -66,4 +66,28 @@ impl ResearchState {
     pub async fn handle_fs_change(&self, event: notify::Event) -> crate::errors::Result<()> {
         crate::research::io::handle_fs_change(self, event).await
     }
+
+    /// Helper to safely get the root path without holding the lock for long
+    pub async fn get_root_path_safe(&self) -> crate::errors::Result<PathBuf> {
+        let inner = self.inner.lock().await;
+        inner
+            .root_path
+            .as_ref()
+            .ok_or(crate::errors::Error::ResearchVaultNotInitialized)
+            .cloned()
+    }
+
+    /// Helper to insert an artifact and save the index
+    pub async fn persist_artifact(&self, artifact: ResearchArtifact) -> crate::errors::Result<()> {
+        let mut inner = self.inner.lock().await;
+        let root = inner
+            .root_path
+            .as_ref()
+            .ok_or(crate::errors::Error::ResearchVaultNotInitialized)?
+            .clone();
+
+        inner.artifacts.insert(artifact.id.clone(), artifact);
+        crate::storage::save_index(&root, &inner.artifacts).await?;
+        Ok(())
+    }
 }

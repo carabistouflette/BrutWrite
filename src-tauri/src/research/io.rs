@@ -68,7 +68,7 @@ pub async fn handle_fs_change(
                 // It exists, no action needed
             } else {
                 // New file detected!
-                let file_type = crate::research::utils::get_file_type_from_name(&file_name);
+                let file_type = ResearchArtifact::determine_type(&file_name);
 
                 let artifact = ResearchArtifact::new(path_str, file_name, file_type);
                 inner.artifacts.insert(artifact.id.clone(), artifact);

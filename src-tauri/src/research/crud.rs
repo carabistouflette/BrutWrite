@@ -6,13 +6,7 @@ pub async fn create_note(
     state: &ResearchState,
     name: String,
 ) -> crate::errors::Result<ResearchArtifact> {
-    let mut inner = state.inner.lock().await;
-    // Clone root path to release borrow on inner
-    let root = inner
-        .root_path
-        .as_ref()
-        .ok_or(crate::errors::Error::ResearchVaultNotInitialized)?
-        .clone();
+    let root = state.get_root_path_safe().await?;
 
     let mut final_name = name;
     if !final_name.ends_with(".md") {
@@ -26,6 +20,7 @@ pub async fn create_note(
         ));
     }
 
+    // IO without lock
     tokio::fs::write(&file_path, "").await?;
 
     let artifact = ResearchArtifact::new(
@@ -34,11 +29,7 @@ pub async fn create_note(
         "text".to_string(),
     );
 
-    inner
-        .artifacts
-        .insert(artifact.id.clone(), artifact.clone());
-    crate::storage::save_index(&root, &inner.artifacts).await?;
-
+    state.persist_artifact(artifact.clone()).await?;
     Ok(artifact)
 }
 
@@ -47,13 +38,14 @@ pub async fn update_content(
     id: String,
     content: String,
 ) -> crate::errors::Result<()> {
-    let artifact = {
+    // Read artifact path under lock
+    let artifact_path = {
         let inner = state.inner.lock().await;
-        inner.artifacts.get(&id).cloned()
+        inner.artifacts.get(&id).map(|a| a.path.clone())
     };
 
-    if let Some(artifact) = artifact {
-        tokio::fs::write(&artifact.path, content).await?;
+    if let Some(path) = artifact_path {
+        tokio::fs::write(path, content).await?;
         Ok(())
     } else {
         Err(crate::errors::Error::ArtifactNotFound(id))
@@ -65,64 +57,104 @@ pub async fn rename_artifact(
     id: String,
     new_name: String,
 ) -> crate::errors::Result<()> {
-    let mut inner = state.inner.lock().await;
-    // Check root exists
-    let root = inner
-        .root_path
-        .as_ref()
-        .ok_or(crate::errors::Error::ResearchVaultNotInitialized)?
-        .clone();
+    let root = state.get_root_path_safe().await?;
+    let (old_path, ext) = {
+        let inner = state.inner.lock().await;
+        let artifact = inner
+            .artifacts
+            .get(&id)
+            .ok_or_else(|| crate::errors::Error::ArtifactNotFound(id.clone()))?;
+        let path = PathBuf::from(&artifact.path);
+        (
+            path.clone(),
+            path.extension().map(|e| e.to_string_lossy().to_string()),
+        )
+    };
 
-    if let Some(artifact) = inner.artifacts.get_mut(&id) {
-        let old_path = PathBuf::from(&artifact.path);
-
-        let mut new_filename = new_name.clone();
-        if let Some(ext) = old_path.extension() {
-            let ext_str = ext.to_string_lossy();
-            if !new_name
-                .to_lowercase()
-                .ends_with(&format!(".{}", ext_str.to_lowercase()))
-            {
-                new_filename.push('.');
-                new_filename.push_str(&ext_str);
-            }
+    let mut new_filename = new_name.clone();
+    if let Some(ext_str) = ext {
+        if !new_name
+            .to_lowercase()
+            .ends_with(&format!(".{}", ext_str.to_lowercase()))
+        {
+            new_filename.push('.');
+            new_filename.push_str(&ext_str);
         }
-
-        let new_path = root.join(&new_filename);
-        if new_path.exists() {
-            return Err(crate::errors::Error::Research(
-                "Destination already exists".to_string(),
-            ));
-        }
-
-        tokio::fs::rename(&old_path, &new_path).await?;
-
-        artifact.name = new_name;
-        artifact.path = new_path.to_string_lossy().to_string();
-
-        crate::storage::save_index(&root, &inner.artifacts).await?;
-        Ok(())
-    } else {
-        Err(crate::errors::Error::ArtifactNotFound(id))
     }
+
+    let new_path = root.join(&new_filename);
+    if new_path.exists() {
+        return Err(crate::errors::Error::Research(
+            "Destination already exists".to_string(),
+        ));
+    }
+
+    // IO without lock
+    tokio::fs::rename(&old_path, &new_path).await?;
+
+    // Update state
+    {
+        let mut inner = state.inner.lock().await;
+        if let Some(artifact) = inner.artifacts.get_mut(&id) {
+            artifact.name = new_name;
+            artifact.path = new_path.to_string_lossy().to_string();
+            crate::storage::save_index(&root, &inner.artifacts).await?;
+        }
+    }
+    Ok(())
 }
 
 pub async fn delete_artifact(state: &ResearchState, id: String) -> crate::errors::Result<()> {
-    let mut inner = state.inner.lock().await;
-    let root = inner
-        .root_path
-        .as_ref()
-        .ok_or(crate::errors::Error::ResearchVaultNotInitialized)?
-        .clone();
+    let root = state.get_root_path_safe().await?;
+    let path_to_delete = {
+        let inner = state.inner.lock().await;
+        inner.artifacts.get(&id).map(|a| PathBuf::from(&a.path))
+    }
+    .ok_or_else(|| crate::errors::Error::ArtifactNotFound(id.clone()))?;
 
-    if let Some(artifact) = inner.artifacts.remove(&id) {
-        let path = PathBuf::from(&artifact.path);
-        if path.exists() {
-            tokio::fs::remove_file(path).await?;
+    // IO without lock
+    if path_to_delete.exists() {
+        tokio::fs::remove_file(&path_to_delete).await?;
+    }
+
+    // Update state
+    {
+        let mut inner = state.inner.lock().await;
+        if inner.artifacts.remove(&id).is_some() {
+            crate::storage::save_index(&root, &inner.artifacts).await?;
         }
-        crate::storage::save_index(&root, &inner.artifacts).await?;
-        Ok(())
-    } else {
-        Err(crate::errors::Error::ArtifactNotFound(id))
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::research::ResearchState;
+    use std::sync::Arc;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn test_concurrent_creation() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().to_path_buf();
+        let state = Arc::new(ResearchState::new());
+        state.initialize(path.clone()).await.unwrap();
+
+        let mut handles = vec![];
+        for i in 0..10 {
+            let state_clone = state.clone();
+            handles.push(tokio::spawn(async move {
+                let name = format!("note_{}", i);
+                create_note(&state_clone, name).await
+            }));
+        }
+
+        for handle in handles {
+            handle.await.unwrap().expect("Failed to create note");
+        }
+
+        let all = state.get_all().await;
+        assert_eq!(all.len(), 10);
     }
 }
