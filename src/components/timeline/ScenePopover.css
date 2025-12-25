@@ -4,8 +4,8 @@
   position: fixed;
   z-index: 1000;
   width: 260px;
-  background: #111111; /* Darker than bg-primary */
-  border: 1px solid #333;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   overflow: hidden;
@@ -30,15 +30,15 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  background: #000000; /* Pitch black header */
-  border-bottom: 1px solid #333;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .scene-title {
   margin: 0;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -49,7 +49,7 @@
   font-size: 0.688rem;
   font-weight: 500;
   padding: 2px 8px;
-  background: var(--color-primary);
+  background: var(--color-accent); /* Assuming primary was mapped to accent or needed */
   color: white;
   border-radius: 10px;
 }
@@ -59,7 +59,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: #111111;
+  background: var(--bg-secondary);
 }
 
 .stat-row {
@@ -70,22 +70,23 @@
 
 .stat-label {
   font-size: 0.75rem;
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .stat-value {
   font-size: 0.813rem;
   font-weight: 500;
-  color: #eee;
+  color: var(--text-primary);
 }
 
 .time-delta {
-  color: var(--color-primary);
+  color: var(--color-accent);
 }
 
 .date-display {
   font-family: monospace;
   font-size: 0.75rem;
+  color: var(--text-secondary); /* Added color for better visibility */
 }
 
 .popover-warnings {

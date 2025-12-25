@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, onMounted } from 'vue';
 
 const props = defineProps<{
   show: boolean;
@@ -17,8 +17,18 @@ const emit = defineEmits<{
   (e: 'confirm', value: string): void;
 }>();
 
-const inputValue = ref('');
+const inputValue = ref(props.initialValue || '');
 const inputRef = ref<HTMLInputElement | null>(null);
+
+onMounted(async () => {
+  if (props.show) {
+    await nextTick();
+    if (inputRef.value) {
+      inputRef.value.focus();
+      inputRef.value.select();
+    }
+  }
+});
 
 watch(
   () => props.show,
