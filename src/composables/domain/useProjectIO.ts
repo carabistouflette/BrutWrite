@@ -36,7 +36,7 @@ export function useProjectIO() {
       const hierarchy = reconstructHierarchy(metadata.manifest.chapters);
 
       // Set project data in store
-      projectStore.setProjectData(metadata.id, hierarchy, metadata.settings);
+      projectStore.setProjectData(metadata.id, path, hierarchy, metadata.settings);
 
       projectPlotlines.value = metadata.plotlines;
 
@@ -77,9 +77,7 @@ export function useProjectIO() {
       setCharacters([]);
 
       // Set project data in store
-      projectId.value = metadata.id;
-      projectData.value = [];
-      projectSettings.value = metadata.settings;
+      projectStore.setProjectData(metadata.id, path, [], metadata.settings);
       projectPlotlines.value = metadata.plotlines;
 
       localStorage.setItem('last_opened_project_path', path);
