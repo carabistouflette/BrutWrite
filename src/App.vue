@@ -1,41 +1,20 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import AppHeader from './components/layout/AppHeader.vue';
 import MainLayout from './components/layout/MainLayout.vue';
 import EditorMain from './components/EditorMain.vue';
 import WelcomeScreen from './components/WelcomeScreen.vue';
 import AppNotifications from './components/base/AppNotifications.vue';
-import { useSettingsStore } from './stores/settings';
 import { useProjectStore } from './stores/project';
-import { useTheme } from './composables/ui/useTheme';
-import { initApp } from './config/bootstrap';
 
-const settingsStore = useSettingsStore();
 const projectStore = useProjectStore();
-const { settings } = storeToRefs(settingsStore);
 const { activeId, projectId } = storeToRefs(projectStore);
-const { initTheme } = useTheme();
-
-// Initialize theme watchers
-initTheme();
-
-// Initialize application data
-onMounted(async () => {
-  await initApp();
-});
 </script>
 
 <template>
   <div
     id="app-scale-root"
     class="bg-paper text-ink flex flex-col font-sans overflow-hidden relative"
-    :style="{
-      transform: `scale(${settings.interface.uiScaling / 100})`,
-      transformOrigin: 'top left',
-      width: `${100 / (settings.interface.uiScaling / 100)}vw`,
-      height: `${100 / (settings.interface.uiScaling / 100)}vh`,
-    }"
   >
     <!-- Cyber-Glass App Header -->
     <AppHeader data-tauri-drag-region />
