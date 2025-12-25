@@ -1,4 +1,5 @@
 import { storeToRefs } from 'pinia';
+import { watch } from 'vue';
 import { useProjectStore } from '../../stores/project';
 import { useCharacters } from './useCharacters';
 import type { FileNode, ProjectSettings, Plotline, Character } from '../../types';
@@ -51,7 +52,7 @@ export function useProjectSession() {
       if (data.characters) setCharacters(data.characters);
 
       // 2. Restore Project Data
-      projectStore.setProjectData(data.id, data.nodes, data.settings);
+      projectStore.setProjectData(data.id, path, data.nodes, data.settings);
 
       // 3. Restore Plotlines
       if (data.plotlines) projectPlotlines.value = data.plotlines;
@@ -73,8 +74,42 @@ export function useProjectSession() {
     }
   };
 
+  const setupAutoSave = () => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+
+    const { nodes, settings, plotlines, characters, activeId } = storeToRefs(projectStore);
+
+    // Watch for ANY change in the session-critical data
+    // We watch deep on specific objects that are mutable but might not trigger shallow reference changes if mutated in place (though store refs should trigger)
+    watch(
+      [nodes, settings, plotlines, characters, activeId],
+      () => {
+        // Debounce: 2s
+        if (timeout) clearTimeout(timeout);
+
+        timeout = setTimeout(() => {
+          // Guard: Only save if we have a valid open project and path
+          if (!projectStore.projectId || !projectStore.path) return;
+
+          saveToCache(projectStore.path, {
+            id: projectStore.projectId,
+            nodes: projectStore.nodes,
+            settings: projectStore.settings || { daily_target: 0, word_target: 0 }, // Fallback if null (shouldn't happen in active project)
+            plotlines: projectStore.plotlines,
+            characters: projectStore.characters,
+            activeId: projectStore.activeId,
+          });
+
+          console.debug('Project session auto-saved to cache');
+        }, 2000);
+      },
+      { deep: true }
+    );
+  };
+
   return {
     saveToCache,
     restoreSession,
+    setupAutoSave,
   };
 }

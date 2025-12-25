@@ -11,11 +11,14 @@ import { useAppStatus } from '../composables/ui/useAppStatus';
 export async function initApp() {
   const settingsStore = useSettingsStore();
   const { loadProject } = useProjectIO();
-  const { restoreSession } = useProjectSession();
+  const { restoreSession, setupAutoSave } = useProjectSession();
   const { initTheme } = useTheme();
 
   // 1. Initialize Theme Watchers (Calculates CSS variables, handles dark mode)
   initTheme();
+
+  // 2. Initialize Session Auto-Save (Write-behind caching)
+  setupAutoSave();
   const { notifyError } = useAppStatus();
 
   try {
