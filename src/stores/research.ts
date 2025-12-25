@@ -1,15 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-
-export interface ResearchArtifact {
-  id: string;
-  path: string;
-  name: string;
-  file_type: 'pdf' | 'image' | 'text' | 'other';
-  tags: string[];
-}
+import { researchApi, type ResearchArtifact } from '../api/research';
 
 export const useResearchStore = defineStore('research', () => {
   const artifacts = ref<ResearchArtifact[]>([]);
@@ -19,7 +11,7 @@ export const useResearchStore = defineStore('research', () => {
   async function fetchArtifacts() {
     isLoading.value = true;
     try {
-      artifacts.value = await invoke<ResearchArtifact[]>('get_research_artifacts');
+      artifacts.value = await researchApi.fetchArtifacts();
     } catch (error) {
       console.error('Failed to fetch research artifacts:', error);
     } finally {
@@ -33,7 +25,7 @@ export const useResearchStore = defineStore('research', () => {
 
   async function addFiles(paths: string[]) {
     try {
-      await invoke('add_research_files', { paths });
+      await researchApi.addFiles(paths);
       // Watcher should trigger update, but we can force fetch
       await fetchArtifacts();
     } catch (error) {
@@ -43,7 +35,7 @@ export const useResearchStore = defineStore('research', () => {
 
   async function updateArtifact(artifact: ResearchArtifact) {
     try {
-      await invoke('update_research_artifact', { artifact });
+      await researchApi.updateArtifact(artifact);
       // Optimistically update local state
       const index = artifacts.value.findIndex((a) => a.id === artifact.id);
       if (index !== -1) {
@@ -59,7 +51,7 @@ export const useResearchStore = defineStore('research', () => {
 
   async function createNote(name: string) {
     try {
-      const artifact = await invoke<ResearchArtifact>('create_research_note', { name });
+      const artifact = await researchApi.createNote(name);
       artifacts.value.push(artifact);
       setActiveArtifact(artifact);
       return artifact;
@@ -71,7 +63,7 @@ export const useResearchStore = defineStore('research', () => {
 
   async function saveNoteContent(id: string, content: string) {
     try {
-      await invoke('update_note_content', { id, content });
+      await researchApi.saveNoteContent(id, content);
     } catch (error) {
       console.error('Failed to save note content:', error);
     }
@@ -79,7 +71,7 @@ export const useResearchStore = defineStore('research', () => {
 
   async function renameArtifact(id: string, newName: string) {
     try {
-      await invoke('rename_research_artifact', { id, newName });
+      await researchApi.renameArtifact(id, newName);
       await fetchArtifacts();
     } catch (error) {
       console.error('Failed to rename artifact:', error);
@@ -89,7 +81,7 @@ export const useResearchStore = defineStore('research', () => {
 
   async function deleteArtifact(id: string) {
     try {
-      await invoke('delete_research_artifact', { id });
+      await researchApi.deleteArtifact(id);
       artifacts.value = artifacts.value.filter((a) => a.id !== id);
       if (activeArtifact.value?.id === id) {
         activeArtifact.value = null;

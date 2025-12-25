@@ -23,7 +23,12 @@ export function useAppStatus() {
   };
 
   const notifyError = (message: string, error?: unknown) => {
-    console.error(message, error);
+    // In the future, this could send logs to a backend service
+    console.group('App Error');
+    console.error('Message:', message);
+    if (error) console.error('Details:', error);
+    console.groupEnd();
+
     notify(message, 'error', 5000);
   };
 

@@ -17,6 +17,7 @@ const style = computed(() => {
 </script>
 
 <template>
+  <!-- eslint-disable vue/no-v-html -->
   <svg
     v-if="iconData"
     xmlns="http://www.w3.org/2000/svg"
