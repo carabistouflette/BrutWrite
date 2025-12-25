@@ -17,15 +17,18 @@ export async function initApp() {
   const { notifyError } = useAppStatus();
 
   try {
-    // 2. Load Settings from Disk
-    await settingsStore.loadSettings();
-
-    // 3. Auto-load last project if exists
+    // 2. Load Settings & 3. Auto-load Last Project in parallel
     const lastPath = localStorage.getItem('last_opened_project_path');
-    if (lastPath) {
-      console.debug('Auto-loading project from:', lastPath);
-      await loadProject(lastPath);
-    }
+
+    await Promise.allSettled([
+      settingsStore.loadSettings(),
+      lastPath
+        ? (async () => {
+            console.debug('Auto-loading project from:', lastPath);
+            await loadProject(lastPath);
+          })()
+        : Promise.resolve(),
+    ]);
   } catch (err) {
     notifyError('App initialization failed', err);
   }
