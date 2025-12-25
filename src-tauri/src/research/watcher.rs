@@ -90,9 +90,9 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
 
 async fn scan_artifacts(path: &PathBuf, state: &ResearchState) {
     let mut current_artifacts = HashMap::new();
-    let index_data = storage::load_index(path);
+    let index_data = storage::load_index(path).await;
     let mut index = index_data;
-    let disk_files = storage::scan_on_disk(path);
+    let disk_files = storage::scan_on_disk(path).await;
 
     // Reconcile index with disk
     for (file_path, file_name) in disk_files {
@@ -131,7 +131,7 @@ async fn scan_artifacts(path: &PathBuf, state: &ResearchState) {
     }
 
     // Save updated index
-    if let Err(e) = storage::save_index(path, &current_artifacts) {
+    if let Err(e) = storage::save_index(path, &current_artifacts).await {
         println!("Failed to save research index: {:?}", e);
     }
 

@@ -48,7 +48,7 @@ pub async fn update_research_artifact(
 
         // Persist
         if let Some(path) = &inner.root_path {
-            storage::save_index(path, &inner.artifacts)?;
+            storage::save_index(path, &inner.artifacts).await?;
         }
     }
     Ok(())
@@ -86,7 +86,7 @@ pub async fn create_research_note(
         inner
             .artifacts
             .insert(artifact.id.clone(), artifact.clone());
-        storage::save_index(&path, &inner.artifacts)?;
+        storage::save_index(&path, &inner.artifacts).await?;
 
         return Ok(artifact);
     }
@@ -150,7 +150,7 @@ pub async fn rename_research_artifact(
 
         // Persist
         if let Some(path) = &inner.root_path {
-            storage::save_index(path, &inner.artifacts)?;
+            storage::save_index(path, &inner.artifacts).await?;
         }
         Ok(())
     } else {
@@ -171,7 +171,7 @@ pub async fn delete_research_artifact(
 
         // Persist
         if let Some(root_path) = &inner.root_path {
-            storage::save_index(root_path, &inner.artifacts)?;
+            storage::save_index(root_path, &inner.artifacts).await?;
         }
         Ok(())
     } else {
