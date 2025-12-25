@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import GeneralSettings from './settings/GeneralSettings.vue';
-import EditorSettings from './settings/EditorSettings.vue';
-import InterfaceSettings from './settings/InterfaceSettings.vue';
+import GeneralSettings from './GeneralSettings.vue';
+import EditorSettings from './EditorSettings.vue';
+import InterfaceSettings from './InterfaceSettings.vue';
 
 const props = defineProps<{
   show: boolean;

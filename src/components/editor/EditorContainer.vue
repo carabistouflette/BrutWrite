@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { ref, computed, toRef, onBeforeUnmount } from 'vue';
+import { ref, computed, toRef, onBeforeUnmount, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import EditorMain from './EditorMain.vue';
-import { useProjectStore } from '../stores/project';
-import { useResearchStore } from '../stores/research';
-import { useProjectNodeOperations } from '../composables/domain/useProjectNodeOperations';
-import { useGamification } from '../composables/domain/useGamification';
-import { useSettingsStore } from '../stores/settings';
-import { projectApi } from '../api/project';
-import { useAppStatus } from '../composables/ui/useAppStatus';
-import { APP_CONSTANTS } from '../config/constants';
-import type { Chapter } from '../types';
-import { useAutoSave } from '../composables/editor/useAutoSave';
-import { useChapterSession } from '../composables/domain/useChapterSession';
+import { useProjectStore } from '../../stores/project';
+import { useResearchStore } from '../../stores/research';
+import { useProjectNodeOperations } from '../../composables/domain/useProjectNodeOperations';
+import { useGamification } from '../../composables/domain/useGamification';
+import { useSettingsStore } from '../../stores/settings';
+import { projectApi } from '../../api/project';
+import { useAppStatus } from '../../composables/ui/useAppStatus';
+import { APP_CONSTANTS } from '../../config/constants';
+import type { Chapter } from '../../types';
+import { useAutoSave } from '../../composables/editor/useAutoSave';
+import { useChapterSession } from '../../composables/domain/useChapterSession';
 
 const props = defineProps<{
   chapterId: string;
@@ -34,6 +34,15 @@ const { content: activeChapterContent, isLoading } = useChapterSession(
   toRef(props, 'projectId'),
   toRef(props, 'chapterId')
 );
+
+// --- Local Sync State ---
+const currentHtml = ref('');
+const isDirty = ref(false);
+
+watch(activeChapterContent, (newVal) => {
+  currentHtml.value = newVal;
+  isDirty.value = false;
+});
 
 // Find active chapter metadata
 const activeChapter = computed(() => {
@@ -88,11 +97,9 @@ const saveActiveChapter = async (content: string) => {
   }
 };
 
-// Editor ref for manual saves
-const editorRef = ref<InstanceType<typeof EditorMain> | null>(null);
-
 const handleSave = async (content: string) => {
   await saveActiveChapter(content);
+  isDirty.value = false;
 };
 
 // 2. Auto Save
@@ -101,17 +108,16 @@ const autoSaveInterval = computed(
 );
 
 useAutoSave(async () => {
-  if (editorRef.value && editorRef.value.isDirty()) {
-    const content = editorRef.value.getContent();
-    await saveActiveChapter(content);
-    editorRef.value.markAsClean();
+  if (isDirty.value) {
+    await saveActiveChapter(currentHtml.value);
+    isDirty.value = false;
   }
 }, autoSaveInterval);
 
 onBeforeUnmount(async () => {
   // Final save on unmount is critical, so we keep this manual hook
-  if (editorRef.value && editorRef.value.isDirty()) {
-    await saveActiveChapter(editorRef.value.getContent());
+  if (isDirty.value) {
+    await saveActiveChapter(currentHtml.value);
   }
 });
 </script>
@@ -124,13 +130,14 @@ onBeforeUnmount(async () => {
     v-else-if="activeChapter"
     :id="chapterId"
     :key="chapterId"
-    ref="editorRef"
+    v-model:is-dirty="isDirty"
     :project-id="projectId"
     :title="activeChapter.name"
     :initial-content="activeChapterContent"
     :initial-word-count="activeChapter.word_count"
     :editor-settings="settings.editor"
     @update:title="handleRename"
+    @update:content="(val) => (currentHtml = val)"
     @content-change="handleContentChange"
     @save="handleSave"
     @research-link-click="handleResearchLinkClick"

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { VueDraggableNext } from 'vue-draggable-next';
 import { ref, watch, nextTick, type ComponentPublicInstance } from 'vue';
-import { useDragState } from '../composables/ui/useDragState';
-import type { FileNode } from '../types';
+import { useDragState } from '../../composables/ui/useDragState';
+import type { FileNode } from '../../types';
 import FileTreeItem from './FileTreeItem.vue';
 
 defineOptions({
@@ -150,7 +150,7 @@ const handleRenameSubmit = (id: string) => {
 </template>
 
 <style scoped lang="postcss">
-@reference "../style.css";
+@reference "../../style.css";
 
 .ghost {
   opacity: 0.3;

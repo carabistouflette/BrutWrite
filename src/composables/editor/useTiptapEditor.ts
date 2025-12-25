@@ -4,11 +4,15 @@ import { useTiptapConfig } from './useTiptapConfig';
 import { useEditorScroll } from './useEditorScroll';
 import { useEditorWordCount } from './useEditorWordCount';
 
-export function useTiptapEditor(onContentChange?: (delta: number) => void) {
+export function useTiptapEditor(onUpdate?: (payload: { delta: number; html: string }) => void) {
   const containerRef = ref<HTMLElement | null>(null);
   const isDirty = ref(false);
 
-  const { debouncedWordCountUpdate, resetWordCountState } = useEditorWordCount(onContentChange);
+  const { debouncedWordCountUpdate, resetWordCountState } = useEditorWordCount((delta) => {
+    if (onUpdate) {
+      onUpdate({ delta, html: getHTML() });
+    }
+  });
 
   const editor = useEditor(
     useTiptapConfig(

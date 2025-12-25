@@ -4,10 +4,10 @@ const numberFormatter = new Intl.NumberFormat();
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { FileNode } from '../types';
-import { useProjectStore } from '../stores/project';
-import { useProjectNodeOperations } from '../composables/domain/useProjectNodeOperations';
-import { useAppStatus } from '../composables/ui/useAppStatus';
+import type { FileNode } from '../../types';
+import { useProjectStore } from '../../stores/project';
+import { useProjectNodeOperations } from '../../composables/domain/useProjectNodeOperations';
+import { useAppStatus } from '../../composables/ui/useAppStatus';
 
 const props = defineProps<{
   element: FileNode;

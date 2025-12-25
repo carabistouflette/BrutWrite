@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, defineAsyncComponent, watch } from 'vue';
-import GamificationStatus from '../GamificationStatus.vue';
+import GamificationStatus from '../gamification/GamificationStatus.vue';
 import ResearchPanel from '../research/ResearchPanel.vue';
 import SidebarController from './SidebarController.vue';
 import { useResizable } from '../../composables/ui/useResizable';
 import { useProjectIO } from '../../composables/domain/useProjectIO';
 import { useResearchStore } from '../../stores/research';
 
-const SettingsModal = defineAsyncComponent(() => import('../SettingsModal.vue'));
+const SettingsModal = defineAsyncComponent(() => import('../settings/SettingsModal.vue'));
 const CharacterSheet = defineAsyncComponent(() => import('../characters/CharacterSheet.vue'));
 const TimelineView = defineAsyncComponent(() => import('../timeline/Timeline.vue'));
 

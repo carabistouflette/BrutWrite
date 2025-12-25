@@ -2,7 +2,7 @@
 import { storeToRefs } from 'pinia';
 import AppHeader from './components/layout/AppHeader.vue';
 import MainLayout from './components/layout/MainLayout.vue';
-import EditorContainer from './components/EditorContainer.vue';
+import EditorContainer from './components/editor/EditorContainer.vue';
 import WelcomeScreen from './components/WelcomeScreen.vue';
 import AppNotifications from './components/base/AppNotifications.vue';
 import { useProjectStore } from './stores/project';

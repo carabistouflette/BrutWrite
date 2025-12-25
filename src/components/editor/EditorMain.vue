@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue';
 import { EditorContent } from '@tiptap/vue-3';
-import { useTiptapEditor } from '../composables/editor/useTiptapEditor';
-import { APP_CONSTANTS } from '../config/constants';
-import type { EditorSettings } from '../config/defaultSettings';
+import { useTiptapEditor } from '../../composables/editor/useTiptapEditor';
+import { APP_CONSTANTS } from '../../config/constants';
+import type { EditorSettings } from '../../config/defaultSettings';
 
 const props = defineProps<{
   id: string;
@@ -16,10 +16,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:title', newTitle: string): void;
+  (e: 'update:isDirty', value: boolean): void;
+  (e: 'update:content', value: string): void;
   (e: 'content-change', delta: number): void;
   (e: 'save', content: string): void;
   (e: 'research-link-click', id: string): void;
 }>();
+
+const isDirtyModel = defineModel<boolean>('isDirty', { default: false });
 
 // --- Title Logic ---
 const editableTitle = ref(props.title);
@@ -49,8 +53,19 @@ const handleResearchClick = (e: MouseEvent) => {
 };
 
 // --- Editor Logic ---
-const { editor, isDirty, setContent, getHTML, markAsClean, focus } = useTiptapEditor((delta) => {
-  emit('content-change', delta);
+const { editor, isDirty, setContent, focus } = useTiptapEditor((payload) => {
+  emit('content-change', payload.delta);
+  emit('update:content', payload.html);
+});
+
+watch(isDirty, (newVal) => {
+  isDirtyModel.value = newVal;
+});
+
+watch(isDirtyModel, (newVal) => {
+  if (newVal === false) {
+    isDirty.value = false;
+  }
 });
 
 // Initialize content when editor is ready or initialContent changes
@@ -92,11 +107,8 @@ const editorStyles = computed(() => {
   };
 });
 
-// Expose methods for container
+// Expose only actions/methods, not state
 defineExpose({
-  getContent: getHTML,
-  isDirty: () => isDirty.value,
-  markAsClean,
   focus,
 });
 </script>

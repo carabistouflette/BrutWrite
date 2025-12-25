@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue';
 import { storeToRefs } from 'pinia';
-import FileTree from '../FileTree.vue';
+import FileTree from '../project/FileTree.vue';
 import ContextMenu from '../base/ContextMenu.vue';
 import AppLogo from '../common/AppLogo.vue';
 import SidebarFooter from './SidebarFooter.vue';
-import AddChapterButton from '../AddChapterButton.vue';
+import AddChapterButton from '../project/AddChapterButton.vue';
 import { useProjectNodeOperations } from '../../composables/domain/useProjectNodeOperations';
 import { useProjectStore } from '../../stores/project';
 import { useContextMenu } from '../../composables/ui/useContextMenu';
