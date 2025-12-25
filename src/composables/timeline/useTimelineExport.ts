@@ -1,5 +1,3 @@
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 
@@ -10,6 +8,10 @@ export function useTimelineExport() {
     defaultNamePrefix: string = 'timeline_export'
   ) {
     try {
+      // Dynamic imports for heavy libraries
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
       const canvas = await html2canvas(container, {
         scale: 2,
         backgroundColor: '#1a1a1a',

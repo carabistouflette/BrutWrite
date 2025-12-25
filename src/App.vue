@@ -1,12 +1,18 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue';
 import { storeToRefs } from 'pinia';
 import AppHeader from './components/layout/AppHeader.vue';
 import MainLayout from './components/layout/MainLayout.vue';
-import EditorContainer from './components/editor/EditorContainer.vue';
-import WelcomeScreen from './components/WelcomeScreen.vue';
-import AppNotifications from './components/base/AppNotifications.vue';
 import { useProjectStore } from './stores/project';
-import GlobalDialogs from './components/base/GlobalDialogs.vue';
+
+const EditorContainer = defineAsyncComponent(
+  () => import('./components/editor/EditorContainer.vue')
+);
+const WelcomeScreen = defineAsyncComponent(() => import('./components/WelcomeScreen.vue'));
+const AppNotifications = defineAsyncComponent(
+  () => import('./components/base/AppNotifications.vue')
+);
+const GlobalDialogs = defineAsyncComponent(() => import('./components/base/GlobalDialogs.vue'));
 
 const projectStore = useProjectStore();
 const { activeId, projectId } = storeToRefs(projectStore);
