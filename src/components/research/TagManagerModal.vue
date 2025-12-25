@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue';
+import BaseIcon from '../base/BaseIcon.vue';
 
 const props = defineProps<{
   show: boolean;
@@ -76,20 +77,7 @@ const handleSave = () => {
             </div>
             <!-- Close Button -->
             <button class="text-ink/30 hover:text-ink transition-colors" @click="$emit('close')">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
+              <BaseIcon name="x" size="20" />
             </button>
           </div>
 
@@ -137,20 +125,7 @@ const handleSave = () => {
                     class="p-0.5 rounded-full hover:bg-red-500/10 text-ink/20 hover:text-red-500 transition-colors"
                     @click="removeTag(tag)"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
+                    <BaseIcon name="x" size="14" />
                   </button>
                 </div>
               </div>

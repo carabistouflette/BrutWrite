@@ -11,19 +11,7 @@
           class="mr-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-stone text-ink/40 hover:text-ink transition-colors"
           @click="store.setActiveArtifact(null)"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
+          <BaseIcon name="arrowLeft" size="20" />
         </button>
 
         <div class="flex flex-col min-w-0">
@@ -47,21 +35,7 @@
           class="text-[10px] font-black uppercase tracking-widest text-ink/40 hover:text-ink transition-colors flex items-center gap-1 px-2 py-1"
           title="Open in System Explorer"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-            <polyline points="15 3 21 3 21 9"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
-          </svg>
+          <BaseIcon name="externalLink" size="12" />
           Open
         </button>
         <div class="h-4 w-px bg-ink/10 mx-1"></div>
@@ -69,20 +43,7 @@
           class="p-1.5 rounded-md text-ink/30 hover:text-ink hover:bg-stone transition-colors"
           @click="$emit('close')"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
+          <BaseIcon name="x" size="16" />
         </button>
       </div>
     </header>
@@ -112,22 +73,7 @@
         />
         <!-- Unsupported Format -->
         <div v-else class="flex-1 flex flex-col items-center justify-center opacity-60">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="64"
-            height="64"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="mb-6 text-ink/20"
-          >
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-          </svg>
+          <BaseIcon name="alertCircle" size="64" class="mb-6 text-ink/20" stroke-width="1.5" />
           <span class="font-serif text-2xl text-ink/60">No Preview Available</span>
           <span class="text-sm font-mono mt-3 text-ink/20">Format not supported yet</span>
         </div>
@@ -142,24 +88,12 @@
         <div
           class="absolute inset-0 bg-accent/5 blur-3xl rounded-full group-hover:bg-accent/10 transition-all duration-500"
         ></div>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="64"
-          height="64"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+        <BaseIcon
+          name="fileText"
+          size="64"
           class="text-ink/20 group-hover:text-ink/40 transition-colors"
-        >
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
+          stroke-width="1.5"
+        />
       </div>
 
       <h2 class="font-serif text-4xl text-ink mb-4 tracking-wide">Select an Artifact</h2>
@@ -183,6 +117,7 @@ import { useResearchStore } from '../../stores/research';
 import PDFViewer from './PDFViewer.vue';
 import ImageViewer from './ImageViewer.vue';
 import NoteEditor from './NoteEditor.vue';
+import BaseIcon from '../base/BaseIcon.vue';
 
 const store = useResearchStore();
 

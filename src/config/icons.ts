@@ -16,6 +16,28 @@ export const icons = {
       <line x1="10" y1="14" x2="21" y2="3" />
     `,
   },
+  externalLink: {
+    viewBox: '0 0 24 24',
+    content: `
+      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    `,
+  },
+  arrowLeft: {
+    viewBox: '0 0 24 24',
+    content: `
+      <path d="M19 12H5M12 19l-7-7 7-7" />
+    `,
+  },
+  alertCircle: {
+    viewBox: '0 0 24 24',
+    content: `
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    `,
+  },
   fit: {
     viewBox: '0 0 24 24',
     content: `
@@ -37,6 +59,15 @@ export const icons = {
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
       <line x1="11" y1="8" x2="11" y2="14" />
       <line x1="8" y1="11" x2="14" y2="11" />
+    `,
+  },
+  maximize: {
+    viewBox: '0 0 24 24',
+    content: `
+      <path d="M15 3h6v6" />
+      <path d="M9 21H3v-6" />
+      <path d="M21 3l-7 7" />
+      <path d="M3 21l7-7" />
     `,
   },
   sort: {

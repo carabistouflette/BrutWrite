@@ -2,6 +2,7 @@
 import { onMounted, shallowRef, ref, watch } from 'vue';
 import * as pdfjsLib from 'pdfjs-dist';
 import { readFile } from '@tauri-apps/plugin-fs';
+import BaseIcon from '../base/BaseIcon.vue';
 
 // Set worker source using a stable CDN that includes map and font files
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -154,21 +155,7 @@ watch(
         title="Zoom Out"
         @click="handleZoomOut"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          <line x1="8" y1="11" x2="14" y2="11"></line>
-        </svg>
+        <BaseIcon name="minus" size="16" />
       </button>
       <span class="text-[10px] font-bold text-ink/40 w-8 text-center"
         >{{ Math.round(scale * 100) }}%</span
@@ -178,22 +165,7 @@ watch(
         title="Zoom In"
         @click="handleZoomIn"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          <line x1="11" y1="8" x2="11" y2="14"></line>
-          <line x1="8" y1="11" x2="14" y2="11"></line>
-        </svg>
+        <BaseIcon name="plus" size="16" />
       </button>
       <!-- Fit Width -->
       <button
@@ -201,22 +173,7 @@ watch(
         title="Fit Width"
         @click="handleFitWidth"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M15 3h6v6" />
-          <path d="M9 21H3v-6" />
-          <path d="M21 3l-7 7" />
-          <path d="M3 21l7-7" />
-        </svg>
+        <BaseIcon name="maximize" size="16" />
       </button>
     </div>
 
