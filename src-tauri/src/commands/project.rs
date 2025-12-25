@@ -1,6 +1,6 @@
+use crate::integrations;
 use crate::models::{Plotline, ProjectMetadata, ProjectSettings};
 use crate::AppState;
-use crate::{integrations, storage};
 
 use std::path::PathBuf;
 use tauri::State;
@@ -15,12 +15,10 @@ pub async fn create_project(
     author: String,
 ) -> crate::errors::Result<ProjectMetadata> {
     let root_path = PathBuf::from(&path);
-    let metadata = storage::create_project_structure(&root_path, &name, &author).await?;
-
-    state
+    let metadata = state
         .projects
-        .register_project(metadata.id, root_path.clone(), metadata.clone())
-        .await;
+        .create_project(root_path.clone(), name, author)
+        .await?;
 
     integrations::research_watcher::init_research_watcher(&app, root_path);
 
@@ -34,12 +32,7 @@ pub async fn load_project(
     path: String,
 ) -> crate::errors::Result<ProjectMetadata> {
     let root_path = PathBuf::from(&path);
-    let metadata = storage::load_project_metadata(&root_path).await?;
-
-    state
-        .projects
-        .register_project(metadata.id, root_path.clone(), metadata.clone())
-        .await;
+    let metadata = state.projects.load_project(root_path.clone()).await?;
 
     integrations::research_watcher::init_research_watcher(&app, root_path);
 

@@ -55,6 +55,28 @@ impl ProjectManager {
         Ok(metadata.clone())
     }
 
+    pub async fn create_project(
+        &self,
+        path: PathBuf,
+        name: String,
+        author: String,
+    ) -> crate::errors::Result<models::ProjectMetadata> {
+        let metadata = storage::create_project_structure(&path, &name, &author).await?;
+        self.register_project(metadata.id, path.clone(), metadata.clone())
+            .await;
+        Ok(metadata)
+    }
+
+    pub async fn load_project(
+        &self,
+        path: PathBuf,
+    ) -> crate::errors::Result<models::ProjectMetadata> {
+        let metadata = storage::load_project_metadata(&path).await?;
+        self.register_project(metadata.id, path.clone(), metadata.clone())
+            .await;
+        Ok(metadata)
+    }
+
     pub async fn register_project(
         &self,
         id: Uuid,
