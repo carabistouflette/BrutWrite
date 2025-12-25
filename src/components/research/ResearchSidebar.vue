@@ -177,7 +177,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useResearchStore, type ResearchArtifact } from '../../stores/research';
+import { useResearchStore } from '../../stores/research';
+import type { ResearchArtifact } from '../../api/research';
 import { listen } from '@tauri-apps/api/event';
 import ContextMenu from '../base/ContextMenu.vue';
 import TagManagerModal from './TagManagerModal.vue';
