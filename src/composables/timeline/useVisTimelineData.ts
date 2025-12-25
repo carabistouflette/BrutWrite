@@ -1,7 +1,7 @@
 import { type Ref, watch } from 'vue';
 import { DataSet } from 'vis-data';
 import { useTimeline } from './useTimeline';
-import { useTimeHelpers } from '../logic/useTimeHelpers';
+import { useTimeHelpers } from '../domain/useTimeHelpers';
 import { Timeline, type TimelineItemType } from 'vis-timeline';
 import type { Plotline } from '../../types';
 
@@ -87,7 +87,7 @@ export function useVisTimelineData(
           : isProjectedDuration
             ? 'timeline-item--projected'
             : 'timeline-item--normal',
-        title: warnings.map((w) => w.message).join('\n') || scene.title,
+        title: warnings.map((w: { message: string }) => w.message).join('\n') || scene.title,
       };
     });
 

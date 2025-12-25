@@ -1,7 +1,7 @@
 import { type Ref } from 'vue';
 import { Timeline } from 'vis-timeline';
 import { useTimeline } from './useTimeline';
-import { useTimeHelpers } from '../logic/useTimeHelpers';
+import { useTimeHelpers } from '../domain/useTimeHelpers';
 import { DataSet } from 'vis-data';
 import { type VisTimelineItem, type VisTimelineGroup } from './useVisTimelineData';
 

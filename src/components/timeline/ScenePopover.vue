@@ -39,7 +39,7 @@ const timeSincePrevious = computed(() => {
 });
 
 const warnings = computed(() =>
-  paradoxWarnings.value.filter((w) => w.sceneIds.includes(props.sceneId))
+  paradoxWarnings.value.filter((w: { sceneIds: string[] }) => w.sceneIds.includes(props.sceneId))
 );
 
 const popoverStyle = computed(() => ({

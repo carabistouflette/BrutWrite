@@ -1,6 +1,6 @@
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '../../stores/project';
-import { useProjectNodeOperations } from '../logic/useProjectNodeOperations';
+import { useProjectNodeOperations } from '../domain/useProjectNodeOperations';
 import type { FileNode } from '../../types';
 
 export function useTimelineSort() {
