@@ -2,7 +2,7 @@
 import { storeToRefs } from 'pinia';
 import AppHeader from './components/layout/AppHeader.vue';
 import MainLayout from './components/layout/MainLayout.vue';
-import EditorMain from './components/EditorMain.vue';
+import EditorContainer from './components/EditorContainer.vue';
 import WelcomeScreen from './components/WelcomeScreen.vue';
 import AppNotifications from './components/base/AppNotifications.vue';
 import { useProjectStore } from './stores/project';
@@ -22,7 +22,11 @@ const { activeId, projectId } = storeToRefs(projectStore);
 
     <!-- Main Content (Sidebar + Editor) -->
     <MainLayout v-else>
-      <EditorMain v-if="activeId && projectId" :chapter-id="activeId" :project-id="projectId" />
+      <EditorContainer
+        v-if="activeId && projectId"
+        :chapter-id="activeId"
+        :project-id="projectId"
+      />
       <div v-else class="h-full flex flex-col justify-center items-center text-ink/60 select-none">
         <h2 class="text-5xl font-serif font-bold italic tracking-tight mb-2">Start Writing</h2>
         <p
