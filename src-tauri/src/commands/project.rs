@@ -1,6 +1,7 @@
 use crate::models::{Plotline, ProjectMetadata, ProjectSettings};
 use crate::AppState;
-use crate::{research, storage};
+use crate::{integrations, storage};
+
 use std::path::PathBuf;
 use tauri::State;
 use uuid::Uuid;
@@ -21,7 +22,7 @@ pub async fn create_project(
         .register_project(metadata.id, root_path.clone(), metadata.clone())
         .await;
 
-    research::init_research_watcher(&app, root_path);
+    integrations::research_watcher::init_research_watcher(&app, root_path);
 
     Ok(metadata)
 }
@@ -40,7 +41,7 @@ pub async fn load_project(
         .register_project(metadata.id, root_path.clone(), metadata.clone())
         .await;
 
-    research::init_research_watcher(&app, root_path);
+    integrations::research_watcher::init_research_watcher(&app, root_path);
 
     Ok(metadata)
 }

@@ -5,6 +5,7 @@ pub mod models;
 pub mod research;
 pub mod storage;
 
+pub mod integrations;
 pub mod project;
 
 use crate::project::manager::ProjectManager;
@@ -49,7 +50,6 @@ pub fn run() {
             commands::create_node,
             commands::update_node_metadata,
             commands::get_research_artifacts,
-            commands::add_research_files,
             commands::add_research_files,
             commands::create_research_note,
             commands::update_note_content,
