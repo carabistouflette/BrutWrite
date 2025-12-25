@@ -57,14 +57,8 @@ pub async fn handle_fs_change(
             // Updated or Created
             state
                 .mutate_and_persist(move |inner| {
-                    // Check if exists by path
-                    let existing_id = inner.artifacts.iter().find_map(|(k, v)| {
-                        if v.path == path_str {
-                            Some(k.clone())
-                        } else {
-                            None
-                        }
-                    });
+                    // Check if exists by path using O(1) lookup
+                    let existing_id = inner.path_map.get(&path_str).cloned();
 
                     if let Some(_id) = existing_id {
                         // Exists, do nothing
@@ -73,6 +67,7 @@ pub async fn handle_fs_change(
                         let file_type = ResearchArtifact::determine_type(&file_name);
                         let artifact =
                             ResearchArtifact::new(path_str.clone(), file_name, file_type);
+                        inner.path_map.insert(path_str.clone(), artifact.id.clone());
                         inner.artifacts.insert(artifact.id.clone(), artifact);
                     }
                     Ok(())
@@ -82,16 +77,11 @@ pub async fn handle_fs_change(
             // Deleted
             state
                 .mutate_and_persist(move |inner| {
-                    let found_id = inner.artifacts.iter().find_map(|(k, v)| {
-                        if v.path == path_str {
-                            Some(k.clone())
-                        } else {
-                            None
-                        }
-                    });
+                    let found_id = inner.path_map.get(&path_str).cloned();
 
                     if let Some(id) = found_id {
                         inner.artifacts.remove(&id);
+                        inner.path_map.remove(&path_str);
                     }
                     Ok(())
                 })

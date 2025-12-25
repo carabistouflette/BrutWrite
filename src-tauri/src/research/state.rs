@@ -7,6 +7,8 @@ use tokio::sync::Mutex;
 pub struct ResearchInner {
     pub watcher: Option<RecommendedWatcher>,
     pub artifacts: HashMap<String, ResearchArtifact>,
+    /// Reverse index for O(1) lookup by path (Path -> ID)
+    pub path_map: HashMap<String, String>,
     pub root_path: Option<PathBuf>,
     pub version: u64,
 }
@@ -26,6 +28,7 @@ impl Default for ResearchState {
             inner: Mutex::new(ResearchInner {
                 watcher: None,
                 artifacts: HashMap::new(),
+                path_map: HashMap::new(),
                 root_path: None,
                 version: 0,
             }),
@@ -122,6 +125,9 @@ impl ResearchState {
     /// Helper to insert an artifact and save the index
     pub async fn persist_artifact(&self, artifact: ResearchArtifact) -> crate::errors::Result<()> {
         self.mutate_and_persist(|inner| {
+            inner
+                .path_map
+                .insert(artifact.path.clone(), artifact.id.clone());
             inner.artifacts.insert(artifact.id.clone(), artifact);
             Ok(())
         })

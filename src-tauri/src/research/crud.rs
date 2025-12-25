@@ -96,8 +96,12 @@ pub async fn rename_artifact(
     state
         .mutate_and_persist(|inner| {
             if let Some(artifact) = inner.artifacts.get_mut(&id) {
+                inner.path_map.remove(&artifact.path);
                 artifact.name = new_name;
                 artifact.path = new_path.to_string_lossy().to_string();
+                inner
+                    .path_map
+                    .insert(artifact.path.clone(), artifact.id.clone());
             }
             Ok(())
         })
@@ -120,7 +124,9 @@ pub async fn delete_artifact(state: &ResearchState, id: String) -> crate::errors
     // Update state
     state
         .mutate_and_persist(|inner| {
-            inner.artifacts.remove(&id);
+            if let Some(artifact) = inner.artifacts.remove(&id) {
+                inner.path_map.remove(&artifact.path);
+            }
             Ok(())
         })
         .await?;

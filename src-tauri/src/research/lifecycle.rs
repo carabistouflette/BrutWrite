@@ -16,12 +16,19 @@ pub async fn initialize(state: &ResearchState, path: PathBuf) -> crate::errors::
     // Use utility
     let current_artifacts = reconcile_index(disk_files, index_data);
 
+    // Build path map
+    let path_map: std::collections::HashMap<String, String> = current_artifacts
+        .values()
+        .map(|a| (a.path.clone(), a.id.clone()))
+        .collect();
+
     // Save reconciled
     crate::storage::save_index(&path, &current_artifacts).await?;
 
     let mut inner = state.inner.lock().await;
     inner.root_path = Some(path);
     inner.artifacts = current_artifacts;
+    inner.path_map = path_map;
     Ok(())
 }
 
@@ -41,21 +48,20 @@ fn reconcile_index(
 ) -> std::collections::HashMap<String, ResearchArtifact> {
     let mut current_artifacts = std::collections::HashMap::new();
 
+    // Build lookup map for O(1) access (Path -> ID)
+    let path_to_id: std::collections::HashMap<String, String> = index
+        .iter()
+        .map(|(k, v)| (v.path.clone(), k.clone()))
+        .collect();
+
     for (file_path, file_name) in disk_files {
-        let existing_id = {
-            index.iter().find_map(|(id, art)| {
-                if art.path == file_path {
-                    Some(id.clone())
-                } else {
-                    None
-                }
-            })
-        };
+        // O(1) lookup
+        let existing_id = path_to_id.get(&file_path);
 
         if let Some(id) = existing_id {
-            if let Some(mut artifact) = index.remove(&id) {
+            if let Some(mut artifact) = index.remove(id) {
                 artifact.name = file_name;
-                current_artifacts.insert(id, artifact);
+                current_artifacts.insert(id.clone(), artifact);
             }
         } else {
             let file_type = ResearchArtifact::determine_type(&file_name);
@@ -64,4 +70,49 @@ fn reconcile_index(
         }
     }
     current_artifacts
+}
+#[cfg(test)]
+mod tests {
+    use crate::research::ResearchState;
+    use std::sync::Arc;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn test_reconcile_index_path_map() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().to_path_buf();
+
+        // Create dummy files
+        let file1 = path.join("note1.md");
+        tokio::fs::write(&file1, "content").await.unwrap();
+        let file2 = path.join("note2.md");
+        tokio::fs::write(&file2, "content").await.unwrap();
+
+        let state = Arc::new(ResearchState::new());
+
+        // Initialize (this calls reconcile_index and builds path_map)
+        state.initialize(path.clone()).await.unwrap();
+
+        let inner = state.inner.lock().await;
+
+        // Verify artifacts exist
+        assert_eq!(inner.artifacts.len(), 2);
+
+        // Verify path_map is populated correctly
+        assert_eq!(inner.path_map.len(), 2);
+
+        let path1 = file1.to_string_lossy().to_string();
+        let path2 = file2.to_string_lossy().to_string();
+
+        assert!(inner.path_map.contains_key(&path1));
+        assert!(inner.path_map.contains_key(&path2));
+
+        let id1 = inner.path_map.get(&path1).unwrap();
+        let artifact1 = inner.artifacts.get(id1).unwrap();
+        assert_eq!(artifact1.path, path1);
+
+        let id2 = inner.path_map.get(&path2).unwrap();
+        let artifact2 = inner.artifacts.get(id2).unwrap();
+        assert_eq!(artifact2.path, path2);
+    }
 }
