@@ -6,6 +6,7 @@ import EditorMain from './components/EditorMain.vue';
 import WelcomeScreen from './components/WelcomeScreen.vue';
 import AppNotifications from './components/base/AppNotifications.vue';
 import { useProjectStore } from './stores/project';
+import GlobalDialogs from './components/base/GlobalDialogs.vue';
 
 const projectStore = useProjectStore();
 const { activeId, projectId } = storeToRefs(projectStore);
@@ -36,5 +37,6 @@ const { activeId, projectId } = storeToRefs(projectStore);
     </MainLayout>
 
     <AppNotifications />
+    <GlobalDialogs />
   </div>
 </template>

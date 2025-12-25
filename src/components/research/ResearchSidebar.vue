@@ -172,27 +172,6 @@
       @close="showTagManager = false"
       @save="handleSaveTags"
     />
-
-    <ConfirmationModal
-      :show="showConfirm"
-      :title="confirmTitle"
-      :message="confirmMessage"
-      :is-destructive="isConfirmDestructive"
-      @close="closeConfirm"
-      @cancel="closeConfirm"
-      @confirm="handleConfirm"
-    />
-
-    <InputModal
-      :show="showInput"
-      :title="inputTitle"
-      :message="inputMessage"
-      :initial-value="inputValue"
-      :placeholder="inputPlaceholder"
-      @close="closeInput"
-      @cancel="closeInput"
-      @confirm="handleInput"
-    />
   </aside>
 </template>
 
@@ -202,13 +181,13 @@ import { useResearchStore, type ResearchArtifact } from '../../stores/research';
 import { listen } from '@tauri-apps/api/event';
 import ContextMenu from '../base/ContextMenu.vue';
 import TagManagerModal from './TagManagerModal.vue';
-import ConfirmationModal from '../base/ConfirmationModal.vue';
-import InputModal from '../base/InputModal.vue';
+import { useDialogStore } from '../../stores/dialog';
 import BaseIcon from '../base/BaseIcon.vue';
 import { useContextMenu } from '../../composables/ui/useContextMenu';
 import { APP_CONSTANTS } from '../../config/constants';
 
 const store = useResearchStore();
+const dialogStore = useDialogStore();
 const searchQuery = ref('');
 const isDragging = ref(false);
 
@@ -273,69 +252,7 @@ const handleContextMenu = (e: MouseEvent, item: ResearchArtifact) => {
   openMenu(e, item);
 };
 
-// --- Modal State ---
-const showConfirm = ref(false);
-const confirmTitle = ref('');
-const confirmMessage = ref('');
-const isConfirmDestructive = ref(false);
-let confirmResolve: ((value: boolean) => void) | null = null;
-
-const showInput = ref(false);
-const inputTitle = ref('');
-const inputMessage = ref('');
-const inputValue = ref('');
-const inputPlaceholder = ref('');
-let inputResolve: ((value: string | null) => void) | null = null;
-
-const openConfirm = (title: string, message: string, destructive = false): Promise<boolean> => {
-  confirmTitle.value = title;
-  confirmMessage.value = message;
-  isConfirmDestructive.value = destructive;
-  showConfirm.value = true;
-  return new Promise((resolve) => {
-    confirmResolve = resolve;
-  });
-};
-
-const closeConfirm = () => {
-  showConfirm.value = false;
-  if (confirmResolve) confirmResolve(false);
-  confirmResolve = null;
-};
-
-const handleConfirm = () => {
-  showConfirm.value = false;
-  if (confirmResolve) confirmResolve(true);
-  confirmResolve = null;
-};
-
-const openInput = (
-  title: string,
-  message: string,
-  value = '',
-  placeholder = ''
-): Promise<string | null> => {
-  inputTitle.value = title;
-  inputMessage.value = message;
-  inputValue.value = value;
-  inputPlaceholder.value = placeholder;
-  showInput.value = true;
-  return new Promise((resolve) => {
-    inputResolve = resolve;
-  });
-};
-
-const closeInput = () => {
-  showInput.value = false;
-  if (inputResolve) inputResolve(null);
-  inputResolve = null;
-};
-
-const handleInput = (val: string) => {
-  showInput.value = false;
-  if (inputResolve) inputResolve(val);
-  inputResolve = null;
-};
+// --- Modal State Handling via DialogStore ---
 
 // --- Tag Management ---
 const showTagManager = ref(false);
@@ -359,12 +276,12 @@ const handleSaveTags = (newTags: string[]) => {
 
 // --- Handlers ---
 const handleNewNote = async () => {
-  const name = await openInput(
-    APP_CONSTANTS.STRINGS.PROMPTS.NEW_NOTE_TITLE,
-    APP_CONSTANTS.STRINGS.PROMPTS.NEW_NOTE_MESSAGE,
-    '',
-    APP_CONSTANTS.STRINGS.PROMPTS.NEW_NOTE_PLACEHOLDER
-  );
+  const name = await dialogStore.prompt({
+    title: APP_CONSTANTS.STRINGS.PROMPTS.NEW_NOTE_TITLE,
+    message: APP_CONSTANTS.STRINGS.PROMPTS.NEW_NOTE_MESSAGE,
+    initialValue: '',
+    placeholder: APP_CONSTANTS.STRINGS.PROMPTS.NEW_NOTE_PLACEHOLDER,
+  });
   if (name) {
     await store.createNote(name);
   }
@@ -372,11 +289,11 @@ const handleNewNote = async () => {
 
 const handleRename = async () => {
   if (!targetArtifact.value) return;
-  const name = await openInput(
-    APP_CONSTANTS.STRINGS.PROMPTS.RENAME_ARTIFACT_TITLE,
-    APP_CONSTANTS.STRINGS.PROMPTS.RENAME_ARTIFACT_MESSAGE,
-    targetArtifact.value.name
-  );
+  const name = await dialogStore.prompt({
+    title: APP_CONSTANTS.STRINGS.PROMPTS.RENAME_ARTIFACT_TITLE,
+    message: APP_CONSTANTS.STRINGS.PROMPTS.RENAME_ARTIFACT_MESSAGE,
+    initialValue: targetArtifact.value.name,
+  });
   if (name) {
     await store.renameArtifact(targetArtifact.value.id, name);
   }
@@ -386,11 +303,11 @@ const handleRename = async () => {
 const handleDelete = async () => {
   if (!targetArtifact.value) return;
   if (
-    await openConfirm(
-      APP_CONSTANTS.STRINGS.PROMPTS.DELETE_ARTIFACT_TITLE,
-      APP_CONSTANTS.STRINGS.PROMPTS.DELETE_ARTIFACT_MESSAGE(targetArtifact.value.name),
-      true
-    )
+    await dialogStore.confirm({
+      title: APP_CONSTANTS.STRINGS.PROMPTS.DELETE_ARTIFACT_TITLE,
+      message: APP_CONSTANTS.STRINGS.PROMPTS.DELETE_ARTIFACT_MESSAGE(targetArtifact.value.name),
+      isDestructive: true,
+    })
   ) {
     await store.deleteArtifact(targetArtifact.value.id);
   }
