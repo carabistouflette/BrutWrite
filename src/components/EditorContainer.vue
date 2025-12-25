@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, toRef, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import EditorMain from './EditorMain.vue';
 import { useProjectStore } from '../stores/project';
@@ -11,6 +11,8 @@ import { projectApi } from '../api/project';
 import { useAppStatus } from '../composables/ui/useAppStatus';
 import { APP_CONSTANTS } from '../config/constants';
 import type { Chapter } from '../types';
+import { useAutoSave } from '../composables/editor/useAutoSave';
+import { useChapterSession } from '../composables/domain/useChapterSession';
 
 const props = defineProps<{
   chapterId: string;
@@ -26,35 +28,21 @@ const settingsStore = useSettingsStore();
 const { settings } = storeToRefs(settingsStore);
 const { notifyError } = useAppStatus();
 
-// Find active chapter data from nodes
-const activeChapterContent = ref('');
-const isLoading = ref(false);
+// 1. Session Management (Loading content)
+// We use toRef to keep reactivity for the composable
+const { content: activeChapterContent, isLoading } = useChapterSession(
+  toRef(props, 'projectId'),
+  toRef(props, 'chapterId')
+);
 
+// Find active chapter metadata
 const activeChapter = computed(() => {
   return nodeMap.value.get(props.chapterId);
 });
 
-const loadContent = async () => {
-  if (!props.chapterId || !props.projectId) return;
-  isLoading.value = true;
-  try {
-    const content = await projectApi.loadChapter(props.projectId, props.chapterId);
-    activeChapterContent.value = content;
-  } catch (e) {
-    notifyError('Failed to load chapter content', e);
-    activeChapterContent.value = '<h1>Error</h1><p>Could not load content.</p>';
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-watch(() => props.chapterId, loadContent, { immediate: true });
-
 // Rename handler
 const handleRename = async (newName: string) => {
   if (props.chapterId && newName !== activeChapter.value?.name) {
-    // Note: useProjectNodeOperations handles errors internally for now,
-    // but we should eventually catch them here if it throws.
     await renameNode(props.chapterId, newName);
   }
 };
@@ -81,8 +69,6 @@ const handleResearchLinkClick = (id: string) => {
 };
 
 // Auto-save logic
-let saveInterval: ReturnType<typeof setInterval> | undefined;
-
 const saveActiveChapter = async (content: string) => {
   if (!props.chapterId || !props.projectId) return;
 
@@ -109,29 +95,21 @@ const handleSave = async (content: string) => {
   await saveActiveChapter(content);
 };
 
-const setupAutoSave = () => {
-  if (saveInterval) clearInterval(saveInterval);
-  const intervalMs =
-    (settings.value.general.autoSaveInterval || APP_CONSTANTS.EDITOR.AUTO_SAVE_INTERVAL) * 1000;
-  saveInterval = setInterval(async () => {
-    if (editorRef.value) {
-      const content = editorRef.value.getContent();
-      if (editorRef.value.isDirty()) {
-        await saveActiveChapter(content);
-        editorRef.value.markAsClean();
-      }
-    }
-  }, intervalMs);
-};
+// 2. Auto Save
+const autoSaveInterval = computed(
+  () => settings.value.general.autoSaveInterval || APP_CONSTANTS.EDITOR.AUTO_SAVE_INTERVAL
+);
 
-watch(() => settings.value.general.autoSaveInterval, setupAutoSave);
-
-onMounted(() => {
-  setupAutoSave();
-});
+useAutoSave(async () => {
+  if (editorRef.value && editorRef.value.isDirty()) {
+    const content = editorRef.value.getContent();
+    await saveActiveChapter(content);
+    editorRef.value.markAsClean();
+  }
+}, autoSaveInterval);
 
 onBeforeUnmount(async () => {
-  clearInterval(saveInterval);
+  // Final save on unmount is critical, so we keep this manual hook
   if (editorRef.value && editorRef.value.isDirty()) {
     await saveActiveChapter(editorRef.value.getContent());
   }
