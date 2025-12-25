@@ -9,6 +9,7 @@ import NarrativeOverlay from './NarrativeOverlay.vue';
 import { useTimelineExport } from '../../composables/timeline/useTimelineExport';
 import { useTimelineSort } from '../../composables/timeline/useTimelineSort';
 import { useVisTimeline } from '../../composables/timeline/useVisTimeline';
+import ConfirmationModal from '../base/ConfirmationModal.vue';
 
 import './timeline.css';
 
@@ -22,6 +23,18 @@ const narrativeOverlayRef = ref<InstanceType<typeof NarrativeOverlay> | null>(nu
 const showCalendarSettings = ref(false);
 const selectedSceneId = ref<string | null>(null);
 const hoveredScene = ref<{ id: string; x: number; y: number } | null>(null);
+
+// Sort Confirmation
+const showSortConfirm = ref(false);
+
+const handleSortRequest = () => {
+  showSortConfirm.value = true;
+};
+
+const confirmSort = async () => {
+  await applyChronologicalSort();
+  showSortConfirm.value = false;
+};
 
 // Initialize vis-timeline using our new composable
 const {
@@ -72,7 +85,7 @@ async function handleExport(format: 'png' | 'pdf') {
       @fit="fitTimeline"
       @zoom-in="zoomIn"
       @zoom-out="zoomOut"
-      @apply-chronological="applyChronologicalSort"
+      @apply-chronological="handleSortRequest"
       @export="handleExport"
       @open-calendar="showCalendarSettings = true"
     />
@@ -101,6 +114,16 @@ async function handleExport(format: 'png' | 'pdf') {
     />
 
     <CalendarSettings v-if="showCalendarSettings" @close="showCalendarSettings = false" />
+
+    <ConfirmationModal
+      :show="showSortConfirm"
+      title="Apply Chronological Order"
+      message="This will reorder your manuscript chapters based on their chronological time. This cannot be undone easily. Continue?"
+      confirm-label="Apply Sort"
+      :is-destructive="true"
+      @close="showSortConfirm = false"
+      @confirm="confirmSort"
+    />
   </div>
 </template>
 

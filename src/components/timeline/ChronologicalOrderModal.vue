@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import ConfirmationModal from '../base/ConfirmationModal.vue';
-import { useProjectData } from '../../composables/logic/useProjectData';
+import { useProjectStore } from '../../stores/project';
+import { useProjectNodeOperations } from '../../composables/logic/useProjectNodeOperations';
+import { storeToRefs } from 'pinia';
 import { useTimeline } from '../../composables/timeline/useTimeline';
 
-const { updateStructure, nodeMap } = useProjectData();
+const projectStore = useProjectStore();
+const { nodeMap } = storeToRefs(projectStore);
+const { updateStructure } = useProjectNodeOperations();
 const { assignedScenes } = useTimeline();
 
 const showModal = ref(false);

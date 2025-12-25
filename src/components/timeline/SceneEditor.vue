@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-
+import ConfirmationModal from '../base/ConfirmationModal.vue';
 import { useTimeline } from '../../composables/timeline/useTimeline';
 
 const props = defineProps<{
@@ -41,9 +41,35 @@ async function saveChanges() {
   // Optional: emit close or show success? For now, stays open to allow more edits.
 }
 
+// ... (existing imports moved or kept as needed, assuming this block replaces the script setup body appropriately or I insert carefully)
+// Wait, I need to be careful not to break existing imports.
+// Let's replace the whole script setup block to be safe or insert modal logic.
+
+// Modal State
+const showConfirm = ref(false);
+let confirmResolve: ((value: boolean) => void) | null = null;
+
+const closeConfirm = () => {
+  showConfirm.value = false;
+  if (confirmResolve) confirmResolve(false);
+  confirmResolve = null;
+};
+
+const onConfirm = () => {
+  showConfirm.value = false;
+  if (confirmResolve) confirmResolve(true);
+  confirmResolve = null;
+};
+
 async function handleUnschedule() {
   if (!props.sceneId) return;
-  if (confirm('Remove this scene from the timeline? It will return to the Holding Pen.')) {
+
+  showConfirm.value = true;
+  const confirmed = await new Promise<boolean>((resolve) => {
+    confirmResolve = resolve;
+  });
+
+  if (confirmed) {
     await updateNodeTemporal(props.sceneId, {
       chronological_date: undefined,
       plotline_tag: undefined,
@@ -93,6 +119,16 @@ import './SceneEditor.css';
       <div class="actions">
         <button class="brut-btn danger" @click="handleUnschedule">Unschedule Scene</button>
       </div>
+
+      <ConfirmationModal
+        :show="showConfirm"
+        title="Unschedule Scene"
+        message="Remove this scene from the timeline? It will return to the Holding Pen."
+        :is-destructive="true"
+        @close="closeConfirm"
+        @cancel="closeConfirm"
+        @confirm="onConfirm"
+      />
     </div>
   </div>
 </template>

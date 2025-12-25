@@ -1,8 +1,12 @@
+import { storeToRefs } from 'pinia';
+import { useProjectStore } from '../../stores/project';
+import { useProjectNodeOperations } from '../logic/useProjectNodeOperations';
 import type { FileNode } from '../../types';
-import { useProjectData } from '../logic/useProjectData';
 
 export function useTimelineSort() {
-  const { projectData, updateStructure } = useProjectData();
+  const projectStore = useProjectStore();
+  const { nodes: projectData } = storeToRefs(projectStore);
+  const { updateStructure } = useProjectNodeOperations();
 
   function sortNodesChronologically(nodes: FileNode[]): FileNode[] {
     return [...nodes]
@@ -23,16 +27,9 @@ export function useTimelineSort() {
   }
 
   async function applyChronologicalSort() {
-    if (
-      confirm(
-        'This will reorder your manuscript chapters based on their chronological time. This cannot be undone easily. Continue?'
-      )
-    ) {
-      const sorted = sortNodesChronologically(projectData.value);
-      await updateStructure(sorted);
-      return true;
-    }
-    return false;
+    const sorted = sortNodesChronologically(projectData.value);
+    await updateStructure(sorted);
+    return true;
   }
 
   return {
