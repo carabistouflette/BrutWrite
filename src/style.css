@@ -220,3 +220,8 @@ input[type='number'] {
   width: calc(100vw / var(--ui-scale, 1));
   height: calc(100vh / var(--ui-scale, 1));
 }
+
+#app {
+  height: 100%;
+  width: 100%;
+}

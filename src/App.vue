@@ -13,10 +13,7 @@ const { activeId, projectId } = storeToRefs(projectStore);
 </script>
 
 <template>
-  <div
-    id="app-scale-root"
-    class="bg-paper text-ink flex flex-col font-sans overflow-hidden relative"
-  >
+  <div class="bg-paper text-ink flex flex-col font-sans overflow-hidden relative h-full w-full">
     <!-- Cyber-Glass App Header -->
     <AppHeader data-tauri-drag-region />
 
