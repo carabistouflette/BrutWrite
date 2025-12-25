@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import ConfirmationModal from '../base/ConfirmationModal.vue';
 import { useProjectStore } from '../../stores/project';
-import { useProjectNodeOperations } from '../../composables/logic/useProjectNodeOperations';
+import { useProjectNodeOperations } from '../../composables/domain/useProjectNodeOperations';
 import { storeToRefs } from 'pinia';
 import { useTimeline } from '../../composables/timeline/useTimeline';
 

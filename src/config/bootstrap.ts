@@ -1,5 +1,5 @@
 import { useSettingsStore } from '../stores/settings';
-import { useProjectIO } from '../composables/logic/useProjectIO';
+import { useProjectIO } from '../composables/domain/useProjectIO';
 import { useTheme } from '../composables/ui/useTheme';
 
 /**

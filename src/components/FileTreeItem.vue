@@ -6,7 +6,8 @@ const numberFormatter = new Intl.NumberFormat();
 import { ref } from 'vue';
 import type { FileNode } from '../types';
 import { useProjectStore } from '../stores/project';
-import { useProjectNodeOperations } from '../composables/logic/useProjectNodeOperations';
+import { useProjectNodeOperations } from '../composables/domain/useProjectNodeOperations';
+import { useAppStatus } from '../composables/ui/useAppStatus';
 
 const props = defineProps<{
   element: FileNode;
@@ -15,6 +16,8 @@ const props = defineProps<{
   depth: number;
   editName: string;
 }>();
+
+const { notifyError } = useAppStatus();
 
 const emit = defineEmits<{
   (e: 'update:editName', value: string): void;
@@ -32,6 +35,14 @@ const selectNode = (id: string) => {
   setActiveId(id);
 };
 const inputRef = ref<HTMLInputElement | null>(null);
+
+const handleDelete = async (id: string) => {
+  try {
+    await deleteNode(id);
+  } catch (e) {
+    notifyError('Failed to delete node', e);
+  }
+};
 
 defineExpose({
   focus: () => inputRef.value?.focus(),
@@ -107,7 +118,7 @@ defineExpose({
       <button
         class="w-8 h-8 flex items-center justify-center text-ink/20 hover:text-red-500 hover:bg-white border border-transparent hover:border-black/5 rounded-full transition-all duration-200 shadow-none hover:shadow-md hover:scale-110 active:scale-90"
         title="Delete"
-        @click.stop="deleteNode(element.id)"
+        @click.stop="handleDelete(element.id)"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

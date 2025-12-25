@@ -7,10 +7,11 @@ import AppLogo from '../common/AppLogo.vue';
 import SidebarFooter from './SidebarFooter.vue';
 import AddChapterButton from '../AddChapterButton.vue';
 import { useResizable } from '../../composables/ui/useResizable';
-import { useProjectNodeOperations } from '../../composables/logic/useProjectNodeOperations';
-import { useProjectIO } from '../../composables/logic/useProjectIO';
+import { useProjectNodeOperations } from '../../composables/domain/useProjectNodeOperations';
+import { useProjectIO } from '../../composables/domain/useProjectIO';
 import { useProjectStore } from '../../stores/project';
 import { useContextMenu } from '../../composables/ui/useContextMenu';
+import { useAppStatus } from '../../composables/ui/useAppStatus';
 import { storeToRefs } from 'pinia';
 
 import { defineAsyncComponent } from 'vue';
@@ -86,6 +87,8 @@ const handleRenameCancel = () => {
   editingId.value = null;
 };
 
+const { notifyError } = useAppStatus(); // Import logic
+
 // Context Menu Interface
 const startRenameTarget = () => {
   if (targetNodeId.value) {
@@ -94,16 +97,24 @@ const startRenameTarget = () => {
   closeMenu();
 };
 
-const deleteTarget = () => {
+const deleteTarget = async () => {
   if (targetNodeId.value) {
-    handleDelete(targetNodeId.value);
+    try {
+      await handleDelete(targetNodeId.value);
+    } catch (e) {
+      notifyError('Failed to delete node', e);
+    }
   }
   closeMenu();
 };
 
-const addSection = () => {
+const addSection = async () => {
   if (targetNodeId.value) {
-    addSectionLogic(targetNodeId.value);
+    try {
+      await addSectionLogic(targetNodeId.value);
+    } catch (e) {
+      notifyError('Failed to add section', e);
+    }
   }
   closeMenu();
 };
@@ -113,8 +124,13 @@ const handleContextMenu = ({ e, id }: { e: MouseEvent; id: string }) => {
 };
 
 // Add Chapter Animation & Scroll
-const addChapter = () => {
-  addChapterLogic();
+const addChapter = async () => {
+  try {
+    await addChapterLogic();
+  } catch (e) {
+    notifyError('Failed to create chapter', e);
+    return;
+  }
 
   isAdding.value = true;
   setTimeout(() => (isAdding.value = false), 600);

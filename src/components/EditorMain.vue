@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue';
-import { storeToRefs } from 'pinia';
 import { EditorContent } from '@tiptap/vue-3';
 import { useTiptapEditor } from '../composables/editor/useTiptapEditor';
-import { useSettingsStore } from '../stores/settings';
-import { useResearchStore } from '../stores/research';
 import { APP_CONSTANTS } from '../config/constants';
+import type { EditorSettings } from '../config/defaultSettings';
 
 const props = defineProps<{
   id: string;
@@ -13,17 +11,15 @@ const props = defineProps<{
   title: string;
   initialContent?: string;
   initialWordCount?: number;
+  editorSettings: EditorSettings;
 }>();
 
 const emit = defineEmits<{
   (e: 'update:title', newTitle: string): void;
   (e: 'content-change', delta: number): void;
   (e: 'save', content: string): void;
+  (e: 'research-link-click', id: string): void;
 }>();
-
-const settingsStore = useSettingsStore();
-const { settings } = storeToRefs(settingsStore);
-const researchStore = useResearchStore();
 
 // --- Title Logic ---
 const editableTitle = ref(props.title);
@@ -48,16 +44,7 @@ const handleResearchClick = (e: MouseEvent) => {
   if (target && target.href.startsWith(APP_CONSTANTS.RESEARCH.PROTOCOL_PREFIX)) {
     e.preventDefault();
     const id = target.href.replace(APP_CONSTANTS.RESEARCH.PROTOCOL_PREFIX, '');
-
-    const artifact = researchStore.artifacts.find((a) => a.id === id);
-    if (artifact) {
-      researchStore.setActiveArtifact(artifact);
-    } else {
-      researchStore.fetchArtifacts().then(() => {
-        const found = researchStore.artifacts.find((a) => a.id === id);
-        if (found) researchStore.setActiveArtifact(found);
-      });
-    }
+    emit('research-link-click', id);
   }
 };
 
@@ -91,7 +78,7 @@ onBeforeUnmount(() => {
 });
 
 const editorStyles = computed(() => {
-  const s = settings.value.editor;
+  const s = props.editorSettings;
   return {
     fontFamily:
       s.fontFamily === 'serif'
@@ -118,7 +105,7 @@ defineExpose({
   <div
     ref="containerRef"
     class="h-full w-full overflow-y-auto scroll-smooth bg-transparent relative"
-    :class="{ 'focus-mode': settings.editor.focusMode }"
+    :class="{ 'focus-mode': props.editorSettings.focusMode }"
     @click="handleResearchClick"
   >
     <!-- Brutalist Editor Area -->

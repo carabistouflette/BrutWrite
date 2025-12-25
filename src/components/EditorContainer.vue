@@ -3,8 +3,9 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import EditorMain from './EditorMain.vue';
 import { useProjectStore } from '../stores/project';
-import { useProjectNodeOperations } from '../composables/logic/useProjectNodeOperations';
-import { useGamification } from '../composables/logic/useGamification';
+import { useResearchStore } from '../stores/research';
+import { useProjectNodeOperations } from '../composables/domain/useProjectNodeOperations';
+import { useGamification } from '../composables/domain/useGamification';
 import { useSettingsStore } from '../stores/settings';
 import { projectApi } from '../api/project';
 import { useAppStatus } from '../composables/ui/useAppStatus';
@@ -17,7 +18,8 @@ const props = defineProps<{
 }>();
 
 const projectStore = useProjectStore();
-const { nodes, activeId } = storeToRefs(projectStore);
+const { activeId, nodeMap } = storeToRefs(projectStore);
+const researchStore = useResearchStore();
 const { updateNodeStats, renameNode } = useProjectNodeOperations();
 const { addWords } = useGamification();
 const settingsStore = useSettingsStore();
@@ -29,18 +31,7 @@ const activeChapterContent = ref('');
 const isLoading = ref(false);
 
 const activeChapter = computed(() => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const findNode = (nodesList: any[], id: string): any => {
-    for (const node of nodesList) {
-      if (node.id === id) return node;
-      if (node.children) {
-        const found = findNode(node.children, id);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
-  return findNode(nodes.value, props.chapterId);
+  return nodeMap.value.get(props.chapterId);
 });
 
 const loadContent = async () => {
@@ -62,6 +53,8 @@ watch(() => props.chapterId, loadContent, { immediate: true });
 // Rename handler
 const handleRename = async (newName: string) => {
   if (props.chapterId && newName !== activeChapter.value?.name) {
+    // Note: useProjectNodeOperations handles errors internally for now,
+    // but we should eventually catch them here if it throws.
     await renameNode(props.chapterId, newName);
   }
 };
@@ -72,6 +65,18 @@ const handleContentChange = (delta: number) => {
   if (props.chapterId) {
     const currentWordCount = activeChapter.value?.word_count || 0;
     updateNodeStats(props.chapterId, currentWordCount + delta);
+  }
+};
+
+const handleResearchLinkClick = (id: string) => {
+  const artifact = researchStore.artifacts.find((a) => a.id === id);
+  if (artifact) {
+    researchStore.setActiveArtifact(artifact);
+  } else {
+    researchStore.fetchArtifacts().then(() => {
+      const found = researchStore.artifacts.find((a) => a.id === id);
+      if (found) researchStore.setActiveArtifact(found);
+    });
   }
 };
 
@@ -98,8 +103,7 @@ const saveActiveChapter = async (content: string) => {
 };
 
 // Editor ref for manual saves
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const editorRef = ref<any>(null);
+const editorRef = ref<InstanceType<typeof EditorMain> | null>(null);
 
 const handleSave = async (content: string) => {
   await saveActiveChapter(content);
@@ -147,8 +151,10 @@ onBeforeUnmount(async () => {
     :title="activeChapter.name"
     :initial-content="activeChapterContent"
     :initial-word-count="activeChapter.word_count"
+    :editor-settings="settings.editor"
     @update:title="handleRename"
     @content-change="handleContentChange"
     @save="handleSave"
+    @research-link-click="handleResearchLinkClick"
   />
 </template>

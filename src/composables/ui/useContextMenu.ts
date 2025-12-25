@@ -28,19 +28,18 @@ export function useContextMenu<T = unknown>() {
     // contextData.value = null;
   };
 
+  const handleContextMenuClose = () => {
+    if (showMenu.value) closeMenu();
+  };
+
   onMounted(() => {
     document.addEventListener('click', closeMenu);
-    document.addEventListener('contextmenu', () => {
-      // Close menu if clicking outside involved creating a new context menu?
-      // Actually standard behavior is to close previous one.
-      // We rely on the fact that if this hook is used multiple times, they all listen to click.
-      // But contextmenu event might not bubble to 'click'.
-      if (showMenu.value) closeMenu();
-    });
+    document.addEventListener('contextmenu', handleContextMenuClose);
   });
 
   onUnmounted(() => {
     document.removeEventListener('click', closeMenu);
+    document.removeEventListener('contextmenu', handleContextMenuClose);
   });
 
   return {

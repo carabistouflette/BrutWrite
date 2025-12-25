@@ -3,7 +3,7 @@ import Mention from '@tiptap/extension-mention';
 import tippy, { type Instance } from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
 import MentionList from '../../components/base/MentionList.vue';
-import { useCharacters } from '../../composables/logic/useCharacters';
+import { useCharacters } from '../../composables/domain/useCharacters';
 import { useResearchStore } from '../../stores/research';
 import type { Editor } from '@tiptap/core';
 import type { EditorView } from '@tiptap/pm/view';

@@ -15,66 +15,59 @@ interface InputDialogOptions extends DialogOptions {
 }
 
 export const useDialogStore = defineStore('dialog', () => {
-  // State
-  const activeDialog = ref<'confirm' | 'input' | null>(null);
+  // Discriminated Union State
+  type DialogState =
+    | { type: 'confirm'; props: DialogOptions; resolve: (value: boolean) => void }
+    | { type: 'input'; props: InputDialogOptions; resolve: (value: string | null) => void }
+    | null;
 
-  const dialogProps = ref<DialogOptions | InputDialogOptions>({
-    title: '',
-    message: '',
-  });
-
-  // Resolvers
-  let resolveConfirm: ((value: boolean) => void) | null = null;
-  let resolvePrompt: ((value: string | null) => void) | null = null;
+  const currentDialog = ref<DialogState>(null);
 
   // Actions
   const confirm = (options: DialogOptions): Promise<boolean> => {
-    activeDialog.value = 'confirm';
-    dialogProps.value = options;
-
     return new Promise((resolve) => {
-      resolveConfirm = resolve;
+      currentDialog.value = {
+        type: 'confirm',
+        props: options,
+        resolve,
+      };
     });
   };
 
   const prompt = (options: InputDialogOptions): Promise<string | null> => {
-    activeDialog.value = 'input';
-    dialogProps.value = options;
-
     return new Promise((resolve) => {
-      resolvePrompt = resolve;
+      currentDialog.value = {
+        type: 'input',
+        props: options,
+        resolve,
+      };
     });
   };
 
   const handleConfirm = (value?: string) => {
-    activeDialog.value = null;
+    if (!currentDialog.value) return;
 
-    if (resolveConfirm) {
-      resolveConfirm(true);
-      resolveConfirm = null;
+    if (currentDialog.value.type === 'confirm') {
+      currentDialog.value.resolve(true);
+    } else if (currentDialog.value.type === 'input') {
+      currentDialog.value.resolve(value ?? '');
     }
-    if (resolvePrompt) {
-      resolvePrompt(value ?? '');
-      resolvePrompt = null;
-    }
+    currentDialog.value = null;
   };
 
   const handleCancel = () => {
-    activeDialog.value = null;
+    if (!currentDialog.value) return;
 
-    if (resolveConfirm) {
-      resolveConfirm(false);
-      resolveConfirm = null;
+    if (currentDialog.value.type === 'confirm') {
+      currentDialog.value.resolve(false);
+    } else if (currentDialog.value.type === 'input') {
+      currentDialog.value.resolve(null);
     }
-    if (resolvePrompt) {
-      resolvePrompt(null);
-      resolvePrompt = null;
-    }
+    currentDialog.value = null;
   };
 
   return {
-    activeDialog,
-    dialogProps,
+    currentDialog,
     confirm,
     prompt,
     handleConfirm,
