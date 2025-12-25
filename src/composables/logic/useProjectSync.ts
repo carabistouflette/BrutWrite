@@ -1,17 +1,20 @@
+import { ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { projectApi } from '../../api/project';
 import { useAppStatus } from '../ui/useAppStatus';
 import { projectToManifest } from '../../utils/tree';
-import {
-  projectData,
-  projectId,
-  pendingMetadataUpdates,
-  syncManifestTimeout,
-  metadataTimeout,
-} from '../state/projectState';
+import { useProjectStore } from '../../stores/project';
 import type { Chapter } from '../../types';
+
+// Module-level state for debouncing
+const pendingMetadataUpdates = new Map<string, Partial<Chapter>>();
+const syncManifestTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+const metadataTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
 export function useProjectSync() {
   const { notifyError: originalNotifyError } = useAppStatus();
+  const projectStore = useProjectStore();
+  const { nodes: projectData, projectId } = storeToRefs(projectStore);
 
   const notifyError = (message: string, error?: unknown) => {
     originalNotifyError(message, error);

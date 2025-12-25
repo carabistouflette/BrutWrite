@@ -1,43 +1,47 @@
+import { storeToRefs } from 'pinia';
 import { projectApi } from '../../api/project';
 import { useAppStatus } from '../ui/useAppStatus';
 import { useCharacters } from './useCharacters';
 import { useRecentProjects } from './useRecentProjects';
 import { reconstructHierarchy } from '../../utils/tree';
 import type { ProjectSettings, Plotline } from '../../types';
-import {
-  projectData,
-  projectId,
-  activeId,
-  projectSettings,
-  projectPlotlines,
-} from '../state/projectState';
+import { useProjectStore } from '../../stores/project';
 import { useProjectNodeOperations } from './useProjectNodeOperations';
 
 export function useProjectIO() {
   const { notifyError } = useAppStatus();
   const { addChapter } = useProjectNodeOperations();
   const { addRecentProject } = useRecentProjects();
+  const projectStore = useProjectStore();
+  const {
+    projectId,
+    settings: projectSettings,
+    plotlines: projectPlotlines,
+    nodes: projectData,
+  } = storeToRefs(projectStore);
 
   const loadProject = async (path: string) => {
     try {
       const metadata = await projectApi.load(path);
-      projectId.value = metadata.id;
 
       // Sync characters to their dedicated store
       const { setCharacters } = useCharacters();
       setCharacters(metadata.characters);
 
-      // Set settings
-      projectSettings.value = metadata.settings;
+      // Set project data in store
+      projectStore.setProjectData(
+        metadata.id,
+        reconstructHierarchy(metadata.manifest.chapters),
+        metadata.settings
+      );
+
       projectPlotlines.value = metadata.plotlines;
 
       localStorage.setItem('last_opened_project_path', path);
       addRecentProject(path);
 
-      projectData.value = reconstructHierarchy(metadata.manifest.chapters);
-
       if (projectData.value.length > 0) {
-        activeId.value = projectData.value[0].id;
+        projectStore.setActiveId(projectData.value[0].id);
       }
     } catch (e) {
       notifyError('Failed to load project', e);
@@ -48,19 +52,21 @@ export function useProjectIO() {
   const createProject = async (path: string, name: string, author: string) => {
     try {
       const metadata = await projectApi.create(path, name, author);
-      projectId.value = metadata.id;
-      projectData.value = [];
 
       // Reset character store
       const { setCharacters } = useCharacters();
       setCharacters([]);
 
+      // Set project data in store
+      projectId.value = metadata.id;
+      projectData.value = [];
       projectSettings.value = metadata.settings;
       projectPlotlines.value = metadata.plotlines;
 
       localStorage.setItem('last_opened_project_path', path);
       addRecentProject(path);
 
+      // Add a default chapter
       await addChapter();
     } catch (e) {
       notifyError('Failed to create project', e);
@@ -68,11 +74,7 @@ export function useProjectIO() {
   };
 
   const closeProject = () => {
-    activeId.value = undefined;
-    projectData.value = [];
-    projectId.value = undefined;
-    projectSettings.value = null;
-    projectPlotlines.value = [];
+    projectStore.closeProject();
 
     const { setCharacters } = useCharacters();
     setCharacters([]);

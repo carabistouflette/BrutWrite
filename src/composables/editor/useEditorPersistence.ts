@@ -1,7 +1,9 @@
 import { type Editor } from '@tiptap/vue-3';
+import { storeToRefs } from 'pinia';
 import { projectApi } from '../../api/project';
 import { useAppStatus } from '../../composables/ui/useAppStatus';
-import { useProjectData } from '../../composables/logic/useProjectData';
+import { useProjectStore } from '../../stores/project';
+import { useProjectNodeOperations } from '../logic/useProjectNodeOperations';
 import type { Chapter } from '../../types';
 import type { Ref } from 'vue';
 
@@ -11,7 +13,9 @@ export function useEditorPersistence(
   resetWordCountState: () => void
 ) {
   const { notifyError } = useAppStatus();
-  const { updateNodeStats, activeId } = useProjectData();
+  const projectStore = useProjectStore();
+  const { activeId } = storeToRefs(projectStore);
+  const { updateNodeStats } = useProjectNodeOperations();
 
   const loadChapter = async (projectId: string, chapterId: string) => {
     if (!editor.value) return;
