@@ -11,22 +11,7 @@
       class="absolute inset-0 z-50 bg-accent/20 backdrop-blur-sm border-2 border-accent border-dashed m-2 rounded-xl flex items-center justify-center pointer-events-none"
     >
       <div class="bg-paper p-4 rounded-xl shadow-xl flex flex-col items-center gap-2">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="32"
-          height="32"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="text-accent"
-        >
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="17 8 12 3 7 8" />
-          <line x1="12" y1="3" x2="12" y2="15" />
-        </svg>
+        <BaseIcon name="download" size="32" class="text-accent" />
         <span class="text-xs font-bold uppercase tracking-widest text-ink">Drop to Import</span>
       </div>
     </div>
@@ -45,20 +30,7 @@
             class="p-1 rounded-md text-ink/30 hover:text-ink hover:bg-stone transition-colors"
             @click="$emit('close')"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
+            <BaseIcon name="x" size="16" />
           </button>
         </div>
       </div>
@@ -71,21 +43,11 @@
     <div class="px-6 mb-4 shrink-0">
       <div class="relative group">
         <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-          <svg
-            class="w-3.5 h-3.5 text-ink/30 transition-colors duration-300 group-focus-within:text-accent"
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
+          <BaseIcon
+            name="search"
+            size="14"
+            class="text-ink/30 transition-colors duration-300 group-focus-within:text-accent"
+          />
         </div>
         <input
           v-model="searchQuery"
@@ -125,55 +87,13 @@
               : 'bg-stone/50 text-ink/30 group-hover:bg-stone group-hover:text-ink/60'
           "
         >
-          <!-- PDF Icon -->
-          <svg
-            v-if="item.file_type === 'pdf'"
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-            <polyline points="14 2 14 8 20 8" />
-          </svg>
-          <!-- Image Icon -->
-          <svg
+          <BaseIcon v-if="item.file_type === 'pdf'" name="file" size="16" />
+          <BaseIcon
             v-else-if="['png', 'jpg', 'jpeg', 'webp'].includes(item.file_type)"
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <polyline points="21 15 16 10 5 21" />
-          </svg>
-          <!-- Text/Default Icon -->
-          <svg
-            v-else
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-            <polyline points="10 9 9 9 8 9" />
-          </svg>
+            name="image"
+            size="16"
+          />
+          <BaseIcon v-else name="fileText" size="16" />
         </div>
 
         <!-- Label & Tags -->
@@ -200,9 +120,9 @@
             >
               #{{ tag }}
             </span>
-            <span v-if="item.tags.length > 3" class="text-[9px] text-ink/20"
-              >+{{ item.tags.length - 3 }}</span
-            >
+            <span v-if="item.tags.length > 3" class="text-[9px] text-ink/20">
+              +{{ item.tags.length - 3 }}
+            </span>
           </div>
         </div>
       </div>
@@ -215,19 +135,7 @@
         @click="$emit('add')"
       >
         <span class="relative z-10 flex items-center justify-center gap-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-3.5 h-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
+          <BaseIcon name="plusSimple" size="14" stroke-width="2.5" />
           Add
         </span>
       </button>
@@ -237,19 +145,7 @@
         @click="handleNewNote"
       >
         <span class="relative z-10 flex items-center justify-center gap-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-3.5 h-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
+          <BaseIcon name="edit" size="14" />
           Note
         </span>
       </button>
@@ -276,6 +172,27 @@
       @close="showTagManager = false"
       @save="handleSaveTags"
     />
+
+    <ConfirmationModal
+      :show="showConfirm"
+      :title="confirmTitle"
+      :message="confirmMessage"
+      :is-destructive="isConfirmDestructive"
+      @close="closeConfirm"
+      @cancel="closeConfirm"
+      @confirm="handleConfirm"
+    />
+
+    <InputModal
+      :show="showInput"
+      :title="inputTitle"
+      :message="inputMessage"
+      :initial-value="inputValue"
+      :placeholder="inputPlaceholder"
+      @close="closeInput"
+      @cancel="closeInput"
+      @confirm="handleInput"
+    />
   </aside>
 </template>
 
@@ -285,13 +202,17 @@ import { useResearchStore, type ResearchArtifact } from '../../stores/research';
 import { listen } from '@tauri-apps/api/event';
 import ContextMenu from '../base/ContextMenu.vue';
 import TagManagerModal from './TagManagerModal.vue';
+import ConfirmationModal from '../base/ConfirmationModal.vue';
+import InputModal from '../base/InputModal.vue';
+import BaseIcon from '../base/BaseIcon.vue';
 import { useContextMenu } from '../../composables/ui/useContextMenu';
+import { APP_CONSTANTS } from '../../config/constants';
 
 const store = useResearchStore();
 const searchQuery = ref('');
 const isDragging = ref(false);
 
-defineEmits(['add', 'close']);
+defineEmits(['close', 'add']);
 
 // --- Context Menu Composable ---
 const {
@@ -352,6 +273,70 @@ const handleContextMenu = (e: MouseEvent, item: ResearchArtifact) => {
   openMenu(e, item);
 };
 
+// --- Modal State ---
+const showConfirm = ref(false);
+const confirmTitle = ref('');
+const confirmMessage = ref('');
+const isConfirmDestructive = ref(false);
+let confirmResolve: ((value: boolean) => void) | null = null;
+
+const showInput = ref(false);
+const inputTitle = ref('');
+const inputMessage = ref('');
+const inputValue = ref('');
+const inputPlaceholder = ref('');
+let inputResolve: ((value: string | null) => void) | null = null;
+
+const openConfirm = (title: string, message: string, destructive = false): Promise<boolean> => {
+  confirmTitle.value = title;
+  confirmMessage.value = message;
+  isConfirmDestructive.value = destructive;
+  showConfirm.value = true;
+  return new Promise((resolve) => {
+    confirmResolve = resolve;
+  });
+};
+
+const closeConfirm = () => {
+  showConfirm.value = false;
+  if (confirmResolve) confirmResolve(false);
+  confirmResolve = null;
+};
+
+const handleConfirm = () => {
+  showConfirm.value = false;
+  if (confirmResolve) confirmResolve(true);
+  confirmResolve = null;
+};
+
+const openInput = (
+  title: string,
+  message: string,
+  value = '',
+  placeholder = ''
+): Promise<string | null> => {
+  inputTitle.value = title;
+  inputMessage.value = message;
+  inputValue.value = value;
+  inputPlaceholder.value = placeholder;
+  showInput.value = true;
+  return new Promise((resolve) => {
+    inputResolve = resolve;
+  });
+};
+
+const closeInput = () => {
+  showInput.value = false;
+  if (inputResolve) inputResolve(null);
+  inputResolve = null;
+};
+
+const handleInput = (val: string) => {
+  showInput.value = false;
+  if (inputResolve) inputResolve(val);
+  inputResolve = null;
+};
+
 // --- Tag Management ---
 const showTagManager = ref(false);
 const managingArtifact = ref<ResearchArtifact | null>(null);
@@ -372,28 +357,41 @@ const handleSaveTags = (newTags: string[]) => {
   managingArtifact.value = null;
 };
 
+// --- Handlers ---
 const handleNewNote = async () => {
-  const name = window.prompt('Note Name:');
-  if (name && name.trim()) {
-    await store.createNote(name.trim());
+  const name = await openInput(
+    APP_CONSTANTS.STRINGS.PROMPTS.NEW_NOTE_TITLE,
+    APP_CONSTANTS.STRINGS.PROMPTS.NEW_NOTE_MESSAGE,
+    '',
+    APP_CONSTANTS.STRINGS.PROMPTS.NEW_NOTE_PLACEHOLDER
+  );
+  if (name) {
+    await store.createNote(name);
   }
 };
 
 const handleRename = async () => {
   if (!targetArtifact.value) return;
-  const name = window.prompt('New Name:', targetArtifact.value.name);
-  if (name && name.trim() && name !== targetArtifact.value.name) {
-    await store.renameArtifact(targetArtifact.value.id, name.trim());
+  const name = await openInput(
+    APP_CONSTANTS.STRINGS.PROMPTS.RENAME_ARTIFACT_TITLE,
+    APP_CONSTANTS.STRINGS.PROMPTS.RENAME_ARTIFACT_MESSAGE,
+    targetArtifact.value.name
+  );
+  if (name) {
+    await store.renameArtifact(targetArtifact.value.id, name);
   }
   closeMenu();
 };
 
 const handleDelete = async () => {
   if (!targetArtifact.value) return;
-  const confirm = window.confirm(
-    `Are you sure you want to delete "${targetArtifact.value.name}"? This will permanently remove the file.`
-  );
-  if (confirm) {
+  if (
+    await openConfirm(
+      APP_CONSTANTS.STRINGS.PROMPTS.DELETE_ARTIFACT_TITLE,
+      APP_CONSTANTS.STRINGS.PROMPTS.DELETE_ARTIFACT_MESSAGE(targetArtifact.value.name),
+      true
+    )
+  ) {
     await store.deleteArtifact(targetArtifact.value.id);
   }
   closeMenu();
@@ -401,19 +399,5 @@ const handleDelete = async () => {
 </script>
 
 <style scoped>
-/* Ultra-minimal scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--stone);
-  border-radius: 99px;
-}
-.custom-scrollbar:hover::-webkit-scrollbar-thumb {
-  background: var(--ink-rgb);
-  opacity: 0.2;
-}
+/* Scoped styles if any were present */
 </style>

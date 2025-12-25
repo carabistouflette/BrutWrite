@@ -5,7 +5,8 @@ const numberFormatter = new Intl.NumberFormat();
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { FileNode } from '../types';
-import { useProjectData } from '../composables/logic/useProjectData';
+import { useProjectStore } from '../stores/project';
+import { useProjectNodeOperations } from '../composables/logic/useProjectNodeOperations';
 
 const props = defineProps<{
   element: FileNode;
@@ -23,7 +24,13 @@ const emit = defineEmits<{
   (e: 'request-rename', id: string): void;
 }>();
 
-const { selectNode, deleteNode } = useProjectData();
+const projectStore = useProjectStore();
+const { setActiveId } = projectStore;
+const { deleteNode } = useProjectNodeOperations();
+
+const selectNode = (id: string) => {
+  setActiveId(id);
+};
 const inputRef = ref<HTMLInputElement | null>(null);
 
 defineExpose({

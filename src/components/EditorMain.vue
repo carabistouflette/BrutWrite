@@ -1,16 +1,43 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { EditorContent } from '@tiptap/vue-3';
-import { useProjectData } from '../composables/logic/useProjectData';
 import { useGamification } from '../composables/logic/useGamification';
 import { useTiptapEditor } from '../composables/editor/useTiptapEditor';
-import { useSettings } from '../composables/logic/useSettings';
+import { useSettingsStore } from '../stores/settings';
+import { useProjectStore } from '../stores/project';
 import { useResearchStore } from '../stores/research';
+import { useProjectNodeOperations } from '../composables/logic/useProjectNodeOperations';
+import { APP_CONSTANTS } from '../config/constants';
 
-const { activeId, activeChapter, projectId, renameNode, updateNodeStats } = useProjectData();
+const props = defineProps<{
+  chapterId: string;
+  projectId: string;
+}>();
+
+const projectStore = useProjectStore();
+const { updateNodeStats, renameNode } = useProjectNodeOperations();
+
 const { addWords } = useGamification();
-const { settings } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const researchStore = useResearchStore();
+
+const activeChapter = computed(() => {
+  // Helper to find node recursively
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const findNode = (nodes: any[], id: string): any => {
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const found = findNode(node.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  return findNode(projectStore.nodes, props.chapterId);
+});
 
 // --- Title Logic ---
 const activeChapterName = ref('');
@@ -26,18 +53,18 @@ watch(
 );
 
 const handleRename = async () => {
-  if (activeId.value && activeChapterName.value !== activeChapter.value?.name) {
-    await renameNode(activeId.value, activeChapterName.value);
+  if (props.chapterId && activeChapterName.value !== activeChapter.value?.name) {
+    await renameNode(props.chapterId, activeChapterName.value);
   }
 };
 
 // --- Link Handler ---
 const handleResearchClick = (e: MouseEvent) => {
   const target = (e.target as HTMLElement).closest('a');
-  if (target && target.href.startsWith('research://')) {
+  if (target && target.href.startsWith(APP_CONSTANTS.RESEARCH.PROTOCOL_PREFIX)) {
     e.preventDefault();
     // Format: research://<id>
-    const id = target.href.replace('research://', '');
+    const id = target.href.replace(APP_CONSTANTS.RESEARCH.PROTOCOL_PREFIX, '');
     // We need to find the artifact. The store might not be loaded if we didn't open the panel yet.
     // So we force a fetch if needed, then find it.
     // For now, assume store.fetchArtifacts() is called or we call it.
@@ -59,27 +86,30 @@ const handleResearchClick = (e: MouseEvent) => {
 // --- Editor Logic ---
 const { editor, containerRef, loadChapter, saveChapter } = useTiptapEditor((delta) => {
   addWords(delta);
-  if (activeId.value) {
-    const currentCount = activeChapter.value?.word_count || 0;
-    updateNodeStats(activeId.value, currentCount + delta);
+  if (props.chapterId) {
+    const activeWordCount = activeChapter.value?.word_count || 0;
+    updateNodeStats(props.chapterId, activeWordCount + delta);
   }
 });
 
-// Watch Active ID and Editor instance to reload content
+// Watch Props and Editor instance to reload content
 let lastLoadedId = '';
 watch(
-  [activeId, projectId, editor],
-  async ([newId, pPid, pEd], [oldId]) => {
+  [() => props.chapterId, () => props.projectId, editor],
+  async ([newId, newPid, pEd]) => {
     // 1. Save old chapter if it exists and has changes
-    if (oldId && pPid && pEd && oldId !== newId) {
-      await saveChapter(pPid, oldId);
+    // Note: oldId comes from the previous watcher state, which might be tricky with props.
+    // Ideally we save explicitly before switching or rely on auto-save/unmount.
+    // Use lastLoadedId for saving the previous one if we are switching.
+    if (lastLoadedId && newPid && pEd && lastLoadedId !== newId) {
+      await saveChapter(newPid, lastLoadedId);
     }
 
     // 2. Load new chapter
-    if (newId && pPid && pEd) {
+    if (newId && newPid && pEd) {
       // Only load if the ID has changed or we haven't loaded anything yet
       if (newId !== lastLoadedId) {
-        await loadChapter(pPid, newId);
+        await loadChapter(newPid, newId);
         lastLoadedId = newId;
 
         // Focus editor after load to ensure seamless writing experience
@@ -96,10 +126,11 @@ watch(
 let saveInterval: ReturnType<typeof setInterval> | undefined;
 const setupAutoSave = () => {
   if (saveInterval) clearInterval(saveInterval);
-  const intervalMs = (settings.value.general.autoSaveInterval || 30) * 1000;
+  const intervalMs =
+    (settings.value.general.autoSaveInterval || APP_CONSTANTS.EDITOR.AUTO_SAVE_INTERVAL) * 1000;
   saveInterval = setInterval(async () => {
-    if (activeId.value && projectId.value) {
-      await saveChapter(projectId.value, activeId.value);
+    if (props.chapterId && props.projectId) {
+      await saveChapter(props.projectId, props.chapterId);
     }
   }, intervalMs);
 };
@@ -122,8 +153,8 @@ onBeforeUnmount(async () => {
   clearInterval(saveInterval);
 
   // Final save on unmount if there are changes
-  if (activeId.value && projectId.value) {
-    await saveChapter(projectId.value, activeId.value);
+  if (props.chapterId && props.projectId) {
+    await saveChapter(props.projectId, props.chapterId);
   }
 
   editor.value?.destroy();
@@ -162,7 +193,7 @@ const editorStyles = computed(() => {
         <input
           v-model="activeChapterName"
           class="w-full bg-transparent border-none outline-none text-5xl font-serif font-black text-ink/90 placeholder:text-ink/10 transition-all focus:text-accent selection:bg-accent/20"
-          placeholder="Chapter Title"
+          :placeholder="APP_CONSTANTS.STRINGS.PLACEHOLDERS.CHAPTER_TITLE"
           @blur="handleRename"
           @keyup.enter="handleRename"
         />

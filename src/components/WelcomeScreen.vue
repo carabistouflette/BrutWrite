@@ -167,10 +167,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { useProjectData } from '../composables/logic/useProjectData';
+import { useProjectIO } from '../composables/logic/useProjectIO';
 import { useRecentProjects } from '../composables/logic/useRecentProjects';
 
-const { loadProject, createProject } = useProjectData();
+const { loadProject, createProject } = useProjectIO();
 const { recentProjects, loadRecentProjects } = useRecentProjects();
 const isExiting = ref(false);
 

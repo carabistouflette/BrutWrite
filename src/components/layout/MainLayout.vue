@@ -7,8 +7,11 @@ import AppLogo from '../common/AppLogo.vue';
 import SidebarFooter from './SidebarFooter.vue';
 import AddChapterButton from '../AddChapterButton.vue';
 import { useResizable } from '../../composables/ui/useResizable';
-import { useProjectData } from '../../composables/logic/useProjectData';
+import { useProjectNodeOperations } from '../../composables/logic/useProjectNodeOperations';
+import { useProjectIO } from '../../composables/logic/useProjectIO';
+import { useProjectStore } from '../../stores/project';
 import { useContextMenu } from '../../composables/ui/useContextMenu';
+import { storeToRefs } from 'pinia';
 
 import { defineAsyncComponent } from 'vue';
 
@@ -39,16 +42,16 @@ const {
   edge: 'right',
 });
 
+const projectStore = useProjectStore();
+const { nodes: projectData, activeId } = storeToRefs(projectStore);
 const {
-  projectData,
-  activeId,
   addChapter: addChapterLogic,
   addSection: addSectionLogic,
   deleteNode: handleDelete,
   renameNode: handleRenameLogic,
-  updateStructure,
-  closeProject,
-} = useProjectData();
+} = useProjectNodeOperations();
+const { updateStructure } = useProjectNodeOperations(); // structure update is in ops
+const { closeProject } = useProjectIO();
 
 const {
   showMenu,
