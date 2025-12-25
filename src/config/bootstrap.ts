@@ -1,6 +1,7 @@
 import { useSettingsStore } from '../stores/settings';
 import { useProjectIO } from '../composables/domain/useProjectIO';
 import { useTheme } from '../composables/ui/useTheme';
+import { useAppStatus } from '../composables/ui/useAppStatus';
 
 /**
  * Global application bootstrapper.
@@ -13,6 +14,7 @@ export async function initApp() {
 
   // 1. Initialize Theme Watchers (Calculates CSS variables, handles dark mode)
   initTheme();
+  const { notifyError } = useAppStatus();
 
   try {
     // 2. Load Settings from Disk
@@ -25,6 +27,6 @@ export async function initApp() {
       await loadProject(lastPath);
     }
   } catch (err) {
-    console.error('App initialization failed:', err);
+    notifyError('App initialization failed', err);
   }
 }

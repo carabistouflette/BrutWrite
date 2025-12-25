@@ -3,10 +3,12 @@ import { ref } from 'vue';
 import { listen } from '@tauri-apps/api/event';
 import { researchApi, type ResearchArtifact } from '../api/research';
 import { APP_CONSTANTS } from '../config/constants';
+import { useAppStatus } from '../composables/ui/useAppStatus';
 
 export const useResearchStore = defineStore('research', () => {
   const artifacts = ref<ResearchArtifact[]>([]);
   const activeArtifact = ref<ResearchArtifact | null>(null);
+  const { notifyError } = useAppStatus();
   const isLoading = ref(false);
 
   async function fetchArtifacts() {
@@ -14,7 +16,7 @@ export const useResearchStore = defineStore('research', () => {
     try {
       artifacts.value = await researchApi.fetchArtifacts();
     } catch (error) {
-      console.error('Failed to fetch research artifacts:', error);
+      notifyError('Failed to fetch research artifacts', error);
     } finally {
       isLoading.value = false;
     }
@@ -30,7 +32,7 @@ export const useResearchStore = defineStore('research', () => {
       // Watcher should trigger update, but we can force fetch
       await fetchArtifacts();
     } catch (error) {
-      console.error('Failed to add files:', error);
+      notifyError('Failed to add files', error);
     }
   }
 
@@ -46,7 +48,7 @@ export const useResearchStore = defineStore('research', () => {
         activeArtifact.value = artifact;
       }
     } catch (error) {
-      console.error('Failed to update artifact:', error);
+      notifyError('Failed to update artifact', error);
     }
   }
 
@@ -57,7 +59,7 @@ export const useResearchStore = defineStore('research', () => {
       setActiveArtifact(artifact);
       return artifact;
     } catch (error) {
-      console.error('Failed to create note:', error);
+      notifyError('Failed to create note', error);
       throw error;
     }
   }
@@ -66,7 +68,7 @@ export const useResearchStore = defineStore('research', () => {
     try {
       await researchApi.saveNoteContent(id, content);
     } catch (error) {
-      console.error('Failed to save note content:', error);
+      notifyError('Failed to save note content', error);
     }
   }
 
@@ -75,7 +77,7 @@ export const useResearchStore = defineStore('research', () => {
       await researchApi.renameArtifact(id, newName);
       await fetchArtifacts();
     } catch (error) {
-      console.error('Failed to rename artifact:', error);
+      notifyError('Failed to rename artifact', error);
       throw error;
     }
   }

@@ -3,6 +3,8 @@ import { ref, watch } from 'vue';
 import { BaseDirectory, readTextFile, writeTextFile, exists, mkdir } from '@tauri-apps/plugin-fs';
 import { type AppSettings, defaultSettings } from '../config/defaultSettings';
 
+import { useAppStatus } from '../composables/ui/useAppStatus';
+
 const SETTINGS_FILE = 'settings.json';
 
 function isObject(item: unknown): item is Record<string, unknown> {
@@ -10,6 +12,7 @@ function isObject(item: unknown): item is Record<string, unknown> {
 }
 
 export const useSettingsStore = defineStore('settings', () => {
+  const { notifyError } = useAppStatus();
   const settings = ref<AppSettings>(JSON.parse(JSON.stringify(defaultSettings)));
   const isLoaded = ref(false);
 
@@ -43,7 +46,7 @@ export const useSettingsStore = defineStore('settings', () => {
         baseDir: BaseDirectory.AppConfig,
       });
     } catch (err) {
-      console.error('Failed to save settings:', err);
+      notifyError('Failed to save settings', err);
     }
   }
 
@@ -70,7 +73,7 @@ export const useSettingsStore = defineStore('settings', () => {
         await saveSettings(true);
       }
     } catch (err) {
-      console.error('Failed to load settings:', err);
+      notifyError('Failed to load settings', err);
     } finally {
       setTimeout(() => {
         isLoaded.value = true;

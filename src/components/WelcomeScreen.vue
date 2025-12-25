@@ -170,9 +170,11 @@ import { open, save } from '@tauri-apps/plugin-dialog';
 import { useProjectIO } from '../composables/domain/useProjectIO';
 import { useRecentProjects } from '../composables/domain/useRecentProjects';
 import { APP_CONSTANTS } from '../config/constants';
+import { useAppStatus } from '../composables/ui/useAppStatus';
 
 const { loadProject, createProject } = useProjectIO();
 const { recentProjects, loadRecentProjects } = useRecentProjects();
+const { notifyError } = useAppStatus();
 const isExiting = ref(false);
 
 const getFileName = (path: string) => {
@@ -204,7 +206,7 @@ const handleOpenProject = async () => {
       // useProjectIO updates recent projects automatically
     }
   } catch (e) {
-    console.error('Failed to open project dialog:', e);
+    notifyError('Failed to open project dialog', e);
   }
 };
 
@@ -223,7 +225,7 @@ const handleNewProject = async () => {
       // useProjectIO updates recent projects automatically
     }
   } catch (e) {
-    console.error('Failed to create project dialog:', e);
+    notifyError('Failed to create new project', e);
   }
 };
 

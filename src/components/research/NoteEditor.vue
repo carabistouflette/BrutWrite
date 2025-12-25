@@ -35,6 +35,7 @@ import { ref, watch, onMounted, onUpdated, onUnmounted } from 'vue';
 import { useResearchStore } from '../../stores/research';
 import { readFile } from '@tauri-apps/plugin-fs';
 import { APP_CONSTANTS } from '../../config/constants';
+import { useAppStatus } from '../../composables/ui/useAppStatus';
 
 const props = defineProps<{
   path: string;
@@ -42,6 +43,7 @@ const props = defineProps<{
 }>();
 
 const store = useResearchStore();
+const { notifyError } = useAppStatus();
 const content = ref('');
 const saving = ref(false);
 const saved = ref(false);
@@ -56,7 +58,7 @@ const loadContent = async () => {
     const raw = await readFile(props.path);
     content.value = new TextDecoder().decode(raw);
   } catch (e) {
-    console.error('Failed to load note content', e);
+    notifyError('Failed to load note content', e);
   }
 };
 
