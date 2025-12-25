@@ -46,8 +46,7 @@ export function useProjectNodeOperations() {
   const renameNode = async (id: string, newName: string) => {
     const node = nodeMap.value.get(id);
     if (node && node.name !== newName) {
-      // Direct mutation of the node in the store is fine as it's a ref.
-      node.name = newName;
+      projectStore.renameNodeAction(id, newName);
       syncNodeMetadataDebounced(id, { title: newName });
     }
   };
@@ -60,7 +59,7 @@ export function useProjectNodeOperations() {
   const updateNodeStats = (id: string, wordCount: number, shouldSync = true) => {
     const node = nodeMap.value.get(id);
     if (node && node.word_count !== wordCount) {
-      node.word_count = wordCount;
+      projectStore.updateNodeStatsAction(id, wordCount);
       // Only sync if requested (avoid echo-syncs when loading from backend)
       if (shouldSync) {
         syncNodeMetadataDebounced(id, { word_count: wordCount });
@@ -89,7 +88,7 @@ export function useProjectNodeOperations() {
           // Use type assertion carefully or rely on keyof
           if (node[key] !== newVal) {
             // We know key is a specific set of strings, and updates[key] matches node[key] type
-            node[key] = newVal;
+            // node[key] = newVal; // REMOVED direct mutation
             updateForBackend[key] = newVal;
             changed = true;
           }
@@ -97,6 +96,8 @@ export function useProjectNodeOperations() {
       }
 
       if (changed) {
+        // Batch update store
+        projectStore.updateNodeMetadataAction(id, updateForBackend);
         syncNodeMetadataDebounced(id, updateForBackend);
       }
     }

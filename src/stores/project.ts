@@ -65,6 +65,28 @@ export const useProjectStore = defineStore('project', () => {
     characters.value = [];
   }
 
+  // Granular Mutations
+  function renameNodeAction(id: string, name: string) {
+    const node = nodeMap.value.get(id);
+    if (node) {
+      node.name = name;
+    }
+  }
+
+  function updateNodeStatsAction(id: string, wordCount: number) {
+    const node = nodeMap.value.get(id);
+    if (node) {
+      node.word_count = wordCount;
+    }
+  }
+
+  function updateNodeMetadataAction(id: string, updates: Partial<FileNode>) {
+    const node = nodeMap.value.get(id);
+    if (node) {
+      Object.assign(node, updates);
+    }
+  }
+
   const activeChapter = computed(() => {
     if (!activeId.value) return undefined;
     return nodeMap.value.get(activeId.value);
@@ -87,5 +109,8 @@ export const useProjectStore = defineStore('project', () => {
     setActiveId,
     updateStructure,
     closeProject,
+    renameNodeAction,
+    updateNodeStatsAction,
+    updateNodeMetadataAction,
   };
 });
