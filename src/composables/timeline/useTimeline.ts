@@ -1,14 +1,18 @@
 import { computed } from 'vue';
-import { useProjectData } from '../logic/useProjectData';
+import { storeToRefs } from 'pinia';
+import { useProjectStore } from '../../stores/project';
+import { useProjectNodeOperations } from '../logic/useProjectNodeOperations';
 import type { Chapter, TemporalScene, FileNode } from '../../types';
 import { useTimeHelpers } from '../logic/useTimeHelpers';
 import { usePlotlines } from '../logic/usePlotlines';
 import { useParadoxDetection } from '../logic/useParadoxDetection';
 
 export function useTimeline() {
-  const { activeId, selectNode, plotlines, updateNodeTemporal, flatNodes } = useProjectData();
+  const projectStore = useProjectStore();
+  const { activeId, flatNodes } = storeToRefs(projectStore);
+  const { updateNodeTemporal } = useProjectNodeOperations();
   const { parseDurationToMillis, formatDurationFromMillis } = useTimeHelpers();
-  const { addPlotline, removePlotline, updatePlotline } = usePlotlines();
+  const { plotlines, addPlotline, updatePlotlines, updatePlotline } = usePlotlines();
 
   // Extract only temporal metadata for efficient paradox detection tracking
   const scenesTemporalData = computed<TemporalScene[]>(() => {
@@ -77,6 +81,25 @@ export function useTimeline() {
 
     return pairs;
   });
+
+  const selectNode = (id: string) => {
+    projectStore.setActiveId(id);
+  };
+
+  // Legacy compat aliases? No, we update usage directly if possible
+  // But `removePlotline` was missing in `usePlotlines`. We can implement it here or add to `usePlotlines`.
+  // `usePlotlines` export has: `plotlines`, `addPlotline`, `updatePlotlines`, `updatePlotline`.
+  // `removePlotline` is not exported. I will implement it locally if needed using `updatePlotlines`.
+
+  async function removePlotline(id: string) {
+    if (!plotlines.value) return;
+    const idx = plotlines.value.findIndex((p) => p.id === id);
+    if (idx >= 0) {
+      const newPlotlines = [...plotlines.value];
+      newPlotlines.splice(idx, 1);
+      await updatePlotlines(newPlotlines);
+    }
+  }
 
   return {
     // State

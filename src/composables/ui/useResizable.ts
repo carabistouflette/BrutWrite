@@ -1,12 +1,18 @@
 import { ref, onUnmounted } from 'vue';
 
-interface UseResizableOptions {
+export interface UseResizableOptions {
   initialWidth: number;
   minWidth: number;
   maxWidth: number;
+  edge?: 'left' | 'right';
 }
 
-export function useResizable({ initialWidth, minWidth, maxWidth }: UseResizableOptions) {
+export function useResizable({
+  initialWidth,
+  minWidth,
+  maxWidth,
+  edge = 'left',
+}: UseResizableOptions) {
   const width = ref(initialWidth);
   const isResizing = ref(false);
 
@@ -17,7 +23,17 @@ export function useResizable({ initialWidth, minWidth, maxWidth }: UseResizableO
       animationFrame = requestAnimationFrame(() => {
         const scale =
           parseFloat(document.documentElement.style.getPropertyValue('--ui-scale')) || 1;
-        width.value = Math.max(minWidth, Math.min(e.clientX / scale, maxWidth));
+
+        let newWidth;
+        if (edge === 'right') {
+          // For right edge, width is distance from right side of window
+          newWidth = (window.innerWidth - e.clientX) / scale;
+        } else {
+          // For left edge (default), width is just clientX
+          newWidth = e.clientX / scale;
+        }
+
+        width.value = Math.max(minWidth, Math.min(newWidth, maxWidth));
         animationFrame = null;
       });
     }

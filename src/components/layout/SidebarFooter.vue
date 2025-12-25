@@ -63,9 +63,31 @@
       </svg>
       Settings
     </button>
+
+    <!-- Research -->
+    <button
+      class="w-full py-2 text-xs font-medium text-ink/50 hover:text-accent transition-colors uppercase tracking-wider text-left flex items-center gap-2"
+      @click="$emit('open-research')"
+    >
+      <svg class="w-4 h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        />
+      </svg>
+      Research
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
-defineEmits(['open-settings', 'open-characters', 'open-timeline', 'change-project']);
+defineEmits([
+  'open-settings',
+  'open-characters',
+  'open-timeline',
+  'change-project',
+  'open-research',
+]);
 </script>

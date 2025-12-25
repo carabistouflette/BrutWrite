@@ -1,99 +1,92 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { EditorContent } from '@tiptap/vue-3';
-import { useProjectData } from '../composables/logic/useProjectData';
-import { useGamification } from '../composables/logic/useGamification';
 import { useTiptapEditor } from '../composables/editor/useTiptapEditor';
-import { useSettings } from '../composables/logic/useSettings';
+import { useSettingsStore } from '../stores/settings';
+import { useResearchStore } from '../stores/research';
+import { APP_CONSTANTS } from '../config/constants';
 
-const { activeId, activeChapter, projectId, renameNode, updateNodeStats } = useProjectData();
-const { addWords } = useGamification();
-const { settings } = useSettings();
+const props = defineProps<{
+  id: string;
+  projectId: string;
+  title: string;
+  initialContent?: string;
+  initialWordCount?: number;
+}>();
+
+const emit = defineEmits<{
+  (e: 'update:title', newTitle: string): void;
+  (e: 'content-change', delta: number): void;
+  (e: 'save', content: string): void;
+}>();
+
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
+const researchStore = useResearchStore();
 
 // --- Title Logic ---
-const activeChapterName = ref('');
+const editableTitle = ref(props.title);
 
 watch(
-  activeChapter,
-  (chapter) => {
-    if (chapter) {
-      activeChapterName.value = chapter.name;
-    }
+  () => props.title,
+  (newTitle) => {
+    editableTitle.value = newTitle;
   },
   { immediate: true }
 );
 
-const handleRename = async () => {
-  if (activeId.value && activeChapterName.value !== activeChapter.value?.name) {
-    await renameNode(activeId.value, activeChapterName.value);
+const handleTitleBlur = () => {
+  if (editableTitle.value !== props.title) {
+    emit('update:title', editableTitle.value);
+  }
+};
+
+// --- Link Handler ---
+const handleResearchClick = (e: MouseEvent) => {
+  const target = (e.target as HTMLElement).closest('a');
+  if (target && target.href.startsWith(APP_CONSTANTS.RESEARCH.PROTOCOL_PREFIX)) {
+    e.preventDefault();
+    const id = target.href.replace(APP_CONSTANTS.RESEARCH.PROTOCOL_PREFIX, '');
+
+    const artifact = researchStore.artifacts.find((a) => a.id === id);
+    if (artifact) {
+      researchStore.setActiveArtifact(artifact);
+    } else {
+      researchStore.fetchArtifacts().then(() => {
+        const found = researchStore.artifacts.find((a) => a.id === id);
+        if (found) researchStore.setActiveArtifact(found);
+      });
+    }
   }
 };
 
 // --- Editor Logic ---
-const { editor, containerRef, loadChapter, saveChapter } = useTiptapEditor((delta) => {
-  addWords(delta);
-  if (activeId.value) {
-    const currentCount = activeChapter.value?.word_count || 0;
-    updateNodeStats(activeId.value, currentCount + delta);
-  }
+const { editor, isDirty, setContent, getHTML, markAsClean, focus } = useTiptapEditor((delta) => {
+  emit('content-change', delta);
 });
 
-// Watch Active ID to reload content
+// Initialize content when editor is ready or initialContent changes
 watch(
-  activeId,
-  async (newId, oldId) => {
-    // 1. Save old chapter if it exists and has changes
-    if (oldId && projectId.value) {
-      await saveChapter(projectId.value, oldId);
-    }
+  [() => props.initialContent, editor],
+  ([newContent, pEd]) => {
+    if (pEd && newContent !== undefined) {
+      setContent(newContent);
 
-    // 2. Load new chapter
-    if (newId && projectId.value) {
-      await loadChapter(projectId.value, newId);
-
-      // Focus editor after load to ensure seamless writing experience
+      // Focus editor after load
       setTimeout(() => {
-        editor.value?.commands.focus();
+        pEd.commands.focus();
       }, 50);
     }
   },
   { immediate: true }
 );
 
-// Auto-save logic
-let saveInterval: ReturnType<typeof setInterval> | undefined;
-const setupAutoSave = () => {
-  if (saveInterval) clearInterval(saveInterval);
-  const intervalMs = (settings.value.general.autoSaveInterval || 30) * 1000;
-  saveInterval = setInterval(async () => {
-    if (activeId.value && projectId.value) {
-      await saveChapter(projectId.value, activeId.value);
-    }
-  }, intervalMs);
-};
-
-watch(() => settings.value.general.autoSaveInterval, setupAutoSave);
-
 onMounted(() => {
-  setupAutoSave();
-
-  // Initial focus
-  editor.value?.commands.focus();
-
-  // Silence unused ref warning
-  if (containerRef.value) {
-    /* Ref is used in template */
-  }
+  focus();
 });
 
-onBeforeUnmount(async () => {
-  clearInterval(saveInterval);
-
-  // Final save on unmount if there are changes
-  if (activeId.value && projectId.value) {
-    await saveChapter(projectId.value, activeId.value);
-  }
-
+onBeforeUnmount(() => {
   editor.value?.destroy();
 });
 
@@ -111,6 +104,14 @@ const editorStyles = computed(() => {
     maxWidth: `${s.maxWidth}px`,
   };
 });
+
+// Expose methods for container
+defineExpose({
+  getContent: getHTML,
+  isDirty: () => isDirty.value,
+  markAsClean,
+  focus,
+});
 </script>
 
 <template>
@@ -118,6 +119,7 @@ const editorStyles = computed(() => {
     ref="containerRef"
     class="h-full w-full overflow-y-auto scroll-smooth bg-transparent relative"
     :class="{ 'focus-mode': settings.editor.focusMode }"
+    @click="handleResearchClick"
   >
     <!-- Brutalist Editor Area -->
     <div
@@ -125,13 +127,13 @@ const editorStyles = computed(() => {
       :style="editorStyles"
     >
       <!-- Chapter Title Overlay -->
-      <div v-if="activeChapter" class="mb-16 group relative">
+      <div class="mb-16 group relative">
         <input
-          v-model="activeChapterName"
+          v-model="editableTitle"
           class="w-full bg-transparent border-none outline-none text-5xl font-serif font-black text-ink/90 placeholder:text-ink/10 transition-all focus:text-accent selection:bg-accent/20"
-          placeholder="Chapter Title"
-          @blur="handleRename"
-          @keyup.enter="handleRename"
+          :placeholder="APP_CONSTANTS.STRINGS.PLACEHOLDERS.CHAPTER_TITLE"
+          @blur="handleTitleBlur"
+          @keyup.enter="handleTitleBlur"
         />
         <div
           class="absolute -bottom-4 left-0 w-12 h-1 bg-accent/20 group-focus-within:w-24 group-focus-within:bg-accent transition-all duration-500"
@@ -164,10 +166,10 @@ const editorStyles = computed(() => {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: theme('colors.ink');
+  background: var(--ink);
   opacity: 0.2;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: theme('colors.accent');
+  background: var(--accent);
 }
 </style>

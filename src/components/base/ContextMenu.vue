@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useSettingsStore } from '../../stores/settings';
 
 const props = defineProps<{
   show: boolean;
@@ -11,10 +13,18 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const style = computed(() => ({
-  top: `${props.y}px`,
-  left: `${props.x}px`,
-}));
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
+
+const style = computed(() => {
+  const scale = settings.value.interface.uiScaling / 100;
+  return {
+    top: `${props.y}px`,
+    left: `${props.x}px`,
+    transform: `scale(${scale})`,
+    transformOrigin: 'top left',
+  };
+});
 
 const handleClose = () => {
   emit('close');
@@ -22,7 +32,7 @@ const handleClose = () => {
 </script>
 
 <template>
-  <Teleport to="#app-scale-root">
+  <Teleport to="body">
     <div
       v-if="show"
       class="fixed inset-0 z-90"
@@ -52,11 +62,9 @@ const handleClose = () => {
 @reference "../../style.css";
 
 .context-menu-glass {
-  background-color: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  @apply bg-paper/90 backdrop-blur-xl;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+  border: 1px solid theme('colors.ink / 10%');
 }
 
 :deep(.menu-item) {

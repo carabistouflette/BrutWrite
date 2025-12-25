@@ -1,7 +1,10 @@
 import { ref, computed } from 'vue';
-import { useSettings } from './useSettings';
-import { useProjectData } from './useProjectData';
+import { storeToRefs } from 'pinia';
+import { useSettingsStore } from '../../stores/settings';
+import { useProjectStore } from '../../stores/project';
+import { useProjectIO } from './useProjectIO'; // Import useProjectIO for updateSettings
 import { calculateStreak, calculateAverage, getBestDay, getTodayStats } from '../../utils/stats';
+import { APP_CONSTANTS } from '../../config/constants';
 import type { DailyStats } from '../../utils/stats';
 
 const STORAGE_KEY = 'brutwrite_gamification';
@@ -13,7 +16,7 @@ interface GamificationState {
 }
 
 const DEFAULT_STATE: GamificationState = {
-  projectTarget: 50000, // Deprecated in local state, kept for migration
+  projectTarget: APP_CONSTANTS.GOALS.DEFAULT_PROJECT_TARGET, // Deprecated in local state, kept for migration
   history: [],
   lastSessionDate: new Date().toISOString().split('T')[0],
 };
@@ -23,8 +26,19 @@ const state = ref<GamificationState>({ ...DEFAULT_STATE });
 const sessionWords = ref(0); // Volatile session counter
 
 export function useGamification() {
-  const { settings } = useSettings();
-  const { settings: projectSettings, updateSettings, totalWords } = useProjectData();
+  const settingsStore = useSettingsStore();
+  const projectStore = useProjectStore();
+  const { settings } = storeToRefs(settingsStore);
+  const { settings: projectSettings, flatNodes } = storeToRefs(projectStore);
+  const { updateSettings } = useProjectIO();
+
+  const totalWords = computed(() => {
+    let total = 0;
+    flatNodes.value.forEach((node) => {
+      total += node.word_count || 0;
+    });
+    return total;
+  });
 
   // Load from local storage
   const loadState = () => {
@@ -77,7 +91,7 @@ export function useGamification() {
       state.value.history.push({ date: today, wordCount: Math.max(0, delta) });
     }
 
-    // Note: Total project words are now calculated via useProjectData from recursive nodes
+    // Note: Total project words are now calculated via useProjectStore from recursive nodes
     saveStateDebounced();
   };
 
@@ -98,13 +112,16 @@ export function useGamification() {
   const todayStats = computed(() => getTodayStats(state.value.history));
 
   const progressDaily = computed(() => {
-    const goal = settings.value.general.dailyGoal || 500;
+    const goal = settings.value.general.dailyGoal || APP_CONSTANTS.GOALS.DEFAULT_DAILY_GOAL;
     return Math.min(100, Math.max(0, (todayStats.value.wordCount / goal) * 100));
   });
 
   const progressProject = computed(() => {
     // Use project setting if available, else fallback to local state
-    const target = projectSettings.value?.word_target || state.value.projectTarget || 50000;
+    const target =
+      projectSettings.value?.word_target ||
+      state.value.projectTarget ||
+      APP_CONSTANTS.GOALS.DEFAULT_PROJECT_TARGET;
     const current = totalWords.value || 0;
     return Math.min(100, Math.max(0, (current / target) * 100));
   });

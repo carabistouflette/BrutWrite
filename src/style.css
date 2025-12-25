@@ -167,26 +167,26 @@ body {
 
 /* Global Cyber-Glass Effect */
 .cyber-glass {
-  background-color: rgba(255, 255, 255, var(--cyber-glass-opacity)) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--paper),
+    transparent calc(100% - (var(--cyber-glass-opacity) * 100%))
+  ) !important;
   backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%) !important;
   -webkit-backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%) !important;
-}
-
-.dark .cyber-glass {
-  background-color: rgba(0, 0, 0, var(--cyber-glass-opacity)) !important;
 }
 
 /* Global Context Menu Glass Effect */
 .context-menu-glass {
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.2) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  background-color: rgba(255, 255, 255, var(--cyber-glass-opacity)) !important;
+  border: 1px solid color-mix(in srgb, var(--ink), transparent 90%) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--paper),
+    transparent calc(100% - (var(--cyber-glass-opacity) * 100%))
+  ) !important;
   backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%) !important;
   -webkit-backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%) !important;
-}
-
-.dark .context-menu-glass {
-  background-color: rgba(0, 0, 0, var(--cyber-glass-opacity)) !important;
 }
 
 /**
@@ -209,4 +209,19 @@ input[type='number'] {
 /* Unit input utility */
 .input-with-unit {
   padding-right: 4rem !important;
+}
+
+/**
+ * --- Root Scaling ---
+ */
+#app-scale-root {
+  transform: scale(var(--ui-scale, 1));
+  transform-origin: top left;
+  width: calc(100vw / var(--ui-scale, 1));
+  height: calc(100vh / var(--ui-scale, 1));
+}
+
+#app {
+  height: 100%;
+  width: 100%;
 }

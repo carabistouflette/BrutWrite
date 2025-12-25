@@ -16,7 +16,9 @@ const {
   localCharacter,
   hasChanges,
   showDeleteConfirm,
-  close,
+  showUnsavedConfirm,
+  attemptClose,
+  forceClose,
   createCharacter,
   saveCurrent,
   requestDelete,
@@ -37,7 +39,7 @@ const {
     >
       <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-8">
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="close"></div>
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="attemptClose"></div>
 
         <!-- Window Container -->
         <div
@@ -60,7 +62,7 @@ const {
             @change="handleChange"
             @save="saveCurrent"
             @delete="requestDelete"
-            @close="close"
+            @close="attemptClose"
           />
 
           <div v-else class="flex-1 flex flex-col items-center justify-center text-ink/30">
@@ -94,6 +96,16 @@ const {
     :is-destructive="true"
     @close="showDeleteConfirm = false"
     @confirm="confirmDelete"
+  />
+
+  <ConfirmationModal
+    :show="showUnsavedConfirm"
+    title="Unsaved Changes"
+    message="You have unsaved changes. Are you sure you want to close without saving?"
+    confirm-label="Discard Changes"
+    :is-destructive="true"
+    @close="showUnsavedConfirm = false"
+    @confirm="forceClose"
   />
 </template>
 

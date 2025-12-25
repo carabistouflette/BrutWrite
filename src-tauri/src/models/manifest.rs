@@ -2,18 +2,10 @@ use super::chapter::Chapter;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 #[serde(rename_all = "snake_case")]
 pub struct Manifest {
     pub chapters: Vec<Chapter>,
-}
-
-impl Default for Manifest {
-    fn default() -> Self {
-        Self {
-            chapters: Vec::new(),
-        }
-    }
 }
 
 impl Manifest {

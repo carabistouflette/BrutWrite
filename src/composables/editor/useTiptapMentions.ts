@@ -4,6 +4,7 @@ import tippy, { type Instance } from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
 import MentionList from '../../components/base/MentionList.vue';
 import { useCharacters } from '../../composables/logic/useCharacters';
+import { useResearchStore } from '../../stores/research';
 import type { Editor } from '@tiptap/core';
 import type { EditorView } from '@tiptap/pm/view';
 
@@ -33,8 +34,9 @@ interface SuggestionKeyDownProps extends BaseSuggestionProps {
 
 export function useTiptapMentions() {
   const { characters } = useCharacters();
+  const researchStore = useResearchStore();
 
-  const mentionExtension = Mention.configure({
+  const characterMention = Mention.extend({ name: 'characterMention' }).configure({
     HTMLAttributes: {
       class: 'mention',
     },
@@ -98,7 +100,95 @@ export function useTiptapMentions() {
     },
   });
 
+  const researchMention = Mention.extend({ name: 'researchMention' }).configure({
+    HTMLAttributes: {
+      class: 'research-mention',
+    },
+    suggestion: {
+      char: '[', // Trigger on [
+      items: async ({ query }: { query: string }) => {
+        if (researchStore.artifacts.length === 0) {
+          await researchStore.fetchArtifacts();
+        }
+        return researchStore.artifacts
+          .filter((item) => item.name.toLowerCase().includes(query.toLowerCase()))
+          .slice(0, 10)
+          .map((a) => ({ id: a.id, name: a.name, role: a.file_type })); // Mapping file_type to role for UI
+      },
+      render: () => {
+        let component: VueRenderer;
+        let popup: Instance | null = null;
+
+        return {
+          onStart: (props: SuggestionProps) => {
+            component = new VueRenderer(MentionList, {
+              props: props,
+              editor: props.editor,
+            });
+
+            if (!props.clientRect) return;
+
+            popup = tippy('body', {
+              getReferenceClientRect: props.clientRect as () => DOMRect,
+              appendTo: () => document.body,
+              content: component.element as Element,
+              showOnCreate: true,
+              interactive: true,
+              trigger: 'manual',
+              placement: 'bottom-start',
+            })[0];
+          },
+          onUpdate(props: SuggestionProps) {
+            component.updateProps(props);
+            if (!props.clientRect || !popup) return;
+            popup.setProps({
+              getReferenceClientRect: props.clientRect as () => DOMRect,
+            });
+          },
+          onKeyDown(props: SuggestionKeyDownProps) {
+            if (props.event.key === 'Escape' && popup) {
+              popup.hide();
+              return true;
+            }
+            return component.ref?.onKeyDown(props);
+          },
+          onExit() {
+            popup?.destroy();
+            component.destroy();
+          },
+        };
+      },
+      command: ({
+        editor,
+        range,
+        props,
+      }: {
+        editor: Editor;
+        range: { from: number; to: number };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        props: any;
+      }) => {
+        editor
+          .chain()
+          .focus()
+          .insertContentAt(range, [
+            {
+              type: 'text',
+              text: props.name,
+              marks: [
+                {
+                  type: 'link',
+                  attrs: { href: `research://${props.id}` },
+                },
+              ],
+            },
+          ])
+          .run();
+      },
+    },
+  });
+
   return {
-    mentionExtension,
+    mentionExtension: [characterMention, researchMention],
   };
 }

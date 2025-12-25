@@ -1,6 +1,8 @@
 pub mod commands;
 pub mod errors;
 pub mod models;
+
+pub mod research;
 pub mod storage;
 
 use std::collections::HashMap;
@@ -9,67 +11,68 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
+pub struct ProjectContext {
+    pub path: PathBuf,
+    pub metadata: Arc<Mutex<models::ProjectMetadata>>,
+}
+
 pub struct AppState {
-    pub open_projects: Mutex<HashMap<Uuid, PathBuf>>,
-    pub project_cache: Mutex<HashMap<Uuid, Arc<Mutex<models::ProjectMetadata>>>>,
+    pub projects: Mutex<HashMap<Uuid, ProjectContext>>,
 }
 
 impl AppState {
     pub fn new() -> Self {
         Self {
-            open_projects: Mutex::new(HashMap::new()),
-            project_cache: Mutex::new(HashMap::new()),
+            projects: Mutex::new(HashMap::new()),
         }
     }
 
     pub async fn get_context(
         &self,
         project_id: Uuid,
-    ) -> Result<(PathBuf, Arc<Mutex<models::ProjectMetadata>>), String> {
-        let root_path = {
-            let projects = self.open_projects.lock().await;
-            projects
-                .get(&project_id)
-                .cloned()
-                .ok_or_else(|| "Project not loaded".to_string())?
-        };
+    ) -> crate::errors::Result<(PathBuf, Arc<Mutex<models::ProjectMetadata>>)> {
+        let projects = self.projects.lock().await;
+        let context = projects.get(&project_id).ok_or_else(|| {
+            crate::errors::Error::InvalidStructure("Project not loaded".to_string())
+        })?;
 
-        let cache = self.project_cache.lock().await;
-        let metadata = cache
-            .get(&project_id)
-            .cloned()
-            .ok_or_else(|| "Metadata not in cache".to_string())?;
-
-        Ok((root_path, metadata))
+        Ok((context.path.clone(), context.metadata.clone()))
     }
 
     pub async fn mutate_project<F>(
         &self,
         project_id: Uuid,
         mutation: F,
-    ) -> Result<models::ProjectMetadata, String>
+    ) -> crate::errors::Result<models::ProjectMetadata>
     where
-        F: FnOnce(&mut models::ProjectMetadata) -> Result<(), String> + Send,
+        F: FnOnce(&mut models::ProjectMetadata) -> crate::errors::Result<()> + Send,
     {
         let (root_path, metadata_arc) = self.get_context(project_id).await?;
 
-        // Lock the specific project logic
         let mut metadata = metadata_arc.lock().await;
 
         mutation(&mut metadata)?;
 
         metadata.updated_at = chrono::Utc::now();
-        // Clone metadata to release the lock before critical IO?
-        // Actually, we should hold the lock during save to ensure consistency?
-        // But if save takes long, we block other operations on this project.
-        // However, if we release and someone else modifies, and then we save... race condition.
-        // Correct is: serialized modifications. So we SHOULD hold lock during save.
-        // Since we are using tokio Mutex, we can await inside lock.
-        storage::save_project_metadata(&root_path, &metadata)
-            .await
-            .map_err(|e| e.to_string())?;
+
+        storage::save_project_metadata(&root_path, &metadata).await?;
 
         Ok(metadata.clone())
+    }
+    pub async fn register_project(
+        &self,
+        id: Uuid,
+        path: PathBuf,
+        metadata: models::ProjectMetadata,
+    ) {
+        let mut projects = self.projects.lock().await;
+        projects.insert(
+            id,
+            ProjectContext {
+                path,
+                metadata: Arc::new(Mutex::new(metadata)),
+            },
+        );
     }
 }
 
@@ -86,6 +89,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::new())
+        .manage(research::ResearchState::new())
         .invoke_handler(tauri::generate_handler![
             commands::create_project,
             commands::load_project,
@@ -98,7 +102,14 @@ pub fn run() {
             commands::update_project_settings,
             commands::update_plotlines,
             commands::create_node,
-            commands::update_node_metadata
+            commands::update_node_metadata,
+            commands::get_research_artifacts,
+            commands::add_research_files,
+            commands::update_research_artifact,
+            commands::create_research_note,
+            commands::update_note_content,
+            commands::rename_research_artifact,
+            commands::delete_research_artifact
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

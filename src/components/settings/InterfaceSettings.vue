@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { useSettings } from '../../composables/logic/useSettings';
+import { storeToRefs } from 'pinia';
+import { useSettingsStore } from '../../stores/settings';
 
-const { settings } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 </script>
 
 <template>

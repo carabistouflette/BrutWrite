@@ -1,11 +1,13 @@
 import { ref, computed, watch } from 'vue';
-import { useProjectData } from './useProjectData';
+import { storeToRefs } from 'pinia';
+import { useProjectStore } from '../../stores/project';
 import { useCharacters } from './useCharacters';
 import { CharacterRole, type Character } from '../../types';
 import { useAppStatus } from '../ui/useAppStatus';
 
 export function useCharacterSheetLogic(emit: (event: 'close') => void) {
-  const { projectId } = useProjectData();
+  const projectStore = useProjectStore();
+  const { projectId } = storeToRefs(projectStore);
   const { characters, saveCharacter, deleteCharacter } = useCharacters();
   const { notifyError, notifySuccess } = useAppStatus();
 
@@ -27,10 +29,18 @@ export function useCharacterSheetLogic(emit: (event: 'close') => void) {
     }
   });
 
-  const close = () => {
+  const showUnsavedConfirm = ref(false);
+
+  const attemptClose = () => {
     if (hasChanges.value) {
-      if (!confirm('You have unsaved changes. Close anyway?')) return;
+      showUnsavedConfirm.value = true;
+    } else {
+      emit('close');
     }
+  };
+
+  const forceClose = () => {
+    showUnsavedConfirm.value = false;
     emit('close');
   };
 
@@ -65,7 +75,7 @@ export function useCharacterSheetLogic(emit: (event: 'close') => void) {
         notes: '',
       };
 
-      await saveCharacter(projectId.value!, newChar);
+      await saveCharacter(projectId.value, newChar);
       notifySuccess(`Character ${newChar.name} created`);
 
       setTimeout(() => {
@@ -117,7 +127,9 @@ export function useCharacterSheetLogic(emit: (event: 'close') => void) {
     localCharacter,
     hasChanges,
     showDeleteConfirm,
-    close,
+    showUnsavedConfirm,
+    attemptClose,
+    forceClose,
     createCharacter,
     saveCurrent,
     requestDelete,

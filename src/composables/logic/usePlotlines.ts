@@ -1,4 +1,6 @@
-import { useProjectData } from './useProjectData';
+import { storeToRefs } from 'pinia';
+import { useProjectStore } from '../../stores/project';
+import { useProjectIO } from './useProjectIO';
 import type { Plotline } from '../../types';
 
 // Default plotline colors for auto-assignment
@@ -16,26 +18,23 @@ const PLOTLINE_COLORS = [
 ];
 
 export function usePlotlines() {
-  const { plotlines, updatePlotlines } = useProjectData();
+  const projectStore = useProjectStore();
+  const { plotlines } = storeToRefs(projectStore);
+  const { updatePlotlines } = useProjectIO();
 
   async function addPlotline(name: string) {
     const id = `plotline-${Date.now()}`;
-    const colorIdx = plotlines.value.length % PLOTLINE_COLORS.length;
-    const newPlotlines = [...plotlines.value, { id, name, color: PLOTLINE_COLORS[colorIdx] }];
+    const colorIdx = (plotlines.value?.length || 0) % PLOTLINE_COLORS.length;
+    const newPlotlines = [
+      ...(plotlines.value || []),
+      { id, name, color: PLOTLINE_COLORS[colorIdx] },
+    ];
     await updatePlotlines(newPlotlines);
     return id;
   }
 
-  async function removePlotline(id: string) {
-    const idx = plotlines.value.findIndex((p: Plotline) => p.id === id);
-    if (idx >= 0) {
-      const newPlotlines = [...plotlines.value];
-      newPlotlines.splice(idx, 1);
-      await updatePlotlines(newPlotlines);
-    }
-  }
-
   async function updatePlotline(id: string, updates: Partial<Plotline>) {
+    if (!plotlines.value) return;
     const newPlotlines = plotlines.value.map((p: Plotline) =>
       p.id === id ? { ...p, ...updates } : p
     );
@@ -43,8 +42,9 @@ export function usePlotlines() {
   }
 
   return {
+    plotlines,
     addPlotline,
-    removePlotline,
+    updatePlotlines,
     updatePlotline,
   };
 }

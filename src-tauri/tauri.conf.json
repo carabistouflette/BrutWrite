@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "BrutWrite",
         "width": 1000,
         "height": 700,

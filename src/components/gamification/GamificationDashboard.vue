@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useGamification } from '../../composables/logic/useGamification';
-import { useSettings } from '../../composables/logic/useSettings';
+import { useSettingsStore } from '../../stores/settings';
 
 const props = defineProps<{
   show: boolean;
@@ -24,7 +25,8 @@ const {
   setProjectTarget,
 } = useGamification();
 
-const { settings } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 
 const isEditing = ref(false);
 const tempDailyGoal = ref(dailyGoal.value);

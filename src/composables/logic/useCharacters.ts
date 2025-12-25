@@ -1,10 +1,13 @@
-import { projectCharacters } from '../state/projectState';
+import { storeToRefs } from 'pinia';
+import { useProjectStore } from '../../stores/project';
 import { projectApi } from '../../api/project';
 import type { Character } from '../../types';
 import { useAppStatus } from '../ui/useAppStatus';
 
 export function useCharacters() {
   const { notifyError } = useAppStatus();
+  const projectStore = useProjectStore();
+  const { characters: projectCharacters } = storeToRefs(projectStore);
 
   /**
    * Set the full list of characters (e.g., after loading a project)
