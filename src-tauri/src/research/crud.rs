@@ -2,11 +2,22 @@ use crate::models::research::ResearchArtifact;
 use crate::research::ResearchState;
 use std::path::PathBuf;
 
+fn validate_filename(name: &str) -> crate::errors::Result<()> {
+    if name.contains("..") || name.contains('/') || name.contains('\\') {
+        return Err(crate::errors::Error::Validation(
+            "Invalid name: path traversal and subdirectories are not allowed".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 pub async fn create_note(
     state: &ResearchState,
     name: String,
 ) -> crate::errors::Result<ResearchArtifact> {
     let root = state.get_root_path_safe().await?;
+
+    validate_filename(&name)?;
 
     let mut final_name = name;
     if !final_name.ends_with(".md") {
@@ -58,6 +69,9 @@ pub async fn rename_artifact(
     new_name: String,
 ) -> crate::errors::Result<()> {
     let root = state.get_root_path_safe().await?;
+
+    validate_filename(&new_name)?;
+
     let (old_path, ext) = {
         let inner = state.inner.lock().await;
         let artifact = inner
@@ -97,7 +111,7 @@ pub async fn rename_artifact(
         .mutate_and_persist(|inner| {
             if let Some(artifact) = inner.artifacts.get_mut(&id) {
                 inner.path_map.remove(&artifact.path);
-                artifact.name = new_name;
+                artifact.name = new_filename.clone();
                 artifact.path = new_path.to_string_lossy().to_string();
                 inner
                     .path_map
@@ -162,5 +176,70 @@ mod tests {
 
         let all = state.get_all().await;
         assert_eq!(all.len(), 10);
+    }
+
+    #[tokio::test]
+    async fn test_path_traversal_protection() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().to_path_buf();
+        let state = Arc::new(ResearchState::new());
+        state.initialize(path.clone()).await.unwrap();
+
+        // Test create with traversal
+        let result = create_note(&state, "../evil".to_string()).await;
+        assert!(matches!(result, Err(crate::errors::Error::Validation(_))));
+
+        // Test create with separator
+        let result = create_note(&state, "sub/dir".to_string()).await;
+        assert!(matches!(result, Err(crate::errors::Error::Validation(_))));
+
+        // Create valid note for rename test
+        let note = create_note(&state, "valid".to_string()).await.unwrap();
+
+        // Test rename with traversal
+        let result = rename_artifact(&state, note.id, "../evil".to_string()).await;
+        assert!(matches!(result, Err(crate::errors::Error::Validation(_))));
+    }
+
+    #[tokio::test]
+    async fn test_rename_artifact() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().to_path_buf();
+        let state = Arc::new(ResearchState::new());
+        state.initialize(path.clone()).await.unwrap();
+
+        let note = create_note(&state, "original".to_string()).await.unwrap();
+        let original_path = PathBuf::from(&note.path);
+
+        rename_artifact(&state, note.id.clone(), "renamed".to_string())
+            .await
+            .unwrap();
+
+        // Verify old file gone
+        assert!(!original_path.exists());
+
+        // Verify state up to date
+        let files = state.get_all().await;
+        let renamed = files.iter().find(|a| a.id == note.id).unwrap();
+        assert_eq!(renamed.name, "renamed.md");
+
+        // Verify new file exists
+        assert!(PathBuf::from(&renamed.path).exists());
+    }
+
+    #[tokio::test]
+    async fn test_delete_artifact() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().to_path_buf();
+        let state = Arc::new(ResearchState::new());
+        state.initialize(path.clone()).await.unwrap();
+
+        let note = create_note(&state, "to_delete".to_string()).await.unwrap();
+        let note_path = PathBuf::from(&note.path);
+        assert!(note_path.exists());
+
+        delete_artifact(&state, note.id.clone()).await.unwrap();
+
+        assert!(!note_path.exists());
     }
 }

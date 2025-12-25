@@ -105,7 +105,7 @@ pub fn run() {
             commands::update_node_metadata,
             commands::get_research_artifacts,
             commands::add_research_files,
-            commands::update_research_artifact,
+            commands::add_research_files,
             commands::create_research_note,
             commands::update_note_content,
             commands::rename_research_artifact,
