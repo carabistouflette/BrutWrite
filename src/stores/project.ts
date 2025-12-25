@@ -7,6 +7,7 @@ export const useProjectStore = defineStore('project', () => {
   const nodes = ref<FileNode[]>([]);
   const activeId = ref<string | undefined>(undefined);
   const projectId = ref<string | undefined>(undefined);
+  const path = ref<string | undefined>(undefined);
   const settings = ref<ProjectSettings | null>(null);
   const plotlines = ref<Plotline[]>([]);
   const characters = ref<Character[]>([]);
@@ -40,8 +41,14 @@ export const useProjectStore = defineStore('project', () => {
   watch(nodes, (newVal) => rebuildMap(newVal), { deep: false });
 
   // Actions
-  function setProjectData(id: string, fileNodes: FileNode[], projectSettingsData: ProjectSettings) {
+  function setProjectData(
+    id: string,
+    projectPath: string,
+    fileNodes: FileNode[],
+    projectSettingsData: ProjectSettings
+  ) {
     projectId.value = id;
+    path.value = projectPath;
     nodes.value = fileNodes;
     settings.value = projectSettingsData;
     // Reset active ID on new project load
@@ -58,6 +65,7 @@ export const useProjectStore = defineStore('project', () => {
 
   function closeProject() {
     projectId.value = undefined;
+    path.value = undefined;
     nodes.value = [];
     activeId.value = undefined;
     settings.value = null;
@@ -97,6 +105,7 @@ export const useProjectStore = defineStore('project', () => {
     nodes,
     activeId,
     projectId,
+    path,
     settings,
     plotlines,
     characters,
