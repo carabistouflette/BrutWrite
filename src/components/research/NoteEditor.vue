@@ -34,6 +34,7 @@
 import { ref, watch, onMounted, onUpdated, onUnmounted } from 'vue';
 import { useResearchStore } from '../../stores/research';
 import { readFile } from '@tauri-apps/plugin-fs';
+import { APP_CONSTANTS } from '../../config/constants';
 
 const props = defineProps<{
   path: string;
@@ -67,7 +68,8 @@ const handleInput = () => {
     await store.saveNoteContent(props.id, content.value);
     saving.value = false;
     saved.value = true;
-    setTimeout(() => (saved.value = false), 2000);
+    // ...
+    setTimeout(() => (saved.value = false), APP_CONSTANTS.TIMEOUTS.DEBOUNCE_DEFAULT * 6); // 1800ms approx or define a new constant for notification duration
   }, 1000); // Auto-save after 1s
 };
 

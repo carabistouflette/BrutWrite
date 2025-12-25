@@ -169,6 +169,7 @@ import { ref } from 'vue';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { useProjectIO } from '../composables/domain/useProjectIO';
 import { useRecentProjects } from '../composables/domain/useRecentProjects';
+import { APP_CONSTANTS } from '../config/constants';
 
 const { loadProject, createProject } = useProjectIO();
 const { recentProjects, loadRecentProjects } = useRecentProjects();
@@ -180,7 +181,9 @@ const getFileName = (path: string) => {
 
 const triggerExit = async () => {
   isExiting.value = true;
-  await new Promise((resolve) => setTimeout(resolve, 600)); // Wait for animation
+  await new Promise((resolve) =>
+    setTimeout(resolve, APP_CONSTANTS.UI.ANIMATION_DURATION.SLOW + 100)
+  ); // Wait for animation
 };
 
 const handleRecent = async (path: string) => {

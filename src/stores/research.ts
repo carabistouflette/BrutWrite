@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { listen } from '@tauri-apps/api/event';
 import { researchApi, type ResearchArtifact } from '../api/research';
+import { APP_CONSTANTS } from '../config/constants';
 
 export const useResearchStore = defineStore('research', () => {
   const artifacts = ref<ResearchArtifact[]>([]);
@@ -93,7 +94,7 @@ export const useResearchStore = defineStore('research', () => {
   }
 
   // Listen for backend updates
-  listen('research-update', () => {
+  listen(APP_CONSTANTS.EVENTS.RESEARCH_UPDATE, () => {
     fetchArtifacts();
   });
 

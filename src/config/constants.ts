@@ -43,6 +43,18 @@ export const APP_CONSTANTS = {
     DEFAULT_PDF_SCALE: 1.0,
   },
 
+  // Events
+  EVENTS: {
+    RESEARCH_UPDATE: 'research-update',
+    CLOSE: 'close',
+  },
+
+  // Timeouts (ms)
+  TIMEOUTS: {
+    DEBOUNCE_DEFAULT: 300,
+    LONG_PRESS: 500,
+  },
+
   // User Facing Strings (Localization Base)
   STRINGS: {
     PROMPTS: {
