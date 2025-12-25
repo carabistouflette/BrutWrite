@@ -1,8 +1,6 @@
-import StarterKit from '@tiptap/starter-kit';
-import Focus from '@tiptap/extension-focus';
-import Link from '@tiptap/extension-link';
 import { useTiptapMentions } from './useTiptapMentions';
 import type { Transaction } from '@tiptap/pm/state';
+import { getBaseExtensions, EDITOR_PROPS } from '../../config/editor';
 
 export function useTiptapConfig(
   onUpdate: (props: { transaction: Transaction }) => void,
@@ -10,25 +8,7 @@ export function useTiptapConfig(
 ) {
   const { mentionExtension } = useTiptapMentions();
 
-  let extensions = [
-    StarterKit.configure({
-      heading: { levels: [1, 2, 3] },
-      // In later versions of Tiptap, some kits may include link by default.
-      // We disable it here to use our custom-configured Link extension below.
-      link: false,
-    }),
-    Focus.configure({
-      className: 'has-focus',
-      mode: 'all',
-    }),
-    Link.configure({
-      openOnClick: false,
-      HTMLAttributes: {
-        class: 'text-accent underline cursor-pointer',
-      },
-    }),
-    ...mentionExtension,
-  ];
+  let extensions = [...getBaseExtensions(), ...mentionExtension];
 
   // Robustly deduplicate extensions by name to resolve any internal or package-level duplication
   const extensionNames = new Set<string>();
@@ -42,16 +22,9 @@ export function useTiptapConfig(
     return true;
   });
 
-  const editorProps = {
-    attributes: {
-      class: 'prose prose-invert prose-lg max-w-none focus:outline-none min-h-screen p-16',
-      spellcheck: 'false',
-    },
-  };
-
   return {
     extensions,
-    editorProps,
+    editorProps: EDITOR_PROPS,
     onUpdate,
     onSelectionUpdate,
   };
