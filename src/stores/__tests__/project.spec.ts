@@ -37,7 +37,7 @@ describe('useProjectStore', () => {
       word_target: 50000,
     };
 
-    store.setProjectData('proj-123', mockNodes, mockSettings);
+    store.setProjectData('proj-123', '/mock/path', mockNodes, mockSettings);
 
     expect(store.projectId).toBe('proj-123');
     expect(store.nodes).toHaveLength(1);
