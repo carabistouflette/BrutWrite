@@ -11,6 +11,7 @@ pub async fn update_manifest(
     manifest: Manifest,
 ) -> crate::errors::Result<ProjectMetadata> {
     state
+        .projects
         .mutate_project(project_id, |metadata| {
             metadata.manifest = manifest;
             Ok(())
@@ -26,6 +27,7 @@ pub async fn update_node_metadata(
     update: NodeMetadataUpdate,
 ) -> crate::errors::Result<ProjectMetadata> {
     state
+        .projects
         .mutate_project(project_id, |metadata| {
             if let Some(node) = metadata
                 .manifest
@@ -69,7 +71,7 @@ pub async fn create_node(
     parent_id: Option<String>,
     name: String,
 ) -> crate::errors::Result<ProjectMetadata> {
-    let (root_path, metadata_arc) = state.get_context(project_id).await?;
+    let (root_path, metadata_arc) = state.projects.get_context(project_id).await?;
     let mut metadata = metadata_arc.lock().await;
 
     // 1. Create entry in manifest (Domain Logic)
@@ -93,12 +95,13 @@ pub async fn delete_node(
     project_id: Uuid,
     id: String,
 ) -> crate::errors::Result<ProjectMetadata> {
-    let (root_path, _) = state.get_context(project_id).await?;
+    let (root_path, _) = state.projects.get_context(project_id).await?;
 
     let mut filenames = Vec::new();
 
     // 1. Remove from manifest recursively and get filenames
     let new_metadata = state
+        .projects
         .mutate_project(project_id, |metadata| {
             filenames = metadata.manifest.remove_node_recursively(id);
             Ok(())

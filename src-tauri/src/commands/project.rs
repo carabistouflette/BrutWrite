@@ -17,6 +17,7 @@ pub async fn create_project(
     let metadata = storage::create_project_structure(&root_path, &name, &author).await?;
 
     state
+        .projects
         .register_project(metadata.id, root_path.clone(), metadata.clone())
         .await;
 
@@ -35,6 +36,7 @@ pub async fn load_project(
     let metadata = storage::load_project_metadata(&root_path).await?;
 
     state
+        .projects
         .register_project(metadata.id, root_path.clone(), metadata.clone())
         .await;
 
@@ -50,6 +52,7 @@ pub async fn update_project_settings(
     settings: ProjectSettings,
 ) -> crate::errors::Result<ProjectMetadata> {
     state
+        .projects
         .mutate_project(project_id, |metadata| {
             metadata.settings = settings;
             Ok(())
@@ -64,6 +67,7 @@ pub async fn update_plotlines(
     plotlines: Vec<Plotline>,
 ) -> crate::errors::Result<ProjectMetadata> {
     state
+        .projects
         .mutate_project(project_id, |metadata| {
             metadata.plotlines = plotlines;
             Ok(())

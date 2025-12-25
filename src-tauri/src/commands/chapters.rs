@@ -10,7 +10,7 @@ pub async fn load_chapter_content(
     project_id: Uuid,
     chapter_id: String,
 ) -> crate::errors::Result<String> {
-    let (root_path, metadata_arc) = state.get_context(project_id).await?;
+    let (root_path, metadata_arc) = state.projects.get_context(project_id).await?;
     let metadata = metadata_arc.lock().await;
     storage::read_chapter_content(root_path, &metadata, &chapter_id).await
 }
@@ -22,7 +22,7 @@ pub async fn save_chapter(
     chapter_id: String,
     content: String,
 ) -> crate::errors::Result<ProjectMetadata> {
-    let (root_path, metadata_arc) = state.get_context(project_id).await?;
+    let (root_path, metadata_arc) = state.projects.get_context(project_id).await?;
     let mut metadata = metadata_arc.lock().await;
 
     // 1. Resolve filename to ensure chapter exists

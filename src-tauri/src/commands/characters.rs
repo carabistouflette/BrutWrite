@@ -10,6 +10,7 @@ pub async fn save_character(
     character: Character,
 ) -> crate::errors::Result<ProjectMetadata> {
     state
+        .projects
         .mutate_project(project_id, |metadata| {
             metadata.add_or_update_character(character);
             Ok(())
@@ -24,6 +25,7 @@ pub async fn delete_character(
     character_id: Uuid,
 ) -> crate::errors::Result<ProjectMetadata> {
     state
+        .projects
         .mutate_project(project_id, |metadata| {
             metadata
                 .remove_character(character_id)

@@ -5,74 +5,19 @@ pub mod models;
 pub mod research;
 pub mod storage;
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use uuid::Uuid;
+pub mod project;
 
-pub struct ProjectContext {
-    pub path: PathBuf,
-    pub metadata: Arc<Mutex<models::ProjectMetadata>>,
-}
+use crate::project::manager::ProjectManager;
 
 pub struct AppState {
-    pub projects: Mutex<HashMap<Uuid, ProjectContext>>,
+    pub projects: ProjectManager,
 }
 
 impl AppState {
     pub fn new() -> Self {
         Self {
-            projects: Mutex::new(HashMap::new()),
+            projects: ProjectManager::new(),
         }
-    }
-
-    pub async fn get_context(
-        &self,
-        project_id: Uuid,
-    ) -> crate::errors::Result<(PathBuf, Arc<Mutex<models::ProjectMetadata>>)> {
-        let projects = self.projects.lock().await;
-        let context = projects.get(&project_id).ok_or_else(|| {
-            crate::errors::Error::InvalidStructure("Project not loaded".to_string())
-        })?;
-
-        Ok((context.path.clone(), context.metadata.clone()))
-    }
-
-    pub async fn mutate_project<F>(
-        &self,
-        project_id: Uuid,
-        mutation: F,
-    ) -> crate::errors::Result<models::ProjectMetadata>
-    where
-        F: FnOnce(&mut models::ProjectMetadata) -> crate::errors::Result<()> + Send,
-    {
-        let (root_path, metadata_arc) = self.get_context(project_id).await?;
-
-        let mut metadata = metadata_arc.lock().await;
-
-        mutation(&mut metadata)?;
-
-        metadata.updated_at = chrono::Utc::now();
-
-        storage::save_project_metadata(&root_path, &metadata).await?;
-
-        Ok(metadata.clone())
-    }
-    pub async fn register_project(
-        &self,
-        id: Uuid,
-        path: PathBuf,
-        metadata: models::ProjectMetadata,
-    ) {
-        let mut projects = self.projects.lock().await;
-        projects.insert(
-            id,
-            ProjectContext {
-                path,
-                metadata: Arc::new(Mutex::new(metadata)),
-            },
-        );
     }
 }
 
