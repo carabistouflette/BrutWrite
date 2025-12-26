@@ -6,7 +6,7 @@ const numberFormatter = new Intl.NumberFormat();
 import { ref } from 'vue';
 import type { FileNode } from '../../types';
 import { useProjectStore } from '../../stores/project';
-import { useProjectNodeOperations } from '../../composables/domain/useProjectNodeOperations';
+import { useProjectNodeOperations } from '../../composables/domain/project/useProjectNodeOperations';
 import { useAppStatus } from '../../composables/ui/useAppStatus';
 
 const props = defineProps<{

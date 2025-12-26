@@ -1,10 +1,10 @@
 import { ref } from 'vue';
 import { storeToRefs } from 'pinia';
-import { projectApi } from '../../api/project';
-import { useAppStatus } from '../ui/useAppStatus';
-import { projectToManifest } from '../../utils/tree';
-import { useProjectStore } from '../../stores/project';
-import type { Chapter } from '../../types';
+import { projectApi } from '../../../api/project';
+import { useAppStatus } from '../../ui/useAppStatus';
+import { projectToManifest } from '../../../utils/tree';
+import { useProjectStore } from '../../../stores/project';
+import type { Chapter } from '../../../types';
 
 // Module-level state for debouncing
 const pendingMetadataUpdates = new Map<string, Partial<Chapter>>();

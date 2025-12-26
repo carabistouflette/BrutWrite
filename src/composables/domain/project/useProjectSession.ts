@@ -1,9 +1,9 @@
 import { storeToRefs } from 'pinia';
 import { watch } from 'vue';
-import { useProjectStore } from '../../stores/project';
-import { useCharacters } from './useCharacters';
-import type { FileNode, ProjectSettings, Plotline, Character } from '../../types';
-import { APP_CONSTANTS } from '../../config/constants';
+import { useProjectStore } from '../../../stores/project';
+import { useCharacters } from '../characters/useCharacters';
+import type { FileNode, ProjectSettings, Plotline, Character } from '../../../types';
+import { APP_CONSTANTS } from '../../../config/constants';
 
 export interface SessionData {
   id: string;

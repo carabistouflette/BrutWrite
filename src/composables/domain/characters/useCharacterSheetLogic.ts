@@ -1,9 +1,9 @@
 import { ref, computed, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useProjectStore } from '../../stores/project';
+import { useProjectStore } from '../../../stores/project';
 import { useCharacters } from './useCharacters';
-import { CharacterRole, type Character } from '../../types';
-import { useAppStatus } from '../ui/useAppStatus';
+import { CharacterRole, type Character } from '../../../types';
+import { useAppStatus } from '../../ui/useAppStatus';
 
 export function useCharacterSheetLogic(emit: (event: 'close') => void) {
   const projectStore = useProjectStore();

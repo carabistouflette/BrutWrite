@@ -2,9 +2,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { nextTick } from 'vue';
-import { useProjectStore } from '../../../stores/project';
+import { useProjectStore } from '../../../../stores/project';
 import { useProjectSession } from '../useProjectSession';
-import { APP_CONSTANTS } from '../../../config/constants';
+import { APP_CONSTANTS } from '../../../../config/constants';
 
 describe('useProjectSession Auto-Save', () => {
   let setItemSpy: ReturnType<typeof vi.spyOn>;

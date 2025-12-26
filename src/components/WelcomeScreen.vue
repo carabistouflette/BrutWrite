@@ -167,8 +167,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { useProjectIO } from '../composables/domain/useProjectIO';
-import { useRecentProjects } from '../composables/domain/useRecentProjects';
+import { useProjectIO } from '../composables/domain/project/useProjectIO';
+import { useRecentProjects } from '../composables/domain/project/useRecentProjects';
 import { APP_CONSTANTS } from '../config/constants';
 import { useAppStatus } from '../composables/ui/useAppStatus';
 

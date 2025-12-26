@@ -4,15 +4,15 @@ import { storeToRefs } from 'pinia';
 import EditorMain from './EditorMain.vue';
 import { useProjectStore } from '../../stores/project';
 import { useResearchStore } from '../../stores/research';
-import { useProjectNodeOperations } from '../../composables/domain/useProjectNodeOperations';
-import { useGamification } from '../../composables/domain/useGamification';
+import { useProjectNodeOperations } from '../../composables/domain/project/useProjectNodeOperations';
+import { useGamification } from '../../composables/domain/gamification/useGamification';
 import { useSettingsStore } from '../../stores/settings';
 import { projectApi } from '../../api/project';
 import { useAppStatus } from '../../composables/ui/useAppStatus';
 import { APP_CONSTANTS } from '../../config/constants';
 import type { Chapter } from '../../types';
 import { useAutoSave } from '../../composables/editor/useAutoSave';
-import { useChapterSession } from '../../composables/domain/useChapterSession';
+import { useChapterSession } from '../../composables/domain/project/useChapterSession';
 
 const props = defineProps<{
   chapterId: string;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useGamification } from '../../composables/domain/useGamification';
+import { useGamification } from '../../composables/domain/gamification/useGamification';
 import { useSettingsStore } from '../../stores/settings';
 
 const props = defineProps<{

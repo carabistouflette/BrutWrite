@@ -1,5 +1,5 @@
 import { computed, type Ref } from 'vue';
-import type { ParadoxWarning, TemporalScene } from '../../types';
+import type { ParadoxWarning, TemporalScene } from '../../../types';
 import { computeTimeGap } from './useTimeHelpers';
 
 export function useParadoxDetection(assignedScenes: Ref<TemporalScene[]>) {

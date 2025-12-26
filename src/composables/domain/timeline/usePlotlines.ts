@@ -1,7 +1,7 @@
 import { storeToRefs } from 'pinia';
-import { useProjectStore } from '../../stores/project';
-import { useProjectIO } from './useProjectIO';
-import type { Plotline } from '../../types';
+import { useProjectStore } from '../../../stores/project';
+import { useProjectIO } from '../project/useProjectIO';
+import type { Plotline } from '../../../types';
 
 // Default plotline colors for auto-assignment
 const PLOTLINE_COLORS = [

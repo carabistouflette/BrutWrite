@@ -1,11 +1,11 @@
 import { storeToRefs } from 'pinia';
-import { projectApi } from '../../api/project';
-import { useAppStatus } from '../ui/useAppStatus';
-import { useCharacters } from './useCharacters';
+import { projectApi } from '../../../api/project';
+import { useAppStatus } from '../../ui/useAppStatus';
+import { useCharacters } from '../characters/useCharacters';
 import { useRecentProjects } from './useRecentProjects';
-import { reconstructHierarchy } from '../../utils/tree';
-import type { ProjectSettings, Plotline } from '../../types';
-import { useProjectStore } from '../../stores/project';
+import { reconstructHierarchy } from '../../../utils/tree';
+import type { ProjectSettings, Plotline } from '../../../types';
+import { useProjectStore } from '../../../stores/project';
 import { useProjectNodeOperations } from './useProjectNodeOperations';
 import { useProjectSession } from './useProjectSession';
 

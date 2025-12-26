@@ -1,6 +1,6 @@
 import { ref, watch, type Ref } from 'vue';
-import { projectApi } from '../../api/project';
-import { useAppStatus } from '../ui/useAppStatus';
+import { projectApi } from '../../../api/project';
+import { useAppStatus } from '../../ui/useAppStatus';
 
 export function useChapterSession(
   projectId: Ref<string | undefined>,

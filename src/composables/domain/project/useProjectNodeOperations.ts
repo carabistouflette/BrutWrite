@@ -1,8 +1,8 @@
-import type { FileNode } from '../../types';
-import { projectApi } from '../../api/project';
-import { reconstructHierarchy } from '../../utils/tree';
+import type { FileNode } from '../../../types';
+import { projectApi } from '../../../api/project';
+import { reconstructHierarchy } from '../../../utils/tree';
 import { storeToRefs } from 'pinia';
-import { useProjectStore } from '../../stores/project';
+import { useProjectStore } from '../../../stores/project';
 import { useProjectSync } from './useProjectSync';
 
 export function useProjectNodeOperations() {

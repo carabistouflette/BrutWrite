@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useGamification } from '../../composables/domain/useGamification';
+import { useGamification } from '../../composables/domain/gamification/useGamification';
 import GamificationDashboard from './GamificationDashboard.vue';
 
 const { dailyGoal, todayWords, progressDaily } = useGamification();

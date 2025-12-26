@@ -1,7 +1,7 @@
 import { type Ref, watch } from 'vue';
 import { DataSet } from 'vis-data';
 import { useTimeline } from './useTimeline';
-import { useTimeHelpers } from '../domain/useTimeHelpers';
+import { useTimeHelpers } from '../domain/timeline/useTimeHelpers';
 import { Timeline, type TimelineItemType } from 'vis-timeline';
 import type { Plotline } from '../../types';
 

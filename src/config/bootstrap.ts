@@ -1,6 +1,6 @@
 import { useSettingsStore } from '../stores/settings';
-import { useProjectIO } from '../composables/domain/useProjectIO';
-import { useProjectSession } from '../composables/domain/useProjectSession';
+import { useProjectIO } from '../composables/domain/project/useProjectIO';
+import { useProjectSession } from '../composables/domain/project/useProjectSession';
 import { useTheme } from '../composables/ui/useTheme';
 import { useAppStatus } from '../composables/ui/useAppStatus';
 

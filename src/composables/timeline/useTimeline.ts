@@ -1,11 +1,11 @@
 import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '../../stores/project';
-import { useProjectNodeOperations } from '../domain/useProjectNodeOperations';
+import { useProjectNodeOperations } from '../domain/project/useProjectNodeOperations';
 import type { Chapter, TemporalScene, FileNode } from '../../types';
-import { useTimeHelpers } from '../domain/useTimeHelpers';
-import { usePlotlines } from '../domain/usePlotlines';
-import { useParadoxDetection } from '../domain/useParadoxDetection';
+import { useTimeHelpers } from '../domain/timeline/useTimeHelpers';
+import { usePlotlines } from '../domain/timeline/usePlotlines';
+import { useParadoxDetection } from '../domain/timeline/useParadoxDetection';
 
 export function useTimeline() {
   const projectStore = useProjectStore();

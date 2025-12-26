@@ -3,7 +3,7 @@ import { ref, defineAsyncComponent, watch } from 'vue';
 import GamificationStatus from '../gamification/GamificationStatus.vue';
 import SidebarController from './SidebarController.vue';
 import { useResizable } from '../../composables/ui/useResizable';
-import { useProjectIO } from '../../composables/domain/useProjectIO';
+import { useProjectIO } from '../../composables/domain/project/useProjectIO';
 import { useResearchStore } from '../../stores/research';
 
 const ResearchPanel = defineAsyncComponent(() => import('../research/ResearchPanel.vue'));

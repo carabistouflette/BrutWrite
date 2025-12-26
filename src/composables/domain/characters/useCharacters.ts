@@ -1,8 +1,8 @@
 import { storeToRefs } from 'pinia';
-import { useProjectStore } from '../../stores/project';
-import { projectApi } from '../../api/project';
-import type { Character } from '../../types';
-import { useAppStatus } from '../ui/useAppStatus';
+import { useProjectStore } from '../../../stores/project';
+import { projectApi } from '../../../api/project';
+import type { Character } from '../../../types';
+import { useAppStatus } from '../../ui/useAppStatus';
 
 export function useCharacters() {
   const { notifyError } = useAppStatus();
