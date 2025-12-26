@@ -21,6 +21,7 @@ const emit = defineEmits<{
   (e: 'content-change', delta: number): void;
   (e: 'save', content: string): void;
   (e: 'research-link-click', id: string): void;
+  (e: 'open-history'): void;
 }>();
 
 const isDirtyModel = defineModel<boolean>('isDirty', { default: false });
@@ -107,9 +108,12 @@ const editorStyles = computed(() => {
   };
 });
 
-// Expose only actions/methods, not state
+// Expose setContent
+const setContentExposed = (html: string) => setContent(html);
+
 defineExpose({
   focus,
+  setContent: setContentExposed,
 });
 </script>
 
@@ -126,17 +130,40 @@ defineExpose({
       :style="editorStyles"
     >
       <!-- Chapter Title Overlay -->
-      <div class="mb-16 group relative">
-        <input
-          v-model="editableTitle"
-          class="w-full bg-transparent border-none outline-none text-5xl font-serif font-black text-ink/90 placeholder:text-ink/10 transition-all focus:text-accent selection:bg-accent/20"
-          :placeholder="APP_CONSTANTS.STRINGS.PLACEHOLDERS.CHAPTER_TITLE"
-          @blur="handleTitleBlur"
-          @keyup.enter="handleTitleBlur"
-        />
-        <div
-          class="absolute -bottom-4 left-0 w-12 h-1 bg-accent/20 group-focus-within:w-24 group-focus-within:bg-accent transition-all duration-500"
-        ></div>
+      <div class="mb-16 group relative flex items-center justify-between">
+        <div class="relative flex-1">
+          <input
+            v-model="editableTitle"
+            class="w-full bg-transparent border-none outline-none text-5xl font-serif font-black text-ink/90 placeholder:text-ink/10 transition-all focus:text-accent selection:bg-accent/20"
+            :placeholder="APP_CONSTANTS.STRINGS.PLACEHOLDERS.CHAPTER_TITLE"
+            @blur="handleTitleBlur"
+            @keyup.enter="handleTitleBlur"
+          />
+          <div
+            class="absolute -bottom-4 left-0 w-12 h-1 bg-accent/20 group-focus-within:w-24 group-focus-within:bg-accent transition-all duration-500"
+          ></div>
+        </div>
+
+        <button
+          class="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-ink/40 hover:text-accent"
+          title="History & Snapshots"
+          @click="$emit('open-history')"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 3v5h5" />
+            <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" />
+          </svg>
+        </button>
       </div>
 
       <editor-content :editor="editor" />

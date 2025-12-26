@@ -2,6 +2,7 @@
 import { ref, computed, toRef, onBeforeUnmount, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import EditorMain from './EditorMain.vue';
+import SnapshotManager from '../snapshots/SnapshotManager.vue';
 import { useProjectStore } from '../../stores/project';
 import { useResearchStore } from '../../stores/research';
 import { useProjectNodeOperations } from '../../composables/domain/project/useProjectNodeOperations';
@@ -13,6 +14,9 @@ import { APP_CONSTANTS } from '../../config/constants';
 import type { Chapter } from '../../types';
 import { useAutoSave } from '../../composables/editor/useAutoSave';
 import { useChapterSession } from '../../composables/domain/project/useChapterSession';
+
+const showSnapshotManager = ref(false);
+const editorRef = ref<InstanceType<typeof EditorMain> | null>(null);
 
 const props = defineProps<{
   chapterId: string;
@@ -120,6 +124,17 @@ onBeforeUnmount(async () => {
     await saveActiveChapter(currentHtml.value);
   }
 });
+
+const handleRestore = async (content: string) => {
+  showSnapshotManager.value = false;
+  if (editorRef.value) {
+    editorRef.value.setContent(content);
+    // Trigger save immediately to persist restoration
+    await saveActiveChapter(content);
+    currentHtml.value = content;
+    isDirty.value = false;
+  }
+};
 </script>
 
 <template>
@@ -130,6 +145,7 @@ onBeforeUnmount(async () => {
     v-else-if="activeChapter"
     :id="chapterId"
     :key="chapterId"
+    ref="editorRef"
     v-model:is-dirty="isDirty"
     :project-id="projectId"
     :title="activeChapter.name"
@@ -141,5 +157,14 @@ onBeforeUnmount(async () => {
     @content-change="handleContentChange"
     @save="handleSave"
     @research-link-click="handleResearchLinkClick"
+    @open-history="showSnapshotManager = true"
+  />
+
+  <SnapshotManager
+    v-if="showSnapshotManager && props.chapterId"
+    :chapter-id="props.chapterId"
+    :current-content="currentHtml"
+    @close="showSnapshotManager = false"
+    @restore="handleRestore"
   />
 </template>

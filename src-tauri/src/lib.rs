@@ -55,7 +55,9 @@ pub fn run() {
             commands::create_research_note,
             commands::update_note_content,
             commands::rename_research_artifact,
-            commands::delete_research_artifact
+            commands::delete_research_artifact,
+            commands::list_snapshots,
+            commands::load_snapshot_content
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

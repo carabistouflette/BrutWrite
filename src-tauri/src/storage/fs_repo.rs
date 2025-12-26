@@ -32,4 +32,13 @@ impl FileRepository for LocalFileRepository {
         tokio::fs::create_dir_all(path).await?;
         Ok(())
     }
+
+    async fn read_dir(&self, path: &Path) -> Result<Vec<std::path::PathBuf>> {
+        let mut entries = tokio::fs::read_dir(path).await?;
+        let mut paths = Vec::new();
+        while let Some(entry) = entries.next_entry().await? {
+            paths.push(entry.path());
+        }
+        Ok(paths)
+    }
 }
