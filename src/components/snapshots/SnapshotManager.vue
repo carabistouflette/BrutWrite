@@ -170,7 +170,7 @@ function confirmBranch() {
         </div>
 
         <!-- Body -->
-        <div class="flex-1 overflow-hidden p-6 bg-stone/20 relative">
+        <div class="flex-1 overflow-hidden p-6 relative">
           <div
             v-if="!selectedSnapshot"
             class="flex flex-col items-center justify-center h-full text-ink/40"
