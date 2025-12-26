@@ -83,7 +83,11 @@ function confirmBranch() {
   <Teleport to="#app-scale-root">
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-12">
       <!-- Backdrop -->
-      <div class="absolute inset-0 bg-black/40 backdrop-blur-md" @click="$emit('close')"></div>
+      <div
+        class="absolute inset-0 bg-black/40 backdrop-blur-md"
+        style="will-change: opacity, backdrop-filter"
+        @click="$emit('close')"
+      ></div>
 
       <!-- Window Container -->
       <div

@@ -33,7 +33,11 @@ const confirm = () => {
     >
       <div v-if="show" class="fixed inset-0 z-60 flex items-center justify-center p-4">
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/40" @click="close"></div>
+        <div
+          class="absolute inset-0 bg-black/40 backdrop-blur-md"
+          style="will-change: opacity, backdrop-filter"
+          @click="close"
+        ></div>
 
         <!-- Modal Window -->
         <div
