@@ -12,7 +12,10 @@ pub async fn load_chapter_content(
 ) -> crate::errors::Result<String> {
     let (root_path, metadata_arc) = state.projects.get_context(project_id).await?;
     let metadata = metadata_arc.lock().await;
-    storage::read_chapter_content(root_path, &metadata, &chapter_id).await
+
+    let repo = storage::LocalFileRepository;
+
+    storage::read_chapter_content(&repo, &root_path, &metadata, &chapter_id).await
 }
 
 #[tauri::command]
@@ -28,12 +31,16 @@ pub async fn save_chapter(
     // 1. Resolve filename to ensure chapter exists
     let filename = storage::resolve_chapter_path(&root_path, &metadata, &chapter_id)?
         .file_name()
-        .ok_or_else(|| crate::errors::Error::InvalidStructure("Invalid chapter path".to_string()))?
+        .ok_or_else(|| crate::errors::Error::InvalidStructure {
+            path: root_path.clone(),
+            reason: "Invalid chapter path".to_string(),
+        })?
         .to_string_lossy()
         .to_string();
 
     // 2. Write content
-    storage::write_chapter_file(&root_path, &filename, &content).await?;
+    let repo = storage::LocalFileRepository;
+    storage::write_chapter_file(&repo, &root_path, &filename, &content).await?;
 
     // 3. Update word count
     if let Some(chapter) = metadata
@@ -44,7 +51,7 @@ pub async fn save_chapter(
     {
         chapter.word_count = crate::models::count_words(&content);
     } else {
-        return Err(crate::errors::Error::ChapterNotFound(chapter_id));
+        return Err(crate::errors::Error::ChapterNotFound { id: chapter_id });
     }
 
     metadata.updated_at = chrono::Utc::now();

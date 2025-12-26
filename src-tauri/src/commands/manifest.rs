@@ -58,7 +58,7 @@ pub async fn update_node_metadata(
                 }
                 Ok(())
             } else {
-                Err(crate::errors::Error::ChapterNotFound(node_id))
+                Err(crate::errors::Error::ChapterNotFound { id: node_id })
             }
         })
         .await
@@ -78,7 +78,8 @@ pub async fn create_node(
     let new_chapter = metadata.manifest.create_chapter(parent_id, name);
 
     // 2. Create physical file (Storage Logic)
-    storage::write_chapter_file(&root_path, &new_chapter.filename, "").await?;
+    let repo = storage::LocalFileRepository;
+    storage::write_chapter_file(&repo, &root_path, &new_chapter.filename, "").await?;
 
     // 3. Save Metadata
     metadata.manifest.chapters.push(new_chapter);
@@ -109,9 +110,10 @@ pub async fn delete_node(
         .await?;
 
     // 2. Delete files from disk (Async)
+    let repo = storage::LocalFileRepository;
     for filename in filenames {
         // Ignore errors during deletion (logging would be good here)
-        let _ = storage::delete_chapter_file(&root_path, &filename).await;
+        let _ = storage::delete_chapter_file(&repo, &root_path, &filename).await;
     }
 
     Ok(new_metadata)

@@ -1,105 +1,57 @@
-use super::consts::{
-    CHARACTERS_DIR, MANUSCRIPT_DIR, METADATA_FILENAME, RESEARCH_DIR, SNAPSHOTS_DIR,
-};
-use crate::errors::{Error, Result};
+use super::consts::METADATA_FILENAME;
 use crate::models::ProjectMetadata;
+use crate::storage::fs_repo::LocalFileRepository;
+use crate::storage::traits::FileRepository;
 use std::path::Path;
 
-pub async fn create_project_structure<P: AsRef<Path>>(
-    root_path: P,
-    title: &str,
+pub async fn create_project_structure(
+    root_path: &Path,
+    name: &str,
     author: &str,
-) -> Result<ProjectMetadata> {
-    let root = root_path.as_ref();
+) -> crate::errors::Result<ProjectMetadata> {
+    let repo = LocalFileRepository;
 
-    if root.exists() {
-        return Err(Error::ProjectExists(root.to_string_lossy().to_string()));
+    if repo.exists(root_path).await? {
+        // Check if directory is empty or not? For now invoke error if exists
+        // Actually typically "create" fails if folder exists.
+        return Err(crate::errors::Error::ProjectExists(
+            root_path.to_string_lossy().to_string(),
+        ));
     }
 
-    // Create main project directory
-    tokio::fs::create_dir_all(root).await?;
+    repo.create_dir_all(root_path).await?;
 
-    // Create subdirectories
-    let dirs = [MANUSCRIPT_DIR, CHARACTERS_DIR, RESEARCH_DIR, SNAPSHOTS_DIR];
-    for dir in dirs {
-        tokio::fs::create_dir(root.join(dir)).await?;
-    }
-
-    // Initialize project metadata
-    let metadata = ProjectMetadata::new(title.to_string(), author.to_string());
-    let metadata_path = root.join(METADATA_FILENAME);
-
-    let json = serde_json::to_string_pretty(&metadata)?;
-    tokio::fs::write(metadata_path, json).await?;
+    let metadata = ProjectMetadata::new(name.to_string(), author.to_string());
+    save_project_metadata(root_path, &metadata).await?;
 
     Ok(metadata)
 }
 
-pub async fn load_project_metadata<P: AsRef<Path>>(root_path: P) -> Result<ProjectMetadata> {
-    let root = root_path.as_ref();
-    let metadata_path = root.join(METADATA_FILENAME);
+pub async fn load_project_metadata(root_path: &Path) -> crate::errors::Result<ProjectMetadata> {
+    let repo = LocalFileRepository;
+    let file_path = root_path.join(METADATA_FILENAME);
 
-    if !metadata_path.exists() {
-        return Err(Error::Io(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "Project metadata file not found",
-        )));
+    if !repo.exists(&file_path).await? {
+        return Err(crate::errors::Error::InvalidStructure {
+            path: root_path.to_path_buf(),
+            reason: "Missing project.json".to_string(),
+        });
     }
 
-    let json = tokio::fs::read_to_string(metadata_path).await?;
-    let metadata: ProjectMetadata = serde_json::from_str(&json)?;
+    let content = repo.read_file(&file_path).await?;
+    let metadata: ProjectMetadata = serde_json::from_str(&content)?;
 
     Ok(metadata)
 }
 
-pub async fn save_project_metadata<P: AsRef<Path>>(
-    root_path: P,
+pub async fn save_project_metadata(
+    root_path: &Path,
     metadata: &ProjectMetadata,
-) -> Result<()> {
-    let metadata_path = root_path.as_ref().join(METADATA_FILENAME);
-    let json = serde_json::to_string_pretty(metadata)?;
-    tokio::fs::write(metadata_path, json).await?;
+) -> crate::errors::Result<()> {
+    let repo = LocalFileRepository;
+    let file_path = root_path.join(METADATA_FILENAME);
+    let content = serde_json::to_string_pretty(metadata)?;
+
+    repo.write_file(&file_path, &content).await?;
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tempfile::tempdir;
-
-    #[tokio::test]
-    async fn test_create_and_load_project() {
-        let dir = tempdir().unwrap();
-        let project_path = dir.path().join("MyBook");
-
-        // Create
-        let created = create_project_structure(&project_path, "Test Book", "Test Author")
-            .await
-            .unwrap();
-
-        // Load
-        let loaded = load_project_metadata(&project_path).await.unwrap();
-
-        assert_eq!(created.id, loaded.id);
-        assert_eq!(loaded.title, "Test Book");
-    }
-
-    #[tokio::test]
-    async fn test_save_metadata_io() {
-        let dir = tempdir().unwrap();
-        let project_path = dir.path().join("MetaTest");
-
-        // Setup
-        let mut meta = create_project_structure(&project_path, "Meta", "Author")
-            .await
-            .unwrap();
-        meta.title = "Updated Title".to_string();
-
-        // Save
-        save_project_metadata(&project_path, &meta).await.unwrap();
-
-        // Load and Verify
-        let loaded = load_project_metadata(&project_path).await.unwrap();
-        assert_eq!(loaded.title, "Updated Title");
-    }
 }

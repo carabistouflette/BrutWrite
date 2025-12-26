@@ -12,17 +12,20 @@ pub enum Error {
     #[error("Project already exists at path: {0}")]
     ProjectExists(String),
 
-    #[error("Invalid project structure: {0}")]
-    InvalidStructure(String),
+    #[error("Invalid project structure at {path:?}: {reason}")]
+    InvalidStructure {
+        path: std::path::PathBuf,
+        reason: String,
+    },
 
     #[error("Validation error: {0}")]
     Validation(String),
 
-    #[error("Chapter not found: {0}")]
-    ChapterNotFound(String),
+    #[error("Chapter `{id}` not found")]
+    ChapterNotFound { id: String },
 
-    #[error("Character not found: {0}")]
-    CharacterNotFound(String),
+    #[error("Character `{id}` not found")]
+    CharacterNotFound { id: uuid::Uuid },
 
     #[error("Research error: {0}")]
     Research(String),

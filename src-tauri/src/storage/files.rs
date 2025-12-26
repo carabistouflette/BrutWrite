@@ -1,8 +1,10 @@
 use super::consts::MANUSCRIPT_DIR;
+use super::traits::FileRepository;
 use crate::errors::{Error, Result};
 use crate::models::ProjectMetadata;
 use std::path::{Path, PathBuf};
 
+/// Helper to resolve internal path. Pure logic.
 pub fn resolve_chapter_path<P: AsRef<Path>>(
     root_path: P,
     metadata: &ProjectMetadata,
@@ -20,46 +22,55 @@ pub fn resolve_chapter_path<P: AsRef<Path>>(
     if let Some(fname) = filename {
         Ok(root.join(MANUSCRIPT_DIR).join(fname))
     } else {
-        Err(Error::ChapterNotFound(chapter_id.to_string()))
+        Err(Error::ChapterNotFound {
+            id: chapter_id.to_string(),
+        })
     }
 }
 
-pub async fn read_chapter_content<P: AsRef<Path>>(
-    root_path: P,
+pub async fn read_chapter_content<R: FileRepository>(
+    repo: &R,
+    root_path: &Path,
     metadata: &ProjectMetadata,
     chapter_id: &str,
 ) -> Result<String> {
     let chapter_path = resolve_chapter_path(root_path, metadata, chapter_id)?;
 
-    if !chapter_path.exists() {
+    if !repo.exists(&chapter_path).await? {
         return Ok(String::new());
     }
 
-    let content = tokio::fs::read_to_string(chapter_path).await?;
-    Ok(content)
+    repo.read_file(&chapter_path).await
 }
 
-pub async fn write_chapter_file<P: AsRef<Path>>(
-    root_path: P,
+pub async fn write_chapter_file<R: FileRepository>(
+    repo: &R,
+    root_path: &Path,
     filename: &str,
     content: &str,
 ) -> Result<()> {
-    let root = root_path.as_ref();
-    let manuscript_dir = root.join(MANUSCRIPT_DIR);
+    let manuscript_dir = root_path.join(MANUSCRIPT_DIR);
 
-    if !manuscript_dir.exists() {
-        tokio::fs::create_dir_all(&manuscript_dir).await?;
+    if !repo.exists(&manuscript_dir).await? {
+        repo.create_dir_all(&manuscript_dir).await?;
     }
 
     let file_path = manuscript_dir.join(filename);
-    tokio::fs::write(file_path, content).await?;
-    Ok(())
+    repo.write_file(&file_path, content).await
 }
 
-pub async fn delete_chapter_file<P: AsRef<Path>>(root_path: P, filename: &str) -> Result<()> {
-    let file_path = root_path.as_ref().join(MANUSCRIPT_DIR).join(filename);
-    if tokio::fs::try_exists(&file_path).await.unwrap_or(false) {
-        tokio::fs::remove_file(file_path).await?;
+pub async fn delete_chapter_file<R: FileRepository>(
+    repo: &R,
+    root_path: &Path,
+    filename: &str,
+) -> Result<()> {
+    let file_path = root_path.join(MANUSCRIPT_DIR).join(filename);
+    /*
+       Note: The original implementation unwrapped try_exists error.
+       The trait returns Result<bool>, propagating error is better.
+    */
+    if repo.exists(&file_path).await? {
+        repo.delete(&file_path).await?;
     }
     Ok(())
 }

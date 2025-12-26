@@ -3,7 +3,7 @@ use crate::storage;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock}; // RwLock added
 use uuid::Uuid;
 
 pub struct ProjectContext {
@@ -11,14 +11,20 @@ pub struct ProjectContext {
     pub metadata: Arc<Mutex<models::ProjectMetadata>>,
 }
 
+/// Manages lifecycle of loaded projects.
+///
+/// # Concurrency
+/// Uses `RwLock` for the project registry to allow concurrent reads (getting context)
+/// while ensuring exclusive access for writes (loading/unloading projects).
+/// Each project's metadata is protected by its own `Mutex`.
 pub struct ProjectManager {
-    pub projects: Mutex<HashMap<Uuid, ProjectContext>>,
+    pub projects: RwLock<HashMap<Uuid, ProjectContext>>,
 }
 
 impl ProjectManager {
     pub fn new() -> Self {
         Self {
-            projects: Mutex::new(HashMap::new()),
+            projects: RwLock::new(HashMap::new()),
         }
     }
 
@@ -26,10 +32,14 @@ impl ProjectManager {
         &self,
         project_id: Uuid,
     ) -> crate::errors::Result<(PathBuf, Arc<Mutex<models::ProjectMetadata>>)> {
-        let projects = self.projects.lock().await;
-        let context = projects.get(&project_id).ok_or_else(|| {
-            crate::errors::Error::InvalidStructure("Project not loaded".to_string())
-        })?;
+        let projects = self.projects.read().await;
+        let context =
+            projects
+                .get(&project_id)
+                .ok_or_else(|| crate::errors::Error::InvalidStructure {
+                    path: PathBuf::new(),
+                    reason: "Project not loaded".to_string(),
+                })?;
 
         Ok((context.path.clone(), context.metadata.clone()))
     }
@@ -83,7 +93,7 @@ impl ProjectManager {
         path: PathBuf,
         metadata: models::ProjectMetadata,
     ) {
-        let mut projects = self.projects.lock().await;
+        let mut projects = self.projects.write().await;
         projects.insert(
             id,
             ProjectContext {
@@ -91,6 +101,21 @@ impl ProjectManager {
                 metadata: Arc::new(Mutex::new(metadata)),
             },
         );
+    }
+
+    pub async fn unload_project(&self, project_id: Uuid) {
+        let mut projects = self.projects.write().await;
+        projects.remove(&project_id);
+    }
+
+    pub async fn is_loaded(&self, project_id: Uuid) -> bool {
+        let projects = self.projects.read().await;
+        projects.contains_key(&project_id)
+    }
+
+    pub async fn get_all_loaded(&self) -> Vec<Uuid> {
+        let projects = self.projects.read().await;
+        projects.keys().cloned().collect()
     }
 }
 
