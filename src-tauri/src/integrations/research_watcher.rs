@@ -1,4 +1,4 @@
-use crate::research::ResearchState;
+use crate::AppState;
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
@@ -10,7 +10,8 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
 
     // Spawn initialization and watcher setup
     tauri::async_runtime::spawn(async move {
-        let state = app_handle.state::<ResearchState>();
+        let app_state = app_handle.state::<AppState>();
+        let state = &app_state.research;
 
         // 1. Initialize State (Ensure dir exists, scan)
         if let Err(e) = state.initialize(research_path.clone()).await {

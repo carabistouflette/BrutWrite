@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { projectApi } from '../../../api/project';
+import { chaptersApi } from '../../../api/chapters';
 import { useAppStatus } from '../../ui/useAppStatus';
 import { projectToManifest } from '../../../utils/tree';
 import { useProjectStore } from '../../../stores/project';
@@ -50,7 +51,7 @@ export function useProjectSync() {
 
       for (const [id, up] of updatesToSync) {
         try {
-          await projectApi.updateNodeMetadata(projectId.value, id, up);
+          await chaptersApi.updateNodeMetadata(projectId.value, id, up);
         } catch (e) {
           notifyError(`Failed to sync metadata for node ${id}`, e);
         }

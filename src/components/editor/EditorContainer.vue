@@ -7,7 +7,7 @@ import { useResearchStore } from '../../stores/research';
 import { useProjectNodeOperations } from '../../composables/domain/project/useProjectNodeOperations';
 import { useGamification } from '../../composables/domain/gamification/useGamification';
 import { useSettingsStore } from '../../stores/settings';
-import { projectApi } from '../../api/project';
+import { chaptersApi } from '../../api/chapters';
 import { useAppStatus } from '../../composables/ui/useAppStatus';
 import { APP_CONSTANTS } from '../../config/constants';
 import type { Chapter } from '../../types';
@@ -82,7 +82,7 @@ const saveActiveChapter = async (content: string) => {
   if (!props.chapterId || !props.projectId) return;
 
   try {
-    const metadata = await projectApi.saveChapter(props.projectId, props.chapterId, content);
+    const metadata = await chaptersApi.saveContent(props.projectId, props.chapterId, content);
 
     // Sync word count from backend
     if (activeId.value === props.chapterId) {

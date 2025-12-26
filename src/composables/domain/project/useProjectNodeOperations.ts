@@ -1,5 +1,5 @@
 import type { FileNode } from '../../../types';
-import { projectApi } from '../../../api/project';
+import { chaptersApi } from '../../../api/chapters';
 import { reconstructHierarchy } from '../../../utils/tree';
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '../../../stores/project';
@@ -13,7 +13,7 @@ export function useProjectNodeOperations() {
   const addChapter = async () => {
     if (!projectId.value) return;
     // Errors should be handled by the caller
-    const metadata = await projectApi.createNode(projectId.value, undefined, 'New Chapter');
+    const metadata = await chaptersApi.createNode(projectId.value, undefined, 'New Chapter');
     const newChapters = reconstructHierarchy(metadata.manifest.chapters);
 
     // Update store
@@ -29,14 +29,14 @@ export function useProjectNodeOperations() {
 
   const addSection = async (parentId: string) => {
     if (!projectId.value) return;
-    const metadata = await projectApi.createNode(projectId.value, parentId, 'New Section');
+    const metadata = await chaptersApi.createNode(projectId.value, parentId, 'New Section');
     projectStore.updateStructure(reconstructHierarchy(metadata.manifest.chapters));
   };
 
   const deleteNode = async (id: string) => {
     if (!projectId.value) return;
 
-    const metadata = await projectApi.deleteNode(projectId.value, id);
+    const metadata = await chaptersApi.deleteNode(projectId.value, id);
 
     // Atomic sync from backend
     projectStore.updateStructure(reconstructHierarchy(metadata.manifest.chapters));

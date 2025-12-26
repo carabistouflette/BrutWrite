@@ -1,6 +1,6 @@
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '../../../stores/project';
-import { projectApi } from '../../../api/project';
+import { charactersApi } from '../../../api/characters';
 import type { Character } from '../../../types';
 import { useAppStatus } from '../../ui/useAppStatus';
 
@@ -21,7 +21,7 @@ export function useCharacters() {
    */
   const saveCharacter = async (projectId: string, character: Character) => {
     try {
-      const metadata = await projectApi.saveCharacter(projectId, character);
+      const metadata = await charactersApi.save(projectId, character);
       // The backend returns the updated metadata, including the full list of characters
       projectCharacters.value = metadata.characters;
       return metadata;
@@ -36,7 +36,7 @@ export function useCharacters() {
    */
   const deleteCharacter = async (projectId: string, characterId: string) => {
     try {
-      const metadata = await projectApi.deleteCharacter(projectId, characterId);
+      const metadata = await charactersApi.delete(projectId, characterId);
       projectCharacters.value = metadata.characters;
       return metadata;
     } catch (e) {
