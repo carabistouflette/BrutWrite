@@ -45,6 +45,10 @@ docs(readme): add installation instructions
   - Composables: `use` prefix (e.g., `useProject.ts`).
 - **State Management**: Use **Pinia** for global state. Avoid deeply nested props.
 - **Typing**: Strict TypeScript. Avoid `any`. Define interfaces in `src/types/` or co-located if specific.
+- **Styling**:
+  - Use `<style scoped>` within Single File Components (.vue).
+  - Do NOT create separate `.css` files for components.
+  - Use `:deep()` selector for overriding child component styles or 3rd party libraries (like vis-timeline).
 
 ## 3. Pull Request Workflow
 

@@ -46,7 +46,6 @@ const popoverStyle = computed(() => ({
   left: `${props.x + 12}px`,
   top: `${props.y + 12}px`,
 }));
-import './ScenePopover.css';
 </script>
 
 <template>
@@ -112,6 +111,118 @@ import './ScenePopover.css';
     </div>
   </div>
 </template>
+
 <style scoped>
-/* Styles moved to ScenePopover.css */
+.scene-popover {
+  position: fixed;
+  z-index: 1000;
+  width: 260px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  pointer-events: none;
+  animation: popover-in 0.15s ease-out;
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.scene-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plotline-badge {
+  flex-shrink: 0;
+  font-size: 0.688rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  background: var(--color-accent); /* Assuming primary was mapped to accent or needed */
+  color: white;
+  border-radius: 10px;
+}
+
+.popover-body {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg-secondary);
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.stat-value {
+  font-size: 0.813rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.time-delta {
+  color: var(--color-accent);
+}
+
+.date-display {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--text-secondary); /* Added color for better visibility */
+}
+
+.popover-warnings {
+  background: rgba(239, 68, 68, 0.05);
+  border-top: 1px solid rgba(239, 68, 68, 0.2);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.warning-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--color-danger);
+}
+
+.warning-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  stroke: var(--color-danger);
+}
 </style>
