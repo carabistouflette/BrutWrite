@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useSnapshotStore } from '../../stores/snapshots';
 import DiffViewer from './DiffViewer.vue';
 import BaseButton from '../base/BaseButton.vue';
+import ConfirmationModal from '../base/ConfirmationModal.vue';
 
 const props = defineProps<{
   chapterId: string;
@@ -19,6 +20,9 @@ const snapshotStore = useSnapshotStore();
 const selectedSnapshot = ref<string | null>(null);
 const selectedSnapshotContent = ref<string>('');
 const loadingContent = ref(false);
+
+const showRestoreConfirm = ref(false);
+const showBranchConfirm = ref(false);
 
 onMounted(() => {
   snapshotStore.fetchSnapshots(props.chapterId);
@@ -59,38 +63,40 @@ function formatDate(filename: string) {
 
 function handleRestore() {
   if (!selectedSnapshotContent.value) return;
-  if (
-    confirm('Are you sure you want to restore this version? Current unsaved changes might be lost.')
-  ) {
-    emit('restore', selectedSnapshotContent.value);
-    emit('close');
-  }
+  showRestoreConfirm.value = true;
+}
+
+function confirmRestore() {
+  if (!selectedSnapshotContent.value) return;
+  emit('restore', selectedSnapshotContent.value);
+  emit('close');
 }
 
 function handleBranch() {
   if (!selectedSnapshotContent.value) return;
-  if (confirm('Create a new scene from this version?')) {
-    emit('branch', selectedSnapshotContent.value);
-    emit('close');
-  }
+  showBranchConfirm.value = true;
+}
+
+function confirmBranch() {
+  if (!selectedSnapshotContent.value) return;
+  emit('branch', selectedSnapshotContent.value);
+  emit('close');
 }
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-8">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-8">
     <div
-      class="bg-white dark:bg-gray-900 w-full max-w-7xl h-full rounded-xl shadow-2xl flex overflow-hidden border border-gray-200 dark:border-gray-800 animate-in fade-in zoom-in-95 duration-200"
+      class="bg-[var(--paper)] w-full max-w-7xl h-full shadow-[var(--shadow-brut)] flex overflow-hidden border border-[var(--stone)] animate-in fade-in zoom-in-95 duration-200"
     >
       <!-- Sidebar -->
-      <div
-        class="w-80 border-r border-gray-200 dark:border-gray-800 flex flex-col bg-gray-50 dark:bg-gray-950/50"
-      >
+      <div class="w-80 border-r border-[var(--stone)] flex flex-col bg-[var(--stone)]">
         <div
-          class="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center"
+          class="p-4 border-b border-[var(--stone)] flex justify-between items-center bg-[var(--paper)]"
         >
-          <h2 class="font-bold text-lg text-gray-800 dark:text-gray-100">History</h2>
+          <h2 class="font-bold text-lg text-[var(--ink)] font-serif italic">History</h2>
           <span
-            class="text-xs bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded-full text-gray-600 dark:text-gray-400"
+            class="text-xs bg-[var(--ink)] text-[var(--paper)] px-2 py-1 rounded-full font-mono"
           >
             {{ snapshotStore.snapshots.length }}
           </span>
@@ -100,16 +106,21 @@ function handleBranch() {
           <button
             v-for="snap in snapshotStore.snapshots"
             :key="snap"
-            class="w-full text-left px-4 py-3 rounded-lg text-sm transition-all duration-200 border"
+            class="w-full text-left px-4 py-3 text-sm transition-all duration-200 border border-transparent font-mono group"
             :class="
               selectedSnapshot === snap
-                ? 'bg-blue-600 text-white border-transparent shadow-lg shadow-blue-500/30'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-300'
+                ? 'bg-[var(--ink)] text-[var(--paper)] shadow-[4px_4px_0_0_black]'
+                : 'bg-[var(--paper)] text-[var(--ink)] hover:border-[var(--ink)] border-[var(--stone)]'
             "
             @click="selectSnapshot(snap)"
           >
-            <div class="font-medium">{{ formatDate(snap) }}</div>
-            <div class="text-xs opacity-70 mt-1 font-mono truncate">
+            <div class="font-bold flex justify-between">
+              {{ formatDate(snap) }}
+              <span v-if="selectedSnapshot === snap" class="text-[var(--accent)]">●</span>
+            </div>
+            <div
+              class="text-xs opacity-60 mt-1 truncate group-hover:opacity-100 transition-opacity"
+            >
               {{ snap.split('_')[1]?.replace('.md', '') || 'Unknown' }}
             </div>
           </button>
@@ -117,17 +128,15 @@ function handleBranch() {
       </div>
 
       <!-- Main Content -->
-      <div class="flex-1 flex flex-col h-full bg-white dark:bg-gray-900 relative">
+      <div class="flex-1 flex flex-col h-full bg-[var(--paper)] relative">
         <!-- Header -->
         <div
-          class="h-16 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 bg-white dark:bg-gray-900 z-20"
+          class="h-16 border-b border-[var(--stone)] flex items-center justify-between px-6 bg-[var(--paper)] z-20"
         >
           <div class="flex items-center gap-4">
-            <h3 class="font-semibold text-gray-800 dark:text-white">
+            <h3 class="font-semibold text-[var(--ink)] font-serif text-lg">
               {{
-                selectedSnapshot
-                  ? `Comparing vs ${formatDate(selectedSnapshot)}`
-                  : 'Select a snapshot to compare'
+                selectedSnapshot ? `Comparing vs ${formatDate(selectedSnapshot)}` : 'Time Travel'
               }}
             </h3>
           </div>
@@ -138,19 +147,19 @@ function handleBranch() {
             <BaseButton v-if="selectedSnapshot" variant="primary" @click="handleRestore">
               Restore This Version
             </BaseButton>
-            <BaseButton variant="secondary" @click="$emit('close')"> Close </BaseButton>
+            <BaseButton variant="ghost" @click="$emit('close')"> Close </BaseButton>
           </div>
         </div>
 
         <!-- Body -->
-        <div class="flex-1 overflow-hidden p-6 bg-gray-50 dark:bg-gray-950/30 relative">
+        <div class="flex-1 overflow-hidden p-6 bg-[var(--paper)] relative">
           <div
             v-if="!selectedSnapshot"
-            class="flex flex-col items-center justify-center h-full text-gray-400"
+            class="flex flex-col items-center justify-center h-full text-[var(--ink)] opacity-40"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              class="h-16 w-16 mb-4 opacity-50"
+              class="h-24 w-24 mb-6 stroke-1"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -158,18 +167,43 @@ function handleBranch() {
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                stroke-width="2"
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <p class="text-lg">Select a version from the timeline to compare</p>
+            <p class="text-2xl font-serif italic text-center max-w-md">
+              "History is a vast early warning system." <br />
+              <span class="text-base font-sans not-italic mt-2 block opacity-70"
+                >- Select a snapshot from the timeline</span
+              >
+            </p>
           </div>
           <div v-else-if="loadingContent" class="flex items-center justify-center h-full">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--ink)]"></div>
           </div>
           <DiffViewer v-else :original="selectedSnapshotContent" :modified="currentContent" />
         </div>
       </div>
     </div>
   </div>
+
+  <ConfirmationModal
+    :show="showRestoreConfirm"
+    title="Restore Version"
+    message="Are you sure you want to restore this version? Your current draft will be overwritten, but we'll save a snapshot of it just in case."
+    confirm-label="Restore"
+    :is-destructive="true"
+    @confirm="confirmRestore"
+    @cancel="showRestoreConfirm = false"
+    @close="showRestoreConfirm = false"
+  />
+
+  <ConfirmationModal
+    :show="showBranchConfirm"
+    title="Branch Scene"
+    message="This will create a new scene copy from this snapshot. You can then work on this alternate version alongside your original."
+    confirm-label="Create Branch"
+    @confirm="confirmBranch"
+    @cancel="showBranchConfirm = false"
+    @close="showBranchConfirm = false"
+  />
 </template>

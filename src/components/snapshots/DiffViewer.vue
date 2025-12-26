@@ -32,7 +32,7 @@ const leftHtml = computed(() => {
     const [type, text] = part;
     if (type === -1) {
       // Delete
-      html += `<span class="bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-200 decoration-clone p-0.5 rounded-sm">${escapeHtml(text)}</span>`;
+      html += `<span class="bg-red-500/10 dark:bg-red-900/20 text-red-700 dark:text-red-400 decoration-2 line-through decoration-red-500/50">${escapeHtml(text)}</span>`;
     } else if (type === 0) {
       // Equal
       html += escapeHtml(text);
@@ -47,7 +47,7 @@ const rightHtml = computed(() => {
     const [type, text] = part;
     if (type === 1) {
       // Insert
-      html += `<span class="bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-200 decoration-clone p-0.5 rounded-sm">${escapeHtml(text)}</span>`;
+      html += `<span class="bg-[var(--accent)]/10 text-[var(--ink)] font-bold decoration-[var(--accent)] underline decoration-2 underline-offset-2">${escapeHtml(text)}</span>`;
     } else if (type === 0) {
       // Equal
       html += escapeHtml(text);
@@ -58,33 +58,32 @@ const rightHtml = computed(() => {
 </script>
 
 <template>
-  <div class="grid grid-cols-2 gap-4 h-full overflow-hidden select-text">
+  <div
+    class="grid grid-cols-2 gap-px bg-[var(--stone)] h-full overflow-hidden select-text border border-[var(--stone)]"
+  >
     <!-- Left: Original -->
-    <div
-      class="flex flex-col h-full border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-950"
-    >
+    <div class="flex flex-col h-full bg-[var(--paper)]">
       <div
-        class="bg-gray-50 dark:bg-gray-800 p-2 text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10"
+        class="bg-[var(--stone)] p-3 text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)] sticky top-0 z-10"
       >
         Original
       </div>
       <div
-        class="flex-1 overflow-auto p-4 font-mono text-sm leading-relaxed text-gray-800 dark:text-gray-300"
+        class="flex-1 overflow-auto p-6 font-mono text-sm leading-relaxed text-[var(--ink)] whitespace-pre-wrap"
         v-html="leftHtml"
       ></div>
     </div>
 
     <!-- Right: Modified -->
-    <div
-      class="flex flex-col h-full border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-950"
-    >
+    <div class="flex flex-col h-full bg-[var(--paper)]">
       <div
-        class="bg-gray-50 dark:bg-gray-800 p-2 text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10"
+        class="bg-[var(--stone)] p-3 text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)] sticky top-0 z-10 flex justify-between"
       >
-        Current Draft
+        <span>Current Draft</span>
+        <span class="text-[var(--accent)]">● Live</span>
       </div>
       <div
-        class="flex-1 overflow-auto p-4 font-mono text-sm leading-relaxed text-gray-800 dark:text-gray-300"
+        class="flex-1 overflow-auto p-6 font-mono text-sm leading-relaxed text-[var(--ink)] whitespace-pre-wrap"
         v-html="rightHtml"
       ></div>
     </div>
