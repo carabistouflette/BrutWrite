@@ -2,7 +2,6 @@
 import { ref, onMounted } from 'vue';
 import { useSnapshotStore } from '../../stores/snapshots';
 import DiffViewer from './DiffViewer.vue';
-import BaseButton from '../base/BaseButton.vue';
 import ConfirmationModal from '../base/ConfirmationModal.vue';
 
 const props = defineProps<{
@@ -42,13 +41,9 @@ async function selectSnapshot(filename: string) {
 }
 
 function formatDate(filename: string) {
-  // Format: 2024-01-01T120000_hash.md
-  // Extract timestamp
   const match = filename.match(/^(\d{4}-\d{2}-\d{2}T\d{2}\d{2}\d{2})/);
   if (match) {
-    const iso = match[1]; // 2024-01-01T120000
-    // Formatting manually or using Date
-    // Add colons for Date parse: 2024-01-01T12:00:00
+    const iso = match[1];
     const parsable = iso.replace(/(\d{2})(\d{2})(\d{2})$/, '$1:$2:$3');
     const d = new Date(parsable);
     return d.toLocaleString(undefined, {
@@ -85,42 +80,45 @@ function confirmBranch() {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-8">
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-12">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-md" @click="$emit('close')"></div>
+
+    <!-- Window Container -->
     <div
-      class="bg-[var(--paper)] w-full max-w-7xl h-full shadow-[var(--shadow-brut)] flex overflow-hidden border border-[var(--stone)] animate-in fade-in zoom-in-95 duration-200"
+      class="relative w-full max-w-7xl h-[85%] flex bg-paper/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
+      style="
+        box-shadow:
+          0 20px 50px -12px rgba(0, 0, 0, 0.2),
+          0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+      "
     >
       <!-- Sidebar -->
-      <div class="w-80 border-r border-[var(--stone)] flex flex-col bg-[var(--stone)]">
-        <div
-          class="p-4 border-b border-[var(--stone)] flex justify-between items-center bg-[var(--paper)]"
-        >
-          <h2 class="font-bold text-lg text-[var(--ink)] font-serif italic">History</h2>
-          <span
-            class="text-xs bg-[var(--ink)] text-[var(--paper)] px-2 py-1 rounded-full font-mono"
-          >
+      <div class="w-80 cyber-glass border-r border-ink/5 flex flex-col">
+        <div class="p-6 border-b border-ink/5 flex justify-between items-center">
+          <h2 class="font-serif text-2xl italic font-bold">History</h2>
+          <span class="text-xs bg-stone text-ink/60 px-2 py-1 rounded-full font-sans font-medium">
             {{ snapshotStore.snapshots.length }}
           </span>
         </div>
 
-        <div class="overflow-y-auto flex-1 p-3 space-y-2">
+        <div class="overflow-y-auto flex-1 p-3 space-y-1 custom-scrollbar">
           <button
             v-for="snap in snapshotStore.snapshots"
             :key="snap"
-            class="w-full text-left px-4 py-3 text-sm transition-all duration-200 border border-transparent font-mono group"
+            class="w-full text-left px-4 py-3 rounded-lg text-sm transition-all duration-200 group relative"
             :class="
               selectedSnapshot === snap
-                ? 'bg-[var(--ink)] text-[var(--paper)] shadow-[4px_4px_0_0_black]'
-                : 'bg-[var(--paper)] text-[var(--ink)] hover:border-[var(--ink)] border-[var(--stone)]'
+                ? 'bg-stone shadow-sm text-accent'
+                : 'text-ink/70 hover:bg-stone/50 hover:text-ink'
             "
             @click="selectSnapshot(snap)"
           >
-            <div class="font-bold flex justify-between">
+            <div class="font-medium flex justify-between items-center">
               {{ formatDate(snap) }}
-              <span v-if="selectedSnapshot === snap" class="text-[var(--accent)]">●</span>
+              <span v-if="selectedSnapshot === snap" class="w-2 h-2 rounded-full bg-accent"></span>
             </div>
-            <div
-              class="text-xs opacity-60 mt-1 truncate group-hover:opacity-100 transition-opacity"
-            >
+            <div class="text-xs opacity-60 mt-1 truncate font-mono">
               {{ snap.split('_')[1]?.replace('.md', '') || 'Unknown' }}
             </div>
           </button>
@@ -128,38 +126,58 @@ function confirmBranch() {
       </div>
 
       <!-- Main Content -->
-      <div class="flex-1 flex flex-col h-full bg-[var(--paper)] relative">
+      <div class="flex-1 flex flex-col h-full bg-transparent relative">
         <!-- Header -->
         <div
-          class="h-16 border-b border-[var(--stone)] flex items-center justify-between px-6 bg-[var(--paper)] z-20"
+          class="h-16 border-b border-ink/5 flex items-center justify-between px-6 bg-transparent"
         >
           <div class="flex items-center gap-4">
-            <h3 class="font-semibold text-[var(--ink)] font-serif text-lg">
+            <h3 class="font-medium text-ink/80 text-lg tracking-tight">
               {{
                 selectedSnapshot ? `Comparing vs ${formatDate(selectedSnapshot)}` : 'Time Travel'
               }}
             </h3>
           </div>
-          <div class="flex items-center gap-3">
-            <BaseButton v-if="selectedSnapshot" variant="secondary" @click="handleBranch">
-              Branch
-            </BaseButton>
-            <BaseButton v-if="selectedSnapshot" variant="primary" @click="handleRestore">
-              Restore This Version
-            </BaseButton>
-            <BaseButton variant="ghost" @click="$emit('close')"> Close </BaseButton>
+          <div class="flex items-center gap-2">
+            <template v-if="selectedSnapshot">
+              <button
+                class="px-3 py-1.5 rounded-lg text-sm font-medium text-ink/70 hover:bg-stone/50 hover:text-ink transition-colors"
+                @click="handleBranch"
+              >
+                Branch
+              </button>
+              <button
+                class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent text-white shadow-lg shadow-accent/20 hover:bg-accent-dark transition-colors"
+                @click="handleRestore"
+              >
+                Restore This Version
+              </button>
+            </template>
+            <button
+              class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-ink/40 hover:text-ink transition-colors ml-2"
+              @click="$emit('close')"
+            >
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
           </div>
         </div>
 
         <!-- Body -->
-        <div class="flex-1 overflow-hidden p-6 bg-[var(--paper)] relative">
+        <div class="flex-1 overflow-hidden p-6 bg-stone/20 relative">
           <div
             v-if="!selectedSnapshot"
-            class="flex flex-col items-center justify-center h-full text-[var(--ink)] opacity-40"
+            class="flex flex-col items-center justify-center h-full text-ink/40"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              class="h-24 w-24 mb-6 stroke-1"
+              class="h-16 w-16 mb-4 opacity-50 stroke-[1.5]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -170,15 +188,15 @@ function confirmBranch() {
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <p class="text-2xl font-serif italic text-center max-w-md">
+            <p class="text-xl font-serif italic text-center max-w-md">
               "History is a vast early warning system." <br />
-              <span class="text-base font-sans not-italic mt-2 block opacity-70"
+              <span class="text-sm font-sans not-italic mt-2 block opacity-70"
                 >- Select a snapshot from the timeline</span
               >
             </p>
           </div>
           <div v-else-if="loadingContent" class="flex items-center justify-center h-full">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--ink)]"></div>
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
           </div>
           <DiffViewer v-else :original="selectedSnapshotContent" :modified="currentContent" />
         </div>
@@ -207,3 +225,34 @@ function confirmBranch() {
     @close="showBranchConfirm = false"
   />
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-container {
+  animation: modal-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+</style>

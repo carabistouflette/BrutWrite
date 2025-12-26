@@ -7,8 +7,6 @@ const props = defineProps<{
   modified: string;
 }>();
 
-// diff-match-patch usually exports the class.
-// Note: Depending on tsconfig, it might be import DiffMatchPatch from ... or just diff_match_patch
 const dmp = new diff_match_patch();
 
 const diffs = computed(() => {
@@ -32,7 +30,7 @@ const leftHtml = computed(() => {
     const [type, text] = part;
     if (type === -1) {
       // Delete
-      html += `<span class="bg-red-500/10 dark:bg-red-900/20 text-red-700 dark:text-red-400 decoration-2 line-through decoration-red-500/50">${escapeHtml(text)}</span>`;
+      html += `<span class="bg-red-100 text-red-800 decoration-clone px-1 rounded mx-0.5">${escapeHtml(text)}</span>`;
     } else if (type === 0) {
       // Equal
       html += escapeHtml(text);
@@ -47,7 +45,7 @@ const rightHtml = computed(() => {
     const [type, text] = part;
     if (type === 1) {
       // Insert
-      html += `<span class="bg-[var(--accent)]/10 text-[var(--ink)] font-bold decoration-[var(--accent)] underline decoration-2 underline-offset-2">${escapeHtml(text)}</span>`;
+      html += `<span class="bg-orange-100 text-orange-800 decoration-clone px-1 rounded mx-0.5 font-medium">${escapeHtml(text)}</span>`;
     } else if (type === 0) {
       // Equal
       html += escapeHtml(text);
@@ -58,32 +56,36 @@ const rightHtml = computed(() => {
 </script>
 
 <template>
-  <div
-    class="grid grid-cols-2 gap-px bg-[var(--stone)] h-full overflow-hidden select-text border border-[var(--stone)]"
-  >
+  <div class="grid grid-cols-2 gap-4 h-full select-text">
     <!-- Left: Original -->
-    <div class="flex flex-col h-full bg-[var(--paper)]">
+    <div
+      class="flex flex-col h-full bg-white/60 dark:bg-black/20 rounded-xl border border-black/5 shadow-sm overflow-hidden"
+    >
       <div
-        class="bg-[var(--stone)] p-3 text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)] sticky top-0 z-10"
+        class="bg-white/40 dark:bg-black/40 p-3 text-xs font-bold uppercase tracking-widest text-ink/50 sticky top-0 z-10 border-b border-black/5 backdrop-blur-sm"
       >
         Original
       </div>
       <div
-        class="flex-1 overflow-auto p-6 font-mono text-sm leading-relaxed text-[var(--ink)] whitespace-pre-wrap"
+        class="flex-1 overflow-auto p-6 font-mono text-sm leading-relaxed text-ink/80 whitespace-pre-wrap"
         v-html="leftHtml"
       ></div>
     </div>
 
     <!-- Right: Modified -->
-    <div class="flex flex-col h-full bg-[var(--paper)]">
+    <div
+      class="flex flex-col h-full bg-white/60 dark:bg-black/20 rounded-xl border border-black/5 shadow-sm overflow-hidden"
+    >
       <div
-        class="bg-[var(--stone)] p-3 text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)] sticky top-0 z-10 flex justify-between"
+        class="bg-white/40 dark:bg-black/40 p-3 text-xs font-bold uppercase tracking-widest text-ink/50 sticky top-0 z-10 flex justify-between border-b border-black/5 backdrop-blur-sm"
       >
         <span>Current Draft</span>
-        <span class="text-[var(--accent)]">● Live</span>
+        <span class="text-accent flex items-center gap-1.5"
+          ><span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span> Live</span
+        >
       </div>
       <div
-        class="flex-1 overflow-auto p-6 font-mono text-sm leading-relaxed text-[var(--ink)] whitespace-pre-wrap"
+        class="flex-1 overflow-auto p-6 font-mono text-sm leading-relaxed text-ink/80 whitespace-pre-wrap"
         v-html="rightHtml"
       ></div>
     </div>
