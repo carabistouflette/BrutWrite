@@ -64,7 +64,7 @@ const tabs = [
           "
         >
           <!-- Sidebar -->
-          <div class="w-64 cyber-glass border-r border-ink/5 flex flex-col">
+          <div class="w-64 bg-[var(--paper)]/20 border-r border-ink/5 flex flex-col">
             <div class="p-6">
               <h2 class="font-serif text-2xl italic font-bold">Settings</h2>
             </div>

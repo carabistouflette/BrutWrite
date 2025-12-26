@@ -100,7 +100,7 @@ function confirmBranch() {
         "
       >
         <!-- Sidebar -->
-        <div class="w-80 cyber-glass border-r border-ink/5 flex flex-col">
+        <div class="w-80 bg-paper/20 border-r border-ink/5 flex flex-col">
           <div class="p-6 border-b border-ink/5 flex justify-between items-center">
             <h2 class="font-serif text-2xl italic font-bold">History</h2>
             <span class="text-xs bg-stone text-ink/60 px-2 py-1 rounded-full font-sans font-medium">
