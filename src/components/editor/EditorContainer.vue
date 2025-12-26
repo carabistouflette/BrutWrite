@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, toRef, onBeforeUnmount, watch } from 'vue';
 import { storeToRefs } from 'pinia';
+import { reconstructHierarchy } from '../../utils/tree';
 import EditorMain from './EditorMain.vue';
 import SnapshotManager from '../snapshots/SnapshotManager.vue';
 import { useProjectStore } from '../../stores/project';
@@ -11,7 +12,7 @@ import { useSettingsStore } from '../../stores/settings';
 import { chaptersApi } from '../../api/chapters';
 import { useAppStatus } from '../../composables/ui/useAppStatus';
 import { APP_CONSTANTS } from '../../config/constants';
-import type { Chapter } from '../../types';
+import type { Chapter, FileNode } from '../../types';
 import { useAutoSave } from '../../composables/editor/useAutoSave';
 import { useChapterSession } from '../../composables/domain/project/useChapterSession';
 
@@ -129,10 +130,51 @@ const handleRestore = async (content: string) => {
   showSnapshotManager.value = false;
   if (editorRef.value) {
     editorRef.value.setContent(content);
-    // Trigger save immediately to persist restoration
     await saveActiveChapter(content);
     currentHtml.value = content;
     isDirty.value = false;
+  }
+};
+
+const findParentId = (
+  nodes: FileNode[],
+  targetId: string,
+  currentParentId?: string
+): string | undefined => {
+  for (const node of nodes) {
+    if (node.id === targetId) return currentParentId;
+    if (node.children) {
+      const found = findParentId(node.children, targetId, node.id);
+      if (found !== undefined) return found;
+    }
+  }
+  return undefined;
+};
+
+const handleBranch = async (content: string) => {
+  showSnapshotManager.value = false;
+  if (!props.projectId) return;
+
+  const currentNode = activeChapter.value;
+  const newName = `${currentNode?.name || 'Scene'} (Branch)`;
+  const parentId = findParentId(projectStore.nodes, props.chapterId);
+
+  try {
+    const metadata = await chaptersApi.createNode(props.projectId, parentId, newName);
+    projectStore.updateStructure(reconstructHierarchy(metadata.manifest.chapters));
+
+    // Find the new node
+    const newNode = projectStore.flatNodes.find((n) => n.name === newName);
+
+    if (newNode) {
+      await chaptersApi.saveContent(props.projectId, newNode.id, content);
+      updateNodeStats(newNode.id, content.split(/\s+/).length);
+
+      // Select it
+      projectStore.setActiveId(newNode.id);
+    }
+  } catch (e) {
+    notifyError('Failed to branch', e);
   }
 };
 </script>
@@ -166,5 +208,6 @@ const handleRestore = async (content: string) => {
     :current-content="currentHtml"
     @close="showSnapshotManager = false"
     @restore="handleRestore"
+    @branch="handleBranch"
   />
 </template>

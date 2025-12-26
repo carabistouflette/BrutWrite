@@ -12,6 +12,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'restore', content: string): void;
+  (e: 'branch', content: string): void;
 }>();
 
 const snapshotStore = useSnapshotStore();
@@ -62,6 +63,14 @@ function handleRestore() {
     confirm('Are you sure you want to restore this version? Current unsaved changes might be lost.')
   ) {
     emit('restore', selectedSnapshotContent.value);
+    emit('close');
+  }
+}
+
+function handleBranch() {
+  if (!selectedSnapshotContent.value) return;
+  if (confirm('Create a new scene from this version?')) {
+    emit('branch', selectedSnapshotContent.value);
     emit('close');
   }
 }
@@ -123,6 +132,9 @@ function handleRestore() {
             </h3>
           </div>
           <div class="flex items-center gap-3">
+            <BaseButton v-if="selectedSnapshot" variant="secondary" @click="handleBranch">
+              Branch
+            </BaseButton>
             <BaseButton v-if="selectedSnapshot" variant="primary" @click="handleRestore">
               Restore This Version
             </BaseButton>
