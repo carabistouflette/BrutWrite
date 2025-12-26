@@ -22,7 +22,7 @@ const confirm = () => {
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport to="#app-scale-root">
     <Transition
       enter-active-class="transition duration-300 ease-out"
       enter-from-class="opacity-0"
