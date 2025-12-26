@@ -86,11 +86,12 @@ function confirmBranch() {
 
     <!-- Window Container -->
     <div
-      class="relative w-full max-w-7xl h-[85%] flex bg-paper/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
+      class="relative w-full max-w-7xl h-[85%] flex bg-paper/95 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
       style="
         box-shadow:
           0 20px 50px -12px rgba(0, 0, 0, 0.2),
           0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+        will-change: transform, opacity;
       "
     >
       <!-- Sidebar -->
@@ -254,5 +255,8 @@ function confirmBranch() {
 
 .modal-container {
   animation: modal-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 </style>

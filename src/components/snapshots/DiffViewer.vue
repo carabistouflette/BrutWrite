@@ -59,10 +59,10 @@ const rightHtml = computed(() => {
   <div class="grid grid-cols-2 gap-4 h-full select-text">
     <!-- Left: Original -->
     <div
-      class="flex flex-col h-full bg-white/60 dark:bg-black/20 rounded-xl border border-black/5 shadow-sm overflow-hidden"
+      class="flex flex-col h-full bg-ink/3 dark:bg-ink/5 rounded-xl border border-ink/5 overflow-hidden"
     >
       <div
-        class="bg-white/40 dark:bg-black/40 p-3 text-xs font-bold uppercase tracking-widest text-ink/50 sticky top-0 z-10 border-b border-black/5 backdrop-blur-sm"
+        class="bg-ink/3 dark:bg-ink/5 p-3 text-xs font-bold uppercase tracking-widest text-ink/40 sticky top-0 z-10 border-b border-ink/5 backdrop-blur-sm"
       >
         Original
       </div>
@@ -74,10 +74,10 @@ const rightHtml = computed(() => {
 
     <!-- Right: Modified -->
     <div
-      class="flex flex-col h-full bg-white/60 dark:bg-black/20 rounded-xl border border-black/5 shadow-sm overflow-hidden"
+      class="flex flex-col h-full bg-ink/3 dark:bg-ink/5 rounded-xl border border-ink/5 overflow-hidden"
     >
       <div
-        class="bg-white/40 dark:bg-black/40 p-3 text-xs font-bold uppercase tracking-widest text-ink/50 sticky top-0 z-10 flex justify-between border-b border-black/5 backdrop-blur-sm"
+        class="bg-ink/3 dark:bg-ink/5 p-3 text-xs font-bold uppercase tracking-widest text-ink/40 sticky top-0 z-10 flex justify-between border-b border-ink/5 backdrop-blur-sm"
       >
         <span>Current Draft</span>
         <span class="text-accent flex items-center gap-1.5"
