@@ -16,6 +16,15 @@ export const useProjectStore = defineStore('project', () => {
   const nodeMap = shallowRef(new Map<string, FileNode>());
   const flatNodes = shallowRef<FileNode[]>([]);
 
+  // Character map for O(1) access
+  const characterMap = computed(() => {
+    const map = new Map<string, Character>();
+    for (const char of characters.value) {
+      map.set(char.id, char);
+    }
+    return map;
+  });
+
   // Internal Helper
   const rebuildMap = (fileNodes: FileNode[]) => {
     const map = new Map<string, FileNode>();
@@ -40,7 +49,35 @@ export const useProjectStore = defineStore('project', () => {
   // Watcher to keep lookups in sync
   watch(nodes, (newVal) => rebuildMap(newVal), { deep: false });
 
-  // Actions
+  // --- Getters ---
+
+  const activeChapter = computed(() => {
+    if (!activeId.value) return undefined;
+    return nodeMap.value.get(activeId.value);
+  });
+
+  /**
+   * Get a chapter/node by ID with O(1) complexity.
+   */
+  const chapterById = (id: string) => nodeMap.value.get(id);
+
+  /**
+   * Get a character by ID with O(1) complexity.
+   */
+  const characterById = (id: string) => characterMap.value.get(id);
+
+  /**
+   * Total word count of all nodes in the project.
+   */
+  const totalWordCount = computed(() => {
+    return flatNodes.value.reduce((sum, node) => sum + (node.word_count || 0), 0);
+  });
+
+  // --- Actions ---
+
+  /**
+   * Initialize the store with full project data from the backend.
+   */
   function setProjectData(
     id: string,
     projectPath: string,
@@ -55,14 +92,23 @@ export const useProjectStore = defineStore('project', () => {
     activeId.value = undefined;
   }
 
+  /**
+   * Set the currently active node/chapter ID.
+   */
   function setActiveId(id: string | undefined) {
     activeId.value = id;
   }
 
+  /**
+   * Update the entire file structure (manifest).
+   */
   function updateStructure(newNodes: FileNode[]) {
     nodes.value = newNodes;
   }
 
+  /**
+   * Clear all project data from the store.
+   */
   function closeProject() {
     projectId.value = undefined;
     path.value = undefined;
@@ -74,6 +120,10 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   // Granular Mutations
+
+  /**
+   * Optimistically rename a node in the local store.
+   */
   function renameNodeAction(id: string, name: string) {
     const node = nodeMap.value.get(id);
     if (node) {
@@ -81,6 +131,9 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  /**
+   * Optimistically update word count for a node.
+   */
   function updateNodeStatsAction(id: string, wordCount: number) {
     const node = nodeMap.value.get(id);
     if (node) {
@@ -88,17 +141,15 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  /**
+   * Optimistically update generic metadata for a node.
+   */
   function updateNodeMetadataAction(id: string, updates: Partial<FileNode>) {
     const node = nodeMap.value.get(id);
     if (node) {
       Object.assign(node, updates);
     }
   }
-
-  const activeChapter = computed(() => {
-    if (!activeId.value) return undefined;
-    return nodeMap.value.get(activeId.value);
-  });
 
   return {
     // State
@@ -111,7 +162,12 @@ export const useProjectStore = defineStore('project', () => {
     characters,
     nodeMap,
     flatNodes,
+
+    // Getters
     activeChapter,
+    chapterById,
+    characterById,
+    totalWordCount,
 
     // Actions
     setProjectData,
