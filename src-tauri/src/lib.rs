@@ -12,12 +12,14 @@ use crate::project::manager::ProjectManager;
 
 pub struct AppState {
     pub projects: ProjectManager,
+    pub research: research::ResearchState,
 }
 
 impl AppState {
     pub fn new() -> Self {
         Self {
             projects: ProjectManager::new(),
+            research: research::ResearchState::new(),
         }
     }
 }
@@ -35,7 +37,6 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::new())
-        .manage(research::ResearchState::new())
         .invoke_handler(tauri::generate_handler![
             commands::create_project,
             commands::load_project,
