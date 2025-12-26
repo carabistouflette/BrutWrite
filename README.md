@@ -1,7 +1,56 @@
-# Tauri + Vue + TypeScript
+# BrutWrite
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+> **The Brutalist Novel Writing Tool**
 
-## Recommended IDE Setup
+BrutWrite is a distraction-free, privacy-focused application for writers who want to focus on their words, not the tool. Built with Tauri, Vue 3, and Rust, it combines the performance of a native app with the flexibility of web technologies.
 
-- [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+![App Screenshot](docs/assets/screenshot_placeholder.png)
+_(Screenshot placeholder - to be added)_
+
+## ✨ Features
+
+- **Project Management**: Organize your novel with a structured chapter hierarchy.
+- **Character Sheets**: Keep track of your cast with detailed profiles.
+- **Research Hub**: Manage images, notes, and references alongside your manuscript.
+- **Distraction-Free Editor**: A clean, brutalist interface that puts your text front and center.
+- **Local First**: Your data lives on your machine in standard file formats (Markdown, JSON). No proprietary lock-in.
+- **Fast**: Built on Rust and Tauri for blazing fast performance.
+
+## 🚀 Installation
+
+### Prerequisites
+
+- **Node.js** & **pnpm**: For the frontend.
+- **Rust Toolchain**: For the backend.
+
+### Setup
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/your-username/BrutWrite.git
+   cd BrutWrite
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   pnpm install
+   ```
+
+3. **Run in Development Mode**
+   ```bash
+   # Starts the Vue dev server and the Tauri window
+   pnpm tauri dev
+   ```
+
+## 🛠️ Development
+
+- **Frontend**: Vue 3 + TypeScript + Vite. Located in `src/`.
+- **Backend**: Rust + Tauri. Located in `src-tauri/`.
+
+For detailed architecture documentation, see [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+
+## 📄 License
+
+MIT License. See [LICENSE](./LICENSE) for details.

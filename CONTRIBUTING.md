@@ -29,21 +29,32 @@ docs(readme): add installation instructions
 
 ## 2. Code Quality & Architecture
 
-### Separation of Concerns
+### Backend (Rust)
 
-- **Backend (Rust)**:
+- **Style**: We use standard `rustfmt` and `clippy`. Please run `cargo clippy` and `cargo fmt` before submitting.
+- **Separation of Concerns**:
   - **Logic Layer** (`storage.rs`, `models.rs`): Must be pure Rust. **Do not imports `tauri` here.** This layer should be testable in isolation.
-  - **Interface Layer** (`lib.rs`): Handles `[tauri::command]`, `AppHandle`, and State management. This is the only place where Tauri dependencies should interact with your logic.
-- **Frontend**: Use properly typed interfaces when communicating with the backend.
+  - **Interface Layer** (`lib.rs`, `commands/`): Handles `[tauri::command]`, `AppHandle`, and State management. This is the only place where Tauri dependencies should interact with your logic.
+- **Testing**: All backend logic must be covered by **unit tests**. Run `cargo test` in `src-tauri` before committing.
 
-### Testing
+### Frontend (Vue 3 + TypeScript)
 
-- All backend logic must be covered by **unit tests**.
-- Run `cargo test` in `src-tauri` before committing.
+- **Composition API**: Use `<script setup lang="ts">` for all components.
+- **Naming**:
+  - Components: generic names (e.g., `Button.vue`), or specific (e.g., `ProjectList.vue`). PascalCase.
+  - Composables: `use` prefix (e.g., `useProject.ts`).
+- **State Management**: Use **Pinia** for global state. Avoid deeply nested props.
+- **Typing**: Strict TypeScript. Avoid `any`. Define interfaces in `src/types/` or co-located if specific.
 
-## 3. Workflow
+## 3. Pull Request Workflow
 
-1.  Create a branch for your feature (`feat/my-feature`).
-2.  Implement your changes.
-3.  Verify with tests.
-4.  Commit using the conventional format.
+1.  **Fork & Clone**: Fork the repository and clone it locally.
+2.  **Branch**: Create a branch for your feature (`feat/my-feature`).
+3.  **Implement**: Make your changes.
+4.  **Verify**:
+    - Run `pnpm type-check` (frontend).
+    - Run `cargo test` (backend).
+    - Run linter/formatter.
+5.  **Commit**: Use the conventional format.
+6.  **Push & PR**: Push to your fork and open a Pull Request.
+7.  **Review**: Wait for a maintainer to review your code. Address any feedback.
