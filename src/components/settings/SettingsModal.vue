@@ -39,8 +39,8 @@ const tabs = [
   <Teleport to="#app-scale-root">
     <Transition
       enter-active-class="transition duration-300 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
+      enter-from-class="opacity-0 scale-95"
+      enter-to-class="opacity-100 scale-100"
       leave-active-class="transition duration-200 ease-in"
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
@@ -55,7 +55,7 @@ const tabs = [
 
         <!-- Window Container -->
         <div
-          class="relative w-full max-w-4xl h-[85%] flex bg-paper/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
+          class="relative w-full max-w-4xl h-[85%] flex bg-paper/90 border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
           style="
             box-shadow:
               0 20px 50px -12px rgba(0, 0, 0, 0.2),
@@ -181,7 +181,8 @@ const tabs = [
 }
 
 .modal-container {
-  animation: modal-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  /* Animation handled by Vue Transition */
+  transform: translateZ(0);
 }
 
 .modal-exit {
