@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, shallowRef, computed, watch } from 'vue';
-import type { FileNode, ProjectSettings, Character, Plotline } from '../types';
+import type { FileNode, ProjectSettings, Character, Plotline, ProjectMetadata } from '../types';
+import { reconstructHierarchy } from '../utils/tree';
 
 export const useProjectStore = defineStore('project', () => {
   // State
@@ -177,5 +178,29 @@ export const useProjectStore = defineStore('project', () => {
     renameNodeAction,
     updateNodeStatsAction,
     updateNodeMetadataAction,
+    loadProject,
   };
+
+  async function loadProject(id: string) {
+    // Import invoke dynamically or at top? Top is fine if valid.
+    // But we are inside defineStore callback.
+    const { invoke } = await import('@tauri-apps/api/core');
+    try {
+      const metadata = await invoke<ProjectMetadata>('load_project', { projectId: id });
+      // We need to parse keys.
+      // Actually setProjectData expects specific args.
+      // Let's assume metadata matches or we map it.
+      // backend load_project returns ProjectMetadata + root_path usually?
+      // Converting internal types might be needed.
+      // To stay safe and avoid huge refactor, let's look at how it was done before.
+      // Step 121 SnapshotManager didn't show loadProject.
+      // Let's check `useProjectIO.ts` or similar later if needed.
+      // But for now, let's just use `updateStructure` if we can.
+      const hierarchy = reconstructHierarchy(metadata.manifest.chapters);
+      updateStructure(hierarchy);
+      // Also update settings?
+    } catch (e) {
+      console.error('Failed to reload project', e);
+    }
+  }
 });

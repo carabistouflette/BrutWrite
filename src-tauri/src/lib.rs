@@ -57,7 +57,10 @@ pub fn run() {
             commands::rename_research_artifact,
             commands::delete_research_artifact,
             commands::list_snapshots,
-            commands::load_snapshot_content
+            commands::load_snapshot_content,
+            commands::create_snapshot,
+            commands::restore_snapshot,
+            commands::branch_snapshot
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -45,7 +45,7 @@ pub async fn create_snapshot<R: FileRepository>(
 
     let mut entries = repo.read_dir(&snapshots_dir).await?;
     // Filter for .md files
-    entries.retain(|e| e.extension().map_or(false, |ext| ext == "md"));
+    entries.retain(|e| e.extension().is_some_and(|ext| ext == "md"));
     // Sort determines order. Timestamps (ISO) are sortable strings.
     entries.sort();
 
@@ -85,7 +85,7 @@ pub async fn list_snapshots<R: FileRepository>(
     }
 
     let mut entries = repo.read_dir(&snapshots_dir).await?;
-    entries.retain(|e| e.extension().map_or(false, |ext| ext == "md"));
+    entries.retain(|e| e.extension().is_some_and(|ext| ext == "md"));
     entries.sort();
 
     // Return filenames
@@ -108,4 +108,28 @@ pub async fn read_snapshot_content<R: FileRepository>(
         .join(filename);
 
     repo.read_file(&path).await
+}
+
+pub async fn restore_snapshot<R: FileRepository>(
+    repo: &R,
+    root_path: &Path,
+    chapter_id: &str,
+    snapshot_filename: &str,
+    current_content: &str,
+    chapter_filename: &str,
+) -> Result<String> {
+    // 1. Create safety snapshot of current state
+    create_snapshot(repo, root_path, chapter_id, current_content).await?;
+
+    // 2. Read snapshot content
+    let content = read_snapshot_content(repo, root_path, chapter_id, snapshot_filename).await?;
+
+    // 3. Write back to chapter file
+    let chapter_path = root_path
+        .join(super::consts::MANUSCRIPT_DIR)
+        .join(chapter_filename);
+
+    repo.write_file(&chapter_path, &content).await?;
+
+    Ok(content)
 }

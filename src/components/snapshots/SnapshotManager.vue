@@ -11,8 +11,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'restore', content: string): void;
-  (e: 'branch', content: string): void;
+  (e: 'restore', content: string, filename: string): void;
+  (e: 'branch', content: string, filename: string): void;
 }>();
 
 const snapshotStore = useSnapshotStore();
@@ -62,8 +62,8 @@ function handleRestore() {
 }
 
 function confirmRestore() {
-  if (!selectedSnapshotContent.value) return;
-  emit('restore', selectedSnapshotContent.value);
+  if (!selectedSnapshotContent.value || !selectedSnapshot.value) return;
+  emit('restore', selectedSnapshotContent.value, selectedSnapshot.value);
   emit('close');
 }
 
@@ -73,8 +73,8 @@ function handleBranch() {
 }
 
 function confirmBranch() {
-  if (!selectedSnapshotContent.value) return;
-  emit('branch', selectedSnapshotContent.value);
+  if (!selectedSnapshotContent.value || !selectedSnapshot.value) return;
+  emit('branch', selectedSnapshotContent.value, selectedSnapshot.value);
   emit('close');
 }
 </script>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, toRef, onBeforeUnmount, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { reconstructHierarchy } from '../../utils/tree';
 import EditorMain from './EditorMain.vue';
 import SnapshotManager from '../snapshots/SnapshotManager.vue';
 import { useProjectStore } from '../../stores/project';
@@ -12,9 +11,10 @@ import { useSettingsStore } from '../../stores/settings';
 import { chaptersApi } from '../../api/chapters';
 import { useAppStatus } from '../../composables/ui/useAppStatus';
 import { APP_CONSTANTS } from '../../config/constants';
-import type { Chapter, FileNode } from '../../types';
+import type { Chapter } from '../../types';
 import { useAutoSave } from '../../composables/editor/useAutoSave';
 import { useChapterSession } from '../../composables/domain/project/useChapterSession';
+import { useSnapshotStore } from '../../stores/snapshots';
 
 const showSnapshotManager = ref(false);
 const editorRef = ref<InstanceType<typeof EditorMain> | null>(null);
@@ -25,6 +25,7 @@ const props = defineProps<{
 }>();
 
 const projectStore = useProjectStore();
+const snapshotStore = useSnapshotStore();
 const { activeId, nodeMap } = storeToRefs(projectStore);
 const researchStore = useResearchStore();
 const { updateNodeStats, renameNode } = useProjectNodeOperations();
@@ -126,55 +127,32 @@ onBeforeUnmount(async () => {
   }
 });
 
-const handleRestore = async (content: string) => {
+const handleRestore = async (_content: string, filename: string) => {
   showSnapshotManager.value = false;
-  if (editorRef.value) {
-    editorRef.value.setContent(content);
-    await saveActiveChapter(content);
-    currentHtml.value = content;
-    isDirty.value = false;
-  }
-};
-
-const findParentId = (
-  nodes: FileNode[],
-  targetId: string,
-  currentParentId?: string
-): string | undefined => {
-  for (const node of nodes) {
-    if (node.id === targetId) return currentParentId;
-    if (node.children) {
-      const found = findParentId(node.children, targetId, node.id);
-      if (found !== undefined) return found;
-    }
-  }
-  return undefined;
-};
-
-const handleBranch = async (content: string) => {
-  showSnapshotManager.value = false;
-  if (!props.projectId) return;
-
-  const currentNode = activeChapter.value;
-  const newName = `${currentNode?.name || 'Scene'} (Branch)`;
-  const parentId = findParentId(projectStore.nodes, props.chapterId);
+  if (!props.chapterId) return;
 
   try {
-    const metadata = await chaptersApi.createNode(props.projectId, parentId, newName);
-    projectStore.updateStructure(reconstructHierarchy(metadata.manifest.chapters));
-
-    // Find the new node
-    const newNode = projectStore.flatNodes.find((n) => n.name === newName);
-
-    if (newNode) {
-      await chaptersApi.saveContent(props.projectId, newNode.id, content);
-      updateNodeStats(newNode.id, content.split(/\s+/).length);
-
-      // Select it
-      projectStore.setActiveId(newNode.id);
+    const newContent = await snapshotStore.restoreSnapshot(props.chapterId, filename);
+    if (newContent !== undefined && editorRef.value) {
+      editorRef.value.setContent(newContent);
+      currentHtml.value = newContent;
+      isDirty.value = false;
+      const wc = newContent.split(/\s+/).length;
+      updateNodeStats(props.chapterId, wc);
     }
   } catch (e) {
-    notifyError('Failed to branch', e);
+    notifyError('Failed to restore snapshot', e);
+  }
+};
+
+const handleBranch = async (_content: string, filename: string) => {
+  showSnapshotManager.value = false;
+  if (!props.projectId || !props.chapterId) return;
+
+  try {
+    await snapshotStore.branchSnapshot(props.chapterId, filename);
+  } catch (e) {
+    notifyError('Failed to branch snapshot', e);
   }
 };
 </script>
