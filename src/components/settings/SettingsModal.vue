@@ -37,14 +37,7 @@ const tabs = [
 
 <template>
   <Teleport to="#app-scale-root">
-    <Transition
-      enter-active-class="transition duration-300 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition duration-200 ease-in"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
+    <Transition name="dialog">
       <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-12">
         <!-- Backdrop -->
         <div
@@ -169,25 +162,32 @@ const tabs = [
   opacity: 0.2;
 }
 
-@keyframes modal-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+/* Dialog Transition Architecture */
+.dialog-enter-active,
+.dialog-leave-active {
+  transition: opacity 0.3s ease-out;
+}
+
+.dialog-enter-from,
+.dialog-leave-to {
+  opacity: 0;
+}
+
+.dialog-enter-active .modal-container,
+.dialog-leave-active .modal-container {
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.3s ease-out;
+}
+
+.dialog-enter-from .modal-container,
+.dialog-leave-to .modal-container {
+  transform: scale(0.95) translateY(10px);
+  opacity: 0;
 }
 
 .modal-container {
-  animation: modal-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  /* Hardware acceleration hint */
   transform: translateZ(0);
-}
-
-.modal-exit {
-  transition: all 0.2s ease-in;
-  opacity: 0;
-  transform: scale(0.98) translateY(10px);
 }
 </style>
