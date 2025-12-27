@@ -40,11 +40,11 @@ const tabs = [
     <Transition name="dialog">
       <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-12">
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-md" @click="close"></div>
+        <div class="absolute inset-0 bg-black/40" @click="close"></div>
 
         <!-- Window Container -->
         <div
-          class="relative w-full max-w-4xl h-[85%] flex bg-paper/90 border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
+          class="relative w-full max-w-4xl h-[85%] flex bg-paper/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
           style="
             box-shadow:
               0 20px 50px -12px rgba(0, 0, 0, 0.2),
