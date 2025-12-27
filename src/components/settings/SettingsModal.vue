@@ -40,11 +40,7 @@ const tabs = [
     <Transition name="dialog">
       <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-12">
         <!-- Backdrop -->
-        <div
-          class="absolute inset-0 bg-black/40 backdrop-blur-md"
-          style="will-change: opacity, backdrop-filter"
-          @click="close"
-        ></div>
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-md" @click="close"></div>
 
         <!-- Window Container -->
         <div
