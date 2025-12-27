@@ -179,7 +179,7 @@ const tabs = [
 
 .dialog-enter-from .modal-container,
 .dialog-leave-to .modal-container {
-  transform: scale(0.96) translateY(5px);
+  transform: translateY(8px);
   opacity: 0;
 }
 
