@@ -161,7 +161,7 @@ const tabs = [
 /* Dialog Transition Architecture */
 .dialog-enter-active,
 .dialog-leave-active {
-  transition: opacity 0.3s ease-out;
+  transition: opacity 0.2s ease-out;
 }
 
 .dialog-enter-from,
@@ -171,19 +171,22 @@ const tabs = [
 
 .dialog-enter-active .modal-container,
 .dialog-leave-active .modal-container {
+  /* Use a strong ease-out without overshoot to prevent sub-pixel blurring artifacts */
   transition:
-    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
     opacity 0.3s ease-out;
 }
 
 .dialog-enter-from .modal-container,
 .dialog-leave-to .modal-container {
-  transform: scale(0.95) translateY(10px);
+  transform: scale(0.96) translateY(5px);
   opacity: 0;
 }
 
 .modal-container {
-  /* Hardware acceleration hint */
+  /* Hardware acceleration & anti-aliasing hints */
   transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: subpixel-antialiased;
 }
 </style>
