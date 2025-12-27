@@ -44,7 +44,7 @@ const tabs = [
 
         <!-- Window Container -->
         <div
-          class="relative w-full max-w-4xl h-[85%] flex bg-paper/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
+          class="relative w-full max-w-4xl h-[85%] flex bg-paper/70 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
           style="
             box-shadow:
               0 20px 50px -12px rgba(0, 0, 0, 0.2),
@@ -53,7 +53,7 @@ const tabs = [
           "
         >
           <!-- Sidebar -->
-          <div class="w-64 bg-[var(--paper)]/20 border-r border-ink/5 flex flex-col">
+          <div class="w-64 bg-paper/30 border-r border-ink/5 flex flex-col">
             <div class="p-6">
               <h2 class="font-serif text-2xl italic font-bold">Settings</h2>
             </div>
