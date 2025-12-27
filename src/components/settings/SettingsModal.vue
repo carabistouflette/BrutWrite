@@ -39,8 +39,8 @@ const tabs = [
   <Teleport to="#app-scale-root">
     <Transition
       enter-active-class="transition duration-300 ease-out"
-      enter-from-class="opacity-0 scale-95"
-      enter-to-class="opacity-100 scale-100"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
       leave-active-class="transition duration-200 ease-in"
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
@@ -181,7 +181,7 @@ const tabs = [
 }
 
 .modal-container {
-  /* Animation handled by Vue Transition */
+  animation: modal-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transform: translateZ(0);
 }
 
