@@ -1,0 +1,146 @@
+use crate::models::{Character, CharacterEngine, CharacterRole};
+use crate::AppState;
+use tauri::State;
+use uuid::Uuid;
+
+#[tauri::command]
+pub async fn seed_demo_project(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+) -> crate::errors::Result<String> {
+    // 1. Create Project
+    let metadata = crate::commands::create_project(
+        app,
+        state.clone(),
+        path.clone(),
+        "The Algorithms of Betrayal".to_string(),
+        "Alexisr".to_string(),
+    )
+    .await?;
+
+    let project_id_uuid = metadata.id;
+
+    // 2. Add Characters
+    let characters = vec![
+        Character {
+            id: Uuid::new_v4(),
+            name: "Cipher".to_string(),
+            role: CharacterRole::Protagonist,
+            description: "A rogue hacker with a neural shunt.".to_string(),
+            archetype: "The Outlaw".to_string(),
+            engine: CharacterEngine::default(),
+            physical_features: "Cybernetic eye, leather jacket".to_string(),
+            traits: vec!["Paranoid".to_string(), "Skilled".to_string()],
+            arc: "Redemption".to_string(),
+            notes: "".to_string(),
+        },
+        Character {
+            id: Uuid::new_v4(),
+            name: "The Architect".to_string(),
+            role: CharacterRole::Antagonist,
+            description: "An AI construct controlling the city grid.".to_string(),
+            archetype: "The Ruler".to_string(),
+            engine: CharacterEngine::default(),
+            physical_features: "Holographic projection".to_string(),
+            traits: vec!["Calculating".to_string(), "Omnipresent".to_string()],
+            arc: "Corruption".to_string(),
+            notes: "".to_string(),
+        },
+        Character {
+            id: Uuid::new_v4(),
+            name: "Glitch".to_string(),
+            role: CharacterRole::Secondary,
+            description: "Street urchin and informant.".to_string(),
+            archetype: " The Jester".to_string(),
+            engine: CharacterEngine::default(),
+            physical_features: "Neon tattoos".to_string(),
+            traits: vec!["Fast talker".to_string()],
+            arc: "".to_string(),
+            notes: "".to_string(),
+        },
+        Character {
+            id: Uuid::new_v4(),
+            name: "Echo".to_string(),
+            role: CharacterRole::Secondary,
+            description: "Memory broker.".to_string(),
+            archetype: "The Sage".to_string(),
+            engine: CharacterEngine::default(),
+            physical_features: "Masked".to_string(),
+            traits: vec!["Wise".to_string()],
+            arc: "".to_string(),
+            notes: "".to_string(),
+        },
+        Character {
+            id: Uuid::new_v4(),
+            name: "Neon".to_string(),
+            role: CharacterRole::Extra,
+            description: "Bartender at The Void.".to_string(),
+            archetype: "Everyman".to_string(),
+            engine: CharacterEngine::default(),
+            physical_features: "Robot arm".to_string(),
+            traits: vec![],
+            arc: "".to_string(),
+            notes: "".to_string(),
+        },
+    ];
+
+    for char in &characters {
+        crate::commands::save_character(state.clone(), project_id_uuid, char.clone()).await?;
+    }
+
+    // 3. Add Chapters with mentions
+    let chapters_data = vec![
+        (
+            "Chapter 1: The Wakeup", 
+            format!(
+                "<p>The neon rain fell hard on the pavement. @{} adjusted his collar. He was waiting for @{}. 'Where is the data?' asked @{}.</p><p>@{} laughed. 'You think @{} lets anything slip?'</p>", 
+                characters[0].name, characters[2].name, characters[0].name, characters[2].name, characters[1].name
+            )
+        ),
+        (
+            "Chapter 2: The Grid",
+            format!(
+                "<p>@{} connected to the mainframe. The presence of @{} was overwhelming. 'I see you,' the voice boomed. @{} tried to disconnect, but @{} held the line.</p>",
+                characters[0].name, characters[1].name, characters[0].name, characters[1].name
+            )
+        ),
+        (
+            "Chapter 3: Broken Memories",
+            format!(
+                "<p>@{} visited @{}. 'I need to remember,' said @{}. @{} handed over a drive. 'This contains files on @{}.'</p>",
+                characters[0].name, characters[3].name, characters[0].name, characters[3].name, characters[1].name
+            )
+        ),
+        (
+            "Chapter 4: The Void Bar",
+             format!(
+                "<p>@{} was cleaning a glass. @{} sat at the bar, looking defeated. 'Drink?' asked @{}. 'Make it strong,' replied @{}. @{} slid a cred-chip across the counter.</p>",
+                characters[4].name, characters[0].name, characters[4].name, characters[0].name, characters[2].name
+            )
+        ),
+        (
+            "Chapter 5: Confrontation",
+            format!(
+                "<p>The final showdown. @{} vs @{}. @{} watched from the shadows. @{} unleashed the virus. @{} screamed in binary.</p>",
+                characters[0].name, characters[1].name, characters[2].name, characters[0].name, characters[1].name
+            )
+        )
+    ];
+
+    for (title, content) in chapters_data {
+        // Create node
+        let md =
+            crate::commands::create_node(state.clone(), project_id_uuid, None, title.to_string())
+                .await?;
+
+        // Find the node ID we just created (simplest way is to find by title)
+        if let Some(node) = md.manifest.chapters.iter().find(|c| c.title == title) {
+            // Save content
+            crate::commands::save_chapter(state.clone(), project_id_uuid, node.id.clone(), content)
+                .await?;
+        }
+    }
+
+    Ok(project_id_uuid.to_string())
+}

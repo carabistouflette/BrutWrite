@@ -4,6 +4,7 @@ import BaseButton from '../base/BaseButton.vue';
 const emit = defineEmits<{
   (e: 'new-project'): void;
   (e: 'open-project'): void;
+  (e: 'demo-project'): void;
 }>();
 </script>
 
@@ -52,6 +53,17 @@ const emit = defineEmits<{
         </svg>
       </template>
       Open Existing Project
+    </BaseButton>
+
+    <!-- Detailed Action: Demo Project -->
+    <BaseButton
+      variant="ghost"
+      size="sm"
+      block
+      class="group pt-4 opacity-60 hover:opacity-100"
+      @click="emit('demo-project')"
+    >
+      Create Example Project (Demo)
     </BaseButton>
   </div>
 </template>

@@ -212,6 +212,44 @@ input[type='number'] {
 }
 
 /**
+ * --- Editor Mention Styling ---
+ */
+.mention {
+  color: var(--color-accent);
+  background-color: transparent;
+  padding: 0 1px;
+  border-radius: 4px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mention:hover {
+  background-color: color-mix(in srgb, var(--color-accent), transparent 90%);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.research-mention {
+  color: var(--color-ink);
+  background-color: var(--color-stone);
+  padding: 0 4px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.9em;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.research-mention:hover {
+  border-color: var(--color-ink);
+}
+
+/**
  * --- Root Scaling ---
  */
 #app-scale-root {

@@ -13,3 +13,5 @@ pub use manifest::*;
 pub use project::*;
 pub use research::*;
 pub use snapshots::*;
+pub mod debug;
+pub use debug::*;

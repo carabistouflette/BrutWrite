@@ -40,6 +40,9 @@ export function useTiptapMentions() {
     HTMLAttributes: {
       class: 'mention',
     },
+    renderLabel({ node }) {
+      return `${node.attrs.label ?? node.attrs.id}`;
+    },
     suggestion: {
       items: ({ query }: { query: string }) => {
         return characters.value

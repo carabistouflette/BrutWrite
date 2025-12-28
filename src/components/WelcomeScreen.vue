@@ -36,7 +36,11 @@
         <BrutWriteLogo />
 
         <!-- Main Actions -->
-        <WelcomeActions @new-project="handleNewProject" @open-project="handleOpenProject" />
+        <WelcomeActions
+          @new-project="handleNewProject"
+          @open-project="handleOpenProject"
+          @demo-project="handleDemoProject"
+        />
 
         <!-- Footer Meta (Mobile only or additional) -->
         <div class="lg:hidden w-full space-y-4 pt-8">
@@ -73,6 +77,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { open, save } from '@tauri-apps/plugin-dialog';
+import { invoke } from '@tauri-apps/api/core';
 import { useProjectIO } from '../composables/domain/project/useProjectIO';
 import { useRecentProjects } from '../composables/domain/project/useRecentProjects';
 import { APP_CONSTANTS } from '../config/constants';
@@ -131,6 +136,24 @@ const handleNewProject = async () => {
     }
   } catch (e) {
     notifyError('Failed to create new project', e);
+  }
+};
+
+const handleDemoProject = async () => {
+  try {
+    const selected = await save({
+      title: 'Create Example Project',
+      filters: [{ name: 'BrutWrite Project', extensions: ['json'] }],
+      defaultPath: 'TheAlgorithmsOfBetrayal.json',
+    });
+
+    if (selected && typeof selected === 'string') {
+      await invoke('seed_demo_project', { path: selected });
+      await triggerExit();
+      await loadProject(selected);
+    }
+  } catch (e) {
+    notifyError('Failed to create demo project', e);
   }
 };
 
