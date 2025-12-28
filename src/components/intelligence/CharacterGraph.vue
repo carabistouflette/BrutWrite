@@ -48,6 +48,7 @@ const focusedNodeId = ref<string | null>(null);
 const liveAnnouncement = ref('');
 const tooltipData = ref<{ node: D3Node; x: number; y: number } | null>(null);
 const currentZoom = ref(1);
+const contextMenuData = ref<{ node: D3Node; x: number; y: number } | null>(null);
 
 // --- Computed ---
 
@@ -184,6 +185,7 @@ function initGraph() {
     .attr('aria-label', (d) => `${d.label}, ${d.mentionCount} mentions`)
     .on('click', (_event, d) => handleNodeClick(d))
     .on('dblclick', (_event, d) => handleNodeDoubleClick(d))
+    .on('contextmenu', (event, d) => handleNodeContextMenu(event, d))
     .on('focus', (_event, d) => handleNodeFocus(d))
     .on('blur', () => handleNodeBlur())
     .on('keydown', (event, d) => handleNodeKeydown(event, d, nodeData, linkData))
@@ -275,6 +277,33 @@ function hideTooltip() {
 
 function getConnectionCount(nodeId: string): number {
   return edges.value.filter((e) => e.source === nodeId || e.target === nodeId).length;
+}
+
+// --- Context Menu ---
+
+function handleNodeContextMenu(event: MouseEvent, node: D3Node) {
+  event.preventDefault();
+  contextMenuData.value = {
+    node,
+    x: event.clientX,
+    y: event.clientY,
+  };
+}
+
+function closeContextMenu() {
+  contextMenuData.value = null;
+}
+
+async function copyCharacterTag() {
+  if (!contextMenuData.value) return;
+  const tag = `@${contextMenuData.value.node.label}`;
+  try {
+    await navigator.clipboard.writeText(tag);
+    liveAnnouncement.value = `Copied ${tag} to clipboard`;
+  } catch {
+    liveAnnouncement.value = 'Failed to copy to clipboard';
+  }
+  closeContextMenu();
 }
 
 // --- Zoom Controls ---
@@ -444,6 +473,33 @@ watch(payload, () => {
       </div>
       <div class="tooltip-valence">Valence: {{ tooltipData.node.valence.toFixed(2) }}</div>
     </div>
+
+    <!-- Context Menu -->
+    <Teleport to="body">
+      <div
+        v-if="contextMenuData"
+        class="fixed inset-0 z-90"
+        @click="closeContextMenu"
+        @contextmenu.prevent="closeContextMenu"
+      ></div>
+      <div
+        v-if="contextMenuData"
+        class="context-menu"
+        :style="{ left: `${contextMenuData.x}px`, top: `${contextMenuData.y}px` }"
+      >
+        <button class="context-menu-item" @click="copyCharacterTag">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+            />
+          </svg>
+          Copy @{{ contextMenuData.node.label }}
+        </button>
+      </div>
+    </Teleport>
 
     <!-- Zoom Controls -->
     <div class="zoom-controls">
@@ -620,6 +676,37 @@ watch(payload, () => {
   font-size: 0.625rem;
   color: rgba(26, 26, 26, 0.4);
   margin-top: 6px;
+}
+
+/* Context Menu */
+.context-menu {
+  position: fixed;
+  z-index: 9999;
+  padding: 0.5rem;
+  background: var(--paper);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ink);
+  border-radius: 0.5rem;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.context-menu-item:hover {
+  background-color: var(--accent);
+  color: white;
 }
 
 /* Zoom Controls */
