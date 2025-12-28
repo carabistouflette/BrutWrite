@@ -15,6 +15,7 @@ import type { Chapter } from '../../types';
 import { useAutoSave } from '../../composables/editor/useAutoSave';
 import { useChapterSession } from '../../composables/domain/project/useChapterSession';
 import { useSnapshotStore } from '../../stores/snapshots';
+import { useCharacterGraph } from '../../composables/domain/intelligence/useCharacterGraph';
 
 const showSnapshotManager = ref(false);
 const editorRef = ref<InstanceType<typeof EditorMain> | null>(null);
@@ -33,6 +34,7 @@ const { addWords } = useGamification();
 const settingsStore = useSettingsStore();
 const { settings } = storeToRefs(settingsStore);
 const { notifyError } = useAppStatus();
+const { analyze: analyzeCharacterGraph } = useCharacterGraph();
 
 // 1. Session Management (Loading content)
 // We use toRef to keep reactivity for the composable
@@ -97,6 +99,12 @@ const saveActiveChapter = async (content: string) => {
         updateNodeStats(props.chapterId, chapter.word_count, false);
       }
     }
+
+    // Auto-analyze character graph if enabled
+    if (settings.value.intelligence.autoAnalyzeOnSave) {
+      analyzeCharacterGraph();
+    }
+
     console.debug(`Auto-saved chapter ${props.chapterId}`);
   } catch (e) {
     notifyError(`Failed to save chapter ${props.chapterId}`, e);

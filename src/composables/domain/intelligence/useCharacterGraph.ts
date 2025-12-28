@@ -131,8 +131,10 @@ export function useCharacterGraph() {
    *
    * Respects a 2-second cooldown to prevent spam.
    * Uses settings from the settings store.
+   *
+   * @param chapterIds - Optional array of chapter IDs to filter analysis
    */
-  async function analyze(): Promise<void> {
+  async function analyze(chapterIds?: string[]): Promise<void> {
     const projectId = projectStore.projectId;
     if (!projectId) {
       state.value.error = 'No project loaded';
@@ -155,6 +157,7 @@ export function useCharacterGraph() {
       const payload = await intelligenceApi.getCharacterGraph(projectId, {
         proximityWindow,
         pruneThreshold,
+        chapterIds,
       });
       state.value.payload = payload;
       state.value.lastAnalyzedAt = new Date().toISOString();

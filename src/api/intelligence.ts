@@ -10,6 +10,7 @@ import type { CharacterGraphPayload } from '../types/intelligence';
 export interface AnalysisOptions {
   proximityWindow?: number;
   pruneThreshold?: number;
+  chapterIds?: string[];
 }
 
 export const intelligenceApi = {
@@ -28,5 +29,6 @@ export const intelligenceApi = {
       projectId,
       proximityWindow: options?.proximityWindow,
       pruneThreshold: options?.pruneThreshold,
+      chapterIds: options?.chapterIds,
     }),
 };

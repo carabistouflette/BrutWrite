@@ -424,6 +424,7 @@ pub async fn analyze_character_graph(
     project_id: Uuid,
     proximity_window: Option<usize>,
     prune_threshold: Option<f32>,
+    chapter_ids: Option<Vec<String>>,
 ) -> crate::errors::Result<CharacterGraphPayload> {
     let (root_path, metadata_arc) = state.projects.get_context(project_id).await?;
     let metadata = metadata_arc.lock().await;
@@ -432,11 +433,23 @@ pub async fn analyze_character_graph(
     let proximity_window = proximity_window.unwrap_or(50);
     let prune_threshold = prune_threshold.unwrap_or(0.05);
 
-    // Load all chapter contents
+    // Create filter set if chapter IDs provided
+    let chapter_filter: Option<std::collections::HashSet<&str>> = chapter_ids
+        .as_ref()
+        .map(|ids| ids.iter().map(|s| s.as_str()).collect());
+
+    // Load chapter contents (filtered if specified)
     let repo = LocalFileRepository;
     let mut chapter_contents: Vec<(String, String)> = Vec::new();
 
     for chapter in &metadata.manifest.chapters {
+        // Skip if filter is active and chapter not in filter
+        if let Some(ref filter) = chapter_filter {
+            if !filter.contains(chapter.id.as_str()) {
+                continue;
+            }
+        }
+
         match storage::read_chapter_content(&repo, &root_path, &metadata, &chapter.id).await {
             Ok(content) => {
                 chapter_contents.push((chapter.id.clone(), content));
