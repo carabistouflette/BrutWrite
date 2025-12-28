@@ -10,6 +10,9 @@ const ResearchPanel = defineAsyncComponent(() => import('../research/ResearchPan
 const SettingsModal = defineAsyncComponent(() => import('../settings/SettingsModal.vue'));
 const CharacterSheet = defineAsyncComponent(() => import('../characters/CharacterSheet.vue'));
 const TimelineView = defineAsyncComponent(() => import('../timeline/Timeline.vue'));
+const CharacterGraphModal = defineAsyncComponent(
+  () => import('../intelligence/CharacterGraphModal.vue')
+);
 
 // --- Composables ---
 const {
@@ -39,6 +42,7 @@ const researchStore = useResearchStore();
 // --- Local State ---
 const showSettings = ref(false);
 const showCharacters = ref(false);
+const showCharacterGraph = ref(false);
 const showTimeline = ref(false);
 const showResearch = ref(false);
 const isExiting = ref(false);
@@ -73,6 +77,7 @@ watch(
       <SidebarController
         @open-settings="showSettings = true"
         @open-characters="showCharacters = true"
+        @open-character-graph="showCharacterGraph = true"
         @open-timeline="showTimeline = !showTimeline"
         @open-research="showResearch = !showResearch"
         @change-project="handleChangeProject"
@@ -81,6 +86,7 @@ watch(
       <!-- Global Modals (anchored here or elsewhere) -->
       <SettingsModal :show="showSettings" @close="showSettings = false" />
       <CharacterSheet :show="showCharacters" @close="showCharacters = false" />
+      <CharacterGraphModal :show="showCharacterGraph" @close="showCharacterGraph = false" />
 
       <!-- Resize Handle -->
       <div
