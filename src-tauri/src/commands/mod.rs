@@ -1,5 +1,6 @@
 pub mod chapters;
 pub mod characters;
+pub mod intelligence;
 pub mod manifest;
 pub mod project;
 pub mod research;
@@ -7,6 +8,7 @@ pub mod snapshots;
 
 pub use chapters::*;
 pub use characters::*;
+pub use intelligence::*;
 pub use manifest::*;
 pub use project::*;
 pub use research::*;

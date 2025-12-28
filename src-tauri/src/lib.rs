@@ -60,7 +60,8 @@ pub fn run() {
             commands::load_snapshot_content,
             commands::create_snapshot,
             commands::restore_snapshot,
-            commands::branch_snapshot
+            commands::branch_snapshot,
+            commands::analyze_character_graph
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
