@@ -397,13 +397,15 @@ async fn build_character_graph(
 pub async fn analyze_character_graph(
     state: State<'_, AppState>,
     project_id: Uuid,
+    proximity_window: Option<usize>,
+    prune_threshold: Option<f32>,
 ) -> crate::errors::Result<CharacterGraphPayload> {
     let (root_path, metadata_arc) = state.projects.get_context(project_id).await?;
     let metadata = metadata_arc.lock().await;
 
-    // Configurable parameters (could be passed from frontend in future)
-    let proximity_window: usize = 50;
-    let prune_threshold: f32 = 0.05;
+    // Use provided values or defaults
+    let proximity_window = proximity_window.unwrap_or(50);
+    let prune_threshold = prune_threshold.unwrap_or(0.05);
 
     // Load all chapter contents
     let repo = LocalFileRepository;

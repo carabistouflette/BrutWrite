@@ -66,7 +66,13 @@ export interface CharacterGraphPayload {
 /**
  * Alert codes for narrative health diagnostics.
  */
-export type AlertCode = 'SOLIPSISM' | 'SATELLITE' | 'GHOST';
+export type AlertCode =
+  | 'SOLIPSISM'
+  | 'SATELLITE'
+  | 'GHOST'
+  | 'PROTAGONIST_ABSENT'
+  | 'ANTAGONIST_ISOLATED'
+  | 'CHARACTER_DROPOFF';
 
 /**
  * Alert definition for the Metrics HUD.
@@ -92,5 +98,17 @@ export const GRAPH_ALERTS: Record<AlertCode, Omit<GraphAlert, 'code'>> = {
   GHOST: {
     primaryText: 'Unmapped Characters',
     tooltip: 'Characters declared but with 0 mentions.',
+  },
+  PROTAGONIST_ABSENT: {
+    primaryText: 'Protagonist Fading',
+    tooltip: 'Your protagonist has very few mentions in the manuscript.',
+  },
+  ANTAGONIST_ISOLATED: {
+    primaryText: 'Antagonist Isolated',
+    tooltip: 'Antagonist never shares a chapter with the protagonist.',
+  },
+  CHARACTER_DROPOFF: {
+    primaryText: 'Character Fades',
+    tooltip: 'A character disappears from the story after initial appearances.',
   },
 };

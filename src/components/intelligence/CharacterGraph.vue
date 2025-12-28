@@ -4,11 +4,18 @@
  *
  * Force-directed graph visualization of character interactions.
  * Styled to match BrutWrite's warm, editorial aesthetic.
+ *
+ * Features:
+ * - Role-based node coloring
+ * - Hover tooltips
+ * - Zoom & pan controls
+ * - Keyboard navigation
  */
 
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import * as d3 from 'd3';
 import { useCharacterGraph } from '../../composables/domain/intelligence/useCharacterGraph';
+import { useProjectStore } from '../../stores/project';
 import type { GraphNode } from '../../types/intelligence';
 
 // --- Props & Emits ---
@@ -30,6 +37,7 @@ const emit = defineEmits<{
 // --- Composables ---
 
 const { payload, isLoading, error, ghosts, alerts, analyze } = useCharacterGraph();
+const projectStore = useProjectStore();
 
 // --- Refs ---
 
@@ -37,6 +45,8 @@ const svgRef = ref<SVGSVGElement | null>(null);
 const selectedNodeId = ref<string | null>(null);
 const focusedNodeId = ref<string | null>(null);
 const liveAnnouncement = ref('');
+const tooltipData = ref<{ node: D3Node; x: number; y: number } | null>(null);
+const currentZoom = ref(1);
 
 // --- Computed ---
 
@@ -46,12 +56,39 @@ const metrics = computed(() => payload.value?.metrics);
 
 const mappedNodes = computed(() => nodes.value.filter((n) => n.isMapped));
 
+// --- Role-based color mapping ---
+
+function getNodeColor(nodeId: string): string {
+  const char = projectStore.characterById(nodeId);
+  if (!char) return 'var(--ink)';
+
+  switch (char.role) {
+    case 'protagonist':
+      return 'var(--accent)'; // Orange
+    case 'antagonist':
+      return '#DC2626'; // Red
+    case 'secondary':
+      return 'var(--ink)'; // Default black
+    case 'extra':
+      return 'rgba(26, 26, 26, 0.5)'; // Muted
+    default:
+      return 'var(--ink)';
+  }
+}
+
+function getRoleName(nodeId: string): string {
+  const char = projectStore.characterById(nodeId);
+  if (!char) return 'Unknown';
+  return char.role.charAt(0).toUpperCase() + char.role.slice(1);
+}
+
 // --- D3 Simulation ---
 
 type D3Node = GraphNode & d3.SimulationNodeDatum;
 type D3Link = { source: D3Node; target: D3Node; weight: number; interactionType: string };
 
 let simulation: d3.Simulation<D3Node, D3Link> | null = null;
+let zoomBehavior: d3.ZoomBehavior<SVGSVGElement, unknown> | null = null;
 
 function initGraph() {
   if (!svgRef.value || !payload.value) return;
@@ -97,10 +134,24 @@ function initGraph() {
     .force('center', d3.forceCenter(width / 2, height / 2).strength(0.05))
     .velocityDecay(0.85);
 
-  // Create SVG groups
-  const linksGroup = svg.append('g').attr('class', 'links-group');
-  const nodesGroup = svg.append('g').attr('class', 'nodes-group');
-  const labelsGroup = svg.append('g').attr('class', 'labels-group');
+  // Create main group for zoom/pan
+  const mainGroup = svg.append('g').attr('class', 'main-group');
+
+  // Setup zoom behavior
+  zoomBehavior = d3
+    .zoom<SVGSVGElement, unknown>()
+    .scaleExtent([0.5, 3])
+    .on('zoom', (event) => {
+      mainGroup.attr('transform', event.transform);
+      currentZoom.value = event.transform.k;
+    });
+
+  svg.call(zoomBehavior);
+
+  // Create SVG groups inside main group
+  const linksGroup = mainGroup.append('g').attr('class', 'links-group');
+  const nodesGroup = mainGroup.append('g').attr('class', 'nodes-group');
+  const labelsGroup = mainGroup.append('g').attr('class', 'labels-group');
 
   // Draw links - using warm ink color
   const links = linksGroup
@@ -116,14 +167,14 @@ function initGraph() {
   const maxValence = Math.max(...nodeData.map((n) => n.valence), 1);
   const radiusScale = d3.scaleLinear().domain([0, maxValence]).range([10, 28]);
 
-  // Draw nodes - warm ink color with paper fill
+  // Draw nodes with role-based coloring
   const nodeElements = nodesGroup
     .selectAll('circle')
     .data(nodeData)
     .join('circle')
     .attr('class', 'graph-node')
     .attr('r', (d) => radiusScale(d.valence))
-    .attr('fill', 'var(--ink)')
+    .attr('fill', (d) => getNodeColor(d.id))
     .attr('stroke', 'var(--paper)')
     .attr('stroke-width', 2)
     .attr('cursor', 'pointer')
@@ -133,7 +184,9 @@ function initGraph() {
     .on('click', (_event, d) => handleNodeClick(d))
     .on('focus', (_event, d) => handleNodeFocus(d))
     .on('blur', () => handleNodeBlur())
-    .on('keydown', (event, d) => handleNodeKeydown(event, d, nodeData, linkData));
+    .on('keydown', (event, d) => handleNodeKeydown(event, d, nodeData, linkData))
+    .on('mouseenter', (event, d) => showTooltip(d, event))
+    .on('mouseleave', () => hideTooltip());
 
   // Draw labels - serif font matching project style
   const labels = labelsGroup
@@ -176,7 +229,7 @@ function initGraph() {
     selectedNodeId,
     (newId) => {
       nodeElements
-        .attr('fill', (d) => (d.id === newId ? 'var(--accent)' : 'var(--ink)'))
+        .attr('fill', (d) => (d.id === newId ? 'var(--accent)' : getNodeColor(d.id)))
         .attr('stroke', (d) => (d.id === newId ? 'var(--paper)' : 'var(--paper)'))
         .attr('stroke-width', (d) => (d.id === newId ? 3 : 2));
 
@@ -199,6 +252,47 @@ function initGraph() {
     },
     { immediate: true }
   );
+}
+
+// --- Tooltip ---
+
+function showTooltip(node: D3Node, event: MouseEvent) {
+  const svgRect = svgRef.value?.getBoundingClientRect();
+  if (!svgRect) return;
+
+  tooltipData.value = {
+    node,
+    x: event.clientX - svgRect.left,
+    y: event.clientY - svgRect.top - 10,
+  };
+}
+
+function hideTooltip() {
+  tooltipData.value = null;
+}
+
+function getConnectionCount(nodeId: string): number {
+  return edges.value.filter((e) => e.source === nodeId || e.target === nodeId).length;
+}
+
+// --- Zoom Controls ---
+
+function zoomIn() {
+  if (!svgRef.value || !zoomBehavior) return;
+  const svg = d3.select(svgRef.value);
+  svg.transition().duration(300).call(zoomBehavior.scaleBy, 1.3);
+}
+
+function zoomOut() {
+  if (!svgRef.value || !zoomBehavior) return;
+  const svg = d3.select(svgRef.value);
+  svg.transition().duration(300).call(zoomBehavior.scaleBy, 0.7);
+}
+
+function resetZoom() {
+  if (!svgRef.value || !zoomBehavior) return;
+  const svg = d3.select(svgRef.value);
+  svg.transition().duration(300).call(zoomBehavior.transform, d3.zoomIdentity);
 }
 
 // --- Event Handlers ---
@@ -268,10 +362,6 @@ function handleNodeKeydown(
   }
 }
 
-function getConnectionCount(nodeId: string): number {
-  return edges.value.filter((e) => e.source === nodeId || e.target === nodeId).length;
-}
-
 // --- Lifecycle ---
 
 onMounted(async () => {
@@ -331,6 +421,52 @@ watch(payload, () => {
       aria-label="Character interaction graph"
     />
 
+    <!-- Tooltip -->
+    <div
+      v-if="tooltipData"
+      class="tooltip"
+      :style="{ left: `${tooltipData.x}px`, top: `${tooltipData.y}px` }"
+    >
+      <div class="tooltip-name">{{ tooltipData.node.label }}</div>
+      <div class="tooltip-role">{{ getRoleName(tooltipData.node.id) }}</div>
+      <div class="tooltip-stats">
+        <span>{{ tooltipData.node.mentionCount }} mentions</span>
+        <span>•</span>
+        <span>{{ getConnectionCount(tooltipData.node.id) }} connections</span>
+      </div>
+      <div class="tooltip-valence">Valence: {{ tooltipData.node.valence.toFixed(2) }}</div>
+    </div>
+
+    <!-- Zoom Controls -->
+    <div class="zoom-controls">
+      <button class="zoom-btn" title="Zoom in" @click="zoomIn">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 4v16m8-8H4"
+          />
+        </svg>
+      </button>
+      <span class="zoom-level">{{ Math.round(currentZoom * 100) }}%</span>
+      <button class="zoom-btn" title="Zoom out" @click="zoomOut">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+        </svg>
+      </button>
+      <button class="zoom-btn" title="Reset zoom" @click="resetZoom">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          />
+        </svg>
+      </button>
+    </div>
+
     <!-- Ghost Panel - styled to match CharacterDetail cards -->
     <aside v-if="ghosts.length > 0" class="ghost-panel">
       <div class="flex items-center gap-2 mb-3">
@@ -350,6 +486,26 @@ watch(payload, () => {
         </li>
       </ul>
     </aside>
+
+    <!-- Role Legend -->
+    <div class="role-legend">
+      <div class="legend-item">
+        <span class="legend-dot" style="background-color: var(--accent)"></span>
+        <span>Protagonist</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot" style="background-color: #dc2626"></span>
+        <span>Antagonist</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot" style="background-color: var(--ink)"></span>
+        <span>Secondary</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot" style="background-color: rgba(26, 26, 26, 0.5)"></span>
+        <span>Extra</span>
+      </div>
+    </div>
 
     <!-- Metrics HUD - styled to match project aesthetic -->
     <footer v-if="metrics" class="metrics-hud">
@@ -396,6 +552,11 @@ watch(payload, () => {
 .graph-svg {
   width: 100%;
   height: 100%;
+  cursor: grab;
+}
+
+.graph-svg:active {
+  cursor: grabbing;
 }
 
 .loading-overlay,
@@ -406,6 +567,121 @@ watch(payload, () => {
   align-items: center;
   justify-content: center;
   background-color: var(--paper);
+}
+
+/* Tooltip */
+.tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  padding: 0.75rem 1rem;
+  background: var(--paper);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  z-index: 100;
+  min-width: 150px;
+}
+
+.tooltip-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.tooltip-role {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.tooltip-stats {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: rgba(26, 26, 26, 0.6);
+}
+
+.tooltip-valence {
+  font-size: 0.625rem;
+  color: rgba(26, 26, 26, 0.4);
+  margin-top: 6px;
+}
+
+/* Zoom Controls */
+.zoom-controls {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--paper);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 0.375rem;
+  color: rgba(26, 26, 26, 0.6);
+  transition: all 0.15s ease;
+}
+
+.zoom-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--ink);
+}
+
+.zoom-level {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: rgba(26, 26, 26, 0.4);
+  min-width: 36px;
+  text-align: center;
+}
+
+/* Role Legend */
+.role-legend {
+  position: absolute;
+  bottom: 3.5rem;
+  left: 1rem;
+  display: flex;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 0.5rem;
+  backdrop-filter: blur(4px);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: rgba(26, 26, 26, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
 
 /* Ghost Panel - matches CharacterDetail card styling */

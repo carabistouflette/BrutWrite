@@ -6,9 +6,11 @@
  */
 
 import { ref, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { intelligenceApi } from '../../../api/intelligence';
 import type { CharacterGraphPayload, GraphNode, GraphAlert } from '../../../types/intelligence';
 import { useProjectStore } from '../../../stores/project';
+import { useSettingsStore } from '../../../stores/settings';
 
 interface CharacterGraphState {
   payload: CharacterGraphPayload | null;
@@ -41,6 +43,8 @@ const ANALYSIS_COOLDOWN_MS = 2000;
  */
 export function useCharacterGraph() {
   const projectStore = useProjectStore();
+  const settingsStore = useSettingsStore();
+  const { settings } = storeToRefs(settingsStore);
 
   // --- Computed ---
 
@@ -66,7 +70,7 @@ export function useCharacterGraph() {
   const alerts = computed<GraphAlert[]>(() => {
     if (!state.value.payload) return [];
 
-    const { metrics } = state.value.payload;
+    const { metrics, nodes } = state.value.payload;
     const result: GraphAlert[] = [];
 
     // SOLIPSISM: Over 50% isolation
@@ -92,7 +96,20 @@ export function useCharacterGraph() {
       result.push({
         code: 'GHOST',
         primaryText: 'Unmapped Characters',
-        tooltip: 'Characters declared but with 0 mentions.',
+        tooltip: `${ghosts.value.length} character(s) declared but never mentioned.`,
+      });
+    }
+
+    // PROTAGONIST_ABSENT: Check if protagonist has low mentions
+    const protagonists = nodes.filter((n) => {
+      const char = projectStore.characterById(n.id);
+      return char?.role === 'protagonist';
+    });
+    if (protagonists.length > 0 && protagonists.every((p) => p.mentionCount < 3)) {
+      result.push({
+        code: 'PROTAGONIST_ABSENT',
+        primaryText: 'Protagonist Fading',
+        tooltip: 'Your protagonist has very few mentions.',
       });
     }
 
@@ -104,7 +121,6 @@ export function useCharacterGraph() {
    */
   const isStale = computed<boolean>(() => {
     if (!state.value.lastAnalyzedAt) return true;
-    // Could compare with project.updated_at if available
     return false;
   });
 
@@ -114,6 +130,7 @@ export function useCharacterGraph() {
    * Analyze the character graph for the current project.
    *
    * Respects a 2-second cooldown to prevent spam.
+   * Uses settings from the settings store.
    */
   async function analyze(): Promise<void> {
     const projectId = projectStore.projectId;
@@ -132,7 +149,13 @@ export function useCharacterGraph() {
     state.value.error = null;
 
     try {
-      const payload = await intelligenceApi.getCharacterGraph(projectId);
+      // Get settings and pass to API
+      const { proximityWindow, pruneThreshold } = settings.value.intelligence;
+
+      const payload = await intelligenceApi.getCharacterGraph(projectId, {
+        proximityWindow,
+        pruneThreshold,
+      });
       state.value.payload = payload;
       state.value.lastAnalyzedAt = new Date().toISOString();
       lastAnalysisTime = now;
