@@ -89,41 +89,49 @@ pub async fn seed_demo_project(
         crate::commands::save_character(state.clone(), project_id_uuid, char.clone()).await?;
     }
 
+    // Helper to create mention HTML
+    let mention = |char: &Character| -> String {
+        format!(
+            r#"<span data-type="characterMention" class="mention" data-id="{}" data-label="{}">@{}</span>"#,
+            char.id, char.name, char.name
+        )
+    };
+
     // 3. Add Chapters with mentions
     let chapters_data = vec![
         (
             "Chapter 1: The Wakeup", 
             format!(
-                "<p>The neon rain fell hard on the pavement. @{} adjusted his collar. He was waiting for @{}. 'Where is the data?' asked @{}.</p><p>@{} laughed. 'You think @{} lets anything slip?'</p>", 
-                characters[0].name, characters[2].name, characters[0].name, characters[2].name, characters[1].name
+                "<p>The neon rain fell hard on the pavement. {} adjusted his collar. He was waiting for {}. 'Where is the data?' asked {}.</p><p>{} laughed. 'You think {} lets anything slip?'</p>", 
+                mention(&characters[0]), mention(&characters[2]), mention(&characters[0]), mention(&characters[2]), mention(&characters[1])
             )
         ),
         (
             "Chapter 2: The Grid",
             format!(
-                "<p>@{} connected to the mainframe. The presence of @{} was overwhelming. 'I see you,' the voice boomed. @{} tried to disconnect, but @{} held the line.</p>",
-                characters[0].name, characters[1].name, characters[0].name, characters[1].name
+                "<p>{} connected to the mainframe. The presence of {} was overwhelming. 'I see you,' the voice boomed. {} tried to disconnect, but {} held the line.</p>",
+                mention(&characters[0]), mention(&characters[1]), mention(&characters[0]), mention(&characters[1])
             )
         ),
         (
             "Chapter 3: Broken Memories",
             format!(
-                "<p>@{} visited @{}. 'I need to remember,' said @{}. @{} handed over a drive. 'This contains files on @{}.'</p>",
-                characters[0].name, characters[3].name, characters[0].name, characters[3].name, characters[1].name
+                "<p>{} visited {}. 'I need to remember,' said {}. {} handed over a drive. 'This contains files on {}.'</p>",
+                mention(&characters[0]), mention(&characters[3]), mention(&characters[0]), mention(&characters[3]), mention(&characters[1])
             )
         ),
         (
             "Chapter 4: The Void Bar",
              format!(
-                "<p>@{} was cleaning a glass. @{} sat at the bar, looking defeated. 'Drink?' asked @{}. 'Make it strong,' replied @{}. @{} slid a cred-chip across the counter.</p>",
-                characters[4].name, characters[0].name, characters[4].name, characters[0].name, characters[2].name
+                "<p>{} was cleaning a glass. {} sat at the bar, looking defeated. 'Drink?' asked {}. 'Make it strong,' replied {}. {} slid a cred-chip across the counter.</p>",
+                mention(&characters[4]), mention(&characters[0]), mention(&characters[4]), mention(&characters[0]), mention(&characters[2])
             )
         ),
         (
             "Chapter 5: Confrontation",
             format!(
-                "<p>The final showdown. @{} vs @{}. @{} watched from the shadows. @{} unleashed the virus. @{} screamed in binary.</p>",
-                characters[0].name, characters[1].name, characters[2].name, characters[0].name, characters[1].name
+                "<p>The final showdown. {} vs {}. {} watched from the shadows. {} unleashed the virus. {} screamed in binary.</p>",
+                mention(&characters[0]), mention(&characters[1]), mention(&characters[2]), mention(&characters[0]), mention(&characters[1])
             )
         )
     ];
