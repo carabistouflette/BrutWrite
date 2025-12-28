@@ -3,7 +3,7 @@
  * CharacterGraph.vue
  *
  * Force-directed graph visualization of character interactions.
- * Implements the "Editorial Brutalism" aesthetic with D3.js.
+ * Styled to match BrutWrite's warm, editorial aesthetic.
  */
 
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
@@ -102,21 +102,21 @@ function initGraph() {
   const nodesGroup = svg.append('g').attr('class', 'nodes-group');
   const labelsGroup = svg.append('g').attr('class', 'labels-group');
 
-  // Draw links
+  // Draw links - using warm ink color
   const links = linksGroup
     .selectAll('line')
     .data(linkData)
     .join('line')
     .attr('class', 'graph-link')
-    .attr('stroke', 'rgba(var(--ink-rgb), 0.25)')
+    .attr('stroke', 'rgba(26, 26, 26, 0.15)')
     .attr('stroke-width', (d) => Math.min(d.weight * 0.5 + 1, 4))
     .attr('stroke-dasharray', (d) => (d.interactionType === 'reference' ? '4,4' : 'none'));
 
   // Calculate node radius based on valence
   const maxValence = Math.max(...nodeData.map((n) => n.valence), 1);
-  const radiusScale = d3.scaleLinear().domain([0, maxValence]).range([8, 24]);
+  const radiusScale = d3.scaleLinear().domain([0, maxValence]).range([10, 28]);
 
-  // Draw nodes
+  // Draw nodes - warm ink color with paper fill
   const nodeElements = nodesGroup
     .selectAll('circle')
     .data(nodeData)
@@ -124,6 +124,8 @@ function initGraph() {
     .attr('class', 'graph-node')
     .attr('r', (d) => radiusScale(d.valence))
     .attr('fill', 'var(--ink)')
+    .attr('stroke', 'var(--paper)')
+    .attr('stroke-width', 2)
     .attr('cursor', 'pointer')
     .attr('tabindex', 0)
     .attr('role', 'button')
@@ -133,14 +135,16 @@ function initGraph() {
     .on('blur', () => handleNodeBlur())
     .on('keydown', (event, d) => handleNodeKeydown(event, d, nodeData, linkData));
 
-  // Draw labels
+  // Draw labels - serif font matching project style
   const labels = labelsGroup
     .selectAll('text')
     .data(nodeData)
     .join('text')
     .attr('class', 'graph-label')
-    .attr('font-family', 'Playfair Display, serif')
-    .attr('font-size', '11px')
+    .attr('font-family', 'Playfair Display, Georgia, serif')
+    .attr('font-size', '12px')
+    .attr('font-weight', '500')
+    .attr('font-style', 'italic')
     .attr('fill', 'var(--ink)')
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'middle')
@@ -158,7 +162,7 @@ function initGraph() {
   function updatePositions() {
     nodeElements.attr('cx', (d) => d.x ?? 0).attr('cy', (d) => d.y ?? 0);
 
-    labels.attr('x', (d) => d.x ?? 0).attr('y', (d) => (d.y ?? 0) + radiusScale(d.valence) + 14);
+    labels.attr('x', (d) => d.x ?? 0).attr('y', (d) => (d.y ?? 0) + radiusScale(d.valence) + 16);
 
     links
       .attr('x1', (d) => d.source.x ?? 0)
@@ -173,8 +177,8 @@ function initGraph() {
     (newId) => {
       nodeElements
         .attr('fill', (d) => (d.id === newId ? 'var(--accent)' : 'var(--ink)'))
-        .attr('stroke', (d) => (d.id === newId ? 'var(--accent)' : 'none'))
-        .attr('stroke-width', (d) => (d.id === newId ? 3 : 0));
+        .attr('stroke', (d) => (d.id === newId ? 'var(--paper)' : 'var(--paper)'))
+        .attr('stroke-width', (d) => (d.id === newId ? 3 : 2));
 
       // Dim non-connected nodes when one is selected
       if (newId) {
@@ -184,9 +188,9 @@ function initGraph() {
           if (l.target.id === newId) connectedIds.add(l.source.id);
         });
 
-        nodeElements.attr('opacity', (d) => (connectedIds.has(d.id) ? 1 : 0.1));
+        nodeElements.attr('opacity', (d) => (connectedIds.has(d.id) ? 1 : 0.15));
         links.attr('opacity', (l) => (l.source.id === newId || l.target.id === newId ? 1 : 0.1));
-        labels.attr('opacity', (d) => (connectedIds.has(d.id) ? 1 : 0.1));
+        labels.attr('opacity', (d) => (connectedIds.has(d.id) ? 1 : 0.15));
       } else {
         nodeElements.attr('opacity', 1);
         links.attr('opacity', 1);
@@ -292,12 +296,29 @@ watch(payload, () => {
   <div class="graph-container">
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-overlay">
-      <span class="font-mono text-sm">Analyzing...</span>
+      <div class="flex flex-col items-center gap-3">
+        <div class="w-8 h-8 border-2 border-ink/20 border-t-accent rounded-full animate-spin"></div>
+        <span class="text-xs uppercase tracking-widest text-ink/40 font-bold">Analyzing...</span>
+      </div>
     </div>
 
     <!-- Error State -->
     <div v-else-if="error" class="error-overlay">
-      <span class="font-mono text-sm text-red-500">{{ error }}</span>
+      <div class="text-center">
+        <div
+          class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3"
+        >
+          <svg class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+        </div>
+        <span class="text-sm text-red-600 font-medium">{{ error }}</span>
+      </div>
     </div>
 
     <!-- Graph SVG -->
@@ -310,25 +331,46 @@ watch(payload, () => {
       aria-label="Character interaction graph"
     />
 
-    <!-- Ghost Panel -->
+    <!-- Ghost Panel - styled to match CharacterDetail cards -->
     <aside v-if="ghosts.length > 0" class="ghost-panel">
-      <h4 class="ghost-panel-title font-serif">Unmapped Characters</h4>
-      <ul class="ghost-panel-list">
-        <li v-for="ghost in ghosts" :key="ghost.id" class="ghost-panel-item">
+      <div class="flex items-center gap-2 mb-3">
+        <h4 class="text-xs uppercase tracking-widest text-purple-700/60 font-bold">
+          Unmapped Characters
+        </h4>
+        <div class="h-px flex-1 bg-purple-500/10"></div>
+      </div>
+      <ul class="space-y-1.5">
+        <li
+          v-for="ghost in ghosts"
+          :key="ghost.id"
+          class="text-sm text-ink/60 font-medium flex items-center gap-2"
+        >
+          <span class="w-1.5 h-1.5 rounded-full bg-purple-400/50"></span>
           {{ ghost.label }}
         </li>
       </ul>
     </aside>
 
-    <!-- Metrics HUD -->
-    <footer v-if="metrics" class="metrics-hud font-mono">
+    <!-- Metrics HUD - styled to match project aesthetic -->
+    <footer v-if="metrics" class="metrics-hud">
       <div class="metrics-stats">
-        <span>Density: {{ metrics.networkDensity.toFixed(2) }}</span>
-        <span>Components: {{ metrics.connectedComponents }}</span>
-        <span>Isolation: {{ (metrics.isolationRatio * 100).toFixed(0) }}%</span>
+        <div class="metric-item">
+          <span class="metric-label">Density</span>
+          <span class="metric-value">{{ (metrics.networkDensity * 100).toFixed(0) }}%</span>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <span class="metric-label">Components</span>
+          <span class="metric-value">{{ metrics.connectedComponents }}</span>
+        </div>
+        <div class="metric-divider"></div>
+        <div class="metric-item">
+          <span class="metric-label">Isolated</span>
+          <span class="metric-value">{{ (metrics.isolationRatio * 100).toFixed(0) }}%</span>
+        </div>
       </div>
 
-      <!-- Alert Badges -->
+      <!-- Alert Badges - styled like role buttons -->
       <div v-if="alerts.length > 0" class="metrics-alerts">
         <span v-for="alert in alerts" :key="alert.code" class="alert-badge" :title="alert.tooltip">
           {{ alert.primaryText }}
@@ -347,8 +389,7 @@ watch(payload, () => {
   width: 100%;
   height: 100%;
   min-height: 400px;
-  background-color: var(--paper);
-  border: 1px solid var(--border-color);
+  background-color: transparent;
   overflow: hidden;
 }
 
@@ -364,48 +405,23 @@ watch(payload, () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: color-mix(in srgb, var(--paper), transparent 20%);
+  background-color: var(--paper);
 }
 
-/* Ghost Panel */
+/* Ghost Panel - matches CharacterDetail card styling */
 .ghost-panel {
   position: absolute;
   top: 1rem;
   right: 1rem;
   max-width: 200px;
-  padding: 0.75rem 1rem;
-  background-color: var(--stone);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-brut);
+  padding: 1rem 1.25rem;
+  background: linear-gradient(to bottom right, rgba(168, 85, 247, 0.05), transparent);
+  border: 1px solid rgba(168, 85, 247, 0.1);
+  border-radius: 1rem;
+  backdrop-filter: blur(8px);
 }
 
-.ghost-panel-title {
-  margin: 0 0 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
-}
-
-.ghost-panel-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ghost-panel-item {
-  padding: 0.25rem 0;
-  font-size: 0.875rem;
-  color: var(--text-tertiary);
-  border-bottom: 1px dashed var(--border-color);
-}
-
-.ghost-panel-item:last-child {
-  border-bottom: none;
-}
-
-/* Metrics HUD */
+/* Metrics HUD - refined to match project style */
 .metrics-hud {
   position: absolute;
   bottom: 0;
@@ -414,16 +430,42 @@ watch(payload, () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 1rem;
-  background-color: var(--stone);
-  border-top: 1px solid var(--border-color);
-  font-size: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(to top, var(--paper), transparent);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .metrics-stats {
   display: flex;
-  gap: 1.5rem;
-  color: var(--text-secondary);
+  align-items: center;
+  gap: 1rem;
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metric-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(26, 26, 26, 0.4);
+}
+
+.metric-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: 'Playfair Display', serif;
+  color: var(--ink);
+}
+
+.metric-divider {
+  width: 1px;
+  height: 24px;
+  background-color: rgba(0, 0, 0, 0.08);
 }
 
 .metrics-alerts {
@@ -432,15 +474,21 @@ watch(payload, () => {
 }
 
 .alert-badge {
-  padding: 0.25rem 0.5rem;
-  font-family: 'Inter', sans-serif;
+  padding: 0.375rem 0.75rem;
   font-size: 0.625rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--paper);
   background-color: var(--accent);
+  border-radius: 0.5rem;
   cursor: help;
+  transition: all 0.2s ease;
+}
+
+.alert-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 95, 31, 0.3);
 }
 
 /* Accessibility: Screen reader only */
@@ -460,7 +508,8 @@ watch(payload, () => {
 :deep(.graph-node) {
   transition:
     fill 0.2s ease,
-    opacity 0.2s ease;
+    opacity 0.2s ease,
+    stroke-width 0.2s ease;
 }
 
 :deep(.graph-node:focus) {

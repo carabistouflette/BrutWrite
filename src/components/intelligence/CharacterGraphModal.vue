@@ -3,13 +3,14 @@
  * CharacterGraphModal.vue
  *
  * Modal wrapper for the Character Graph visualization.
+ * Styled to match CharacterSheet's warm, editorial aesthetic.
  */
 
 import { defineAsyncComponent } from 'vue';
 
 const CharacterGraph = defineAsyncComponent(() => import('./CharacterGraph.vue'));
 
-const props = defineProps<{
+defineProps<{
   show: boolean;
 }>();
 
@@ -24,25 +25,32 @@ const close = () => {
 
 <template>
   <Teleport to="#app-scale-root">
-    <Transition name="dialog">
+    <Transition
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
       <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-8">
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/40" @click="close"></div>
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="close"></div>
 
         <!-- Modal Container -->
         <div
-          class="relative w-full max-w-5xl h-[80%] flex flex-col bg-paper/95 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden modal-container"
-          style="
-            box-shadow:
-              0 20px 50px -12px rgba(0, 0, 0, 0.25),
-              0 0 0 1px rgba(255, 255, 255, 0.4) inset;
-          "
+          class="relative w-full max-w-6xl h-[85%] flex flex-col bg-paper/95 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
+          style="box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.4)"
         >
           <!-- Header -->
-          <header class="px-6 py-4 border-b border-stone/50 flex justify-between items-center">
+          <header
+            class="px-8 py-4 border-b border-ink/5 flex justify-between items-center bg-paper/50"
+          >
             <div>
-              <h2 class="font-serif text-xl font-bold italic">Character Dynamics</h2>
-              <p class="text-xs text-ink/40 mt-0.5">Narrative gravity visualization</p>
+              <h2 class="text-2xl font-serif font-bold italic text-ink">Character Dynamics</h2>
+              <p class="text-xs uppercase tracking-widest text-ink/40 font-bold mt-0.5">
+                Narrative Gravity Visualization
+              </p>
             </div>
             <button
               class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-ink/40 hover:text-ink transition-colors"
@@ -60,8 +68,8 @@ const close = () => {
           </header>
 
           <!-- Graph Container -->
-          <div class="flex-1 overflow-hidden">
-            <CharacterGraph :width="900" :height="500" />
+          <div class="flex-1 overflow-hidden bg-transparent">
+            <CharacterGraph :width="1000" :height="550" />
           </div>
         </div>
       </div>
@@ -70,32 +78,18 @@ const close = () => {
 </template>
 
 <style scoped>
-/* Dialog Transition */
-.dialog-enter-active,
-.dialog-leave-active {
-  transition: opacity 0.2s ease-out;
-}
-
-.dialog-enter-from,
-.dialog-leave-to {
-  opacity: 0;
-}
-
-.dialog-enter-active .modal-container,
-.dialog-leave-active .modal-container {
-  transition:
-    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.3s ease-out;
-}
-
-.dialog-enter-from .modal-container,
-.dialog-leave-to .modal-container {
-  transform: translateY(8px);
-  opacity: 0;
-}
-
 .modal-container {
-  transform: translateZ(0);
-  backface-visibility: hidden;
+  animation: modal-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modal-pop {
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 </style>
