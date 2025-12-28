@@ -37,30 +37,23 @@ const tabs = [
 
 <template>
   <Teleport to="#app-scale-root">
-    <Transition
-      enter-active-class="transition duration-300 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition duration-200 ease-in"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
+    <Transition name="dialog">
       <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-12">
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-md" @click="close"></div>
+        <div class="absolute inset-0 bg-black/40" @click="close"></div>
 
         <!-- Window Container -->
         <div
-          class="relative w-full max-w-4xl h-[85%] flex bg-paper/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
-          :class="{ 'modal-exit': !show }"
+          class="relative w-full max-w-4xl h-[85%] flex bg-paper/70 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
           style="
             box-shadow:
               0 20px 50px -12px rgba(0, 0, 0, 0.2),
               0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+            will-change: transform, opacity;
           "
         >
           <!-- Sidebar -->
-          <div class="w-64 cyber-glass border-r border-ink/5 flex flex-col">
+          <div class="w-64 bg-paper/30 border-r border-ink/5 flex flex-col">
             <div class="p-6">
               <h2 class="font-serif text-2xl italic font-bold">Settings</h2>
             </div>
@@ -165,24 +158,35 @@ const tabs = [
   opacity: 0.2;
 }
 
-@keyframes modal-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+/* Dialog Transition Architecture */
+.dialog-enter-active,
+.dialog-leave-active {
+  transition: opacity 0.2s ease-out;
+}
+
+.dialog-enter-from,
+.dialog-leave-to {
+  opacity: 0;
+}
+
+.dialog-enter-active .modal-container,
+.dialog-leave-active .modal-container {
+  /* Use a strong ease-out without overshoot to prevent sub-pixel blurring artifacts */
+  transition:
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.3s ease-out;
+}
+
+.dialog-enter-from .modal-container,
+.dialog-leave-to .modal-container {
+  transform: translateY(8px);
+  opacity: 0;
 }
 
 .modal-container {
-  animation: modal-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.modal-exit {
-  transition: all 0.2s ease-in;
-  opacity: 0;
-  transform: scale(0.98) translateY(10px);
+  /* Hardware acceleration & anti-aliasing hints */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: subpixel-antialiased;
 }
 </style>

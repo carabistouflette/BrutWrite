@@ -68,4 +68,14 @@ impl FileRepository for MockFileRepository {
     async fn create_dir_all(&self, _path: &Path) -> Result<()> {
         Ok(())
     }
+
+    async fn read_dir(&self, path: &Path) -> Result<Vec<PathBuf>> {
+        let files = self.files.lock().unwrap();
+        let paths: Vec<PathBuf> = files
+            .keys()
+            .filter(|p| p.starts_with(path))
+            .cloned()
+            .collect();
+        Ok(paths)
+    }
 }

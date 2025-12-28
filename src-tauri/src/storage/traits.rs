@@ -9,4 +9,5 @@ pub trait FileRepository: Send + Sync {
     async fn exists(&self, path: &Path) -> Result<bool>;
     async fn delete(&self, path: &Path) -> Result<()>;
     async fn create_dir_all(&self, path: &Path) -> Result<()>;
+    async fn read_dir(&self, path: &Path) -> Result<Vec<std::path::PathBuf>>;
 }

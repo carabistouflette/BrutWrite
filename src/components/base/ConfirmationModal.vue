@@ -22,7 +22,7 @@ const confirm = () => {
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport to="#app-scale-root">
     <Transition
       enter-active-class="transition duration-300 ease-out"
       enter-from-class="opacity-0"
@@ -33,7 +33,11 @@ const confirm = () => {
     >
       <div v-if="show" class="fixed inset-0 z-60 flex items-center justify-center p-4">
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="close"></div>
+        <div
+          class="absolute inset-0 bg-black/40 backdrop-blur-md"
+          style="will-change: opacity, backdrop-filter"
+          @click="close"
+        ></div>
 
         <!-- Modal Window -->
         <div
@@ -47,7 +51,7 @@ const confirm = () => {
             </h3>
           </div>
 
-          <p class="text-ink/80 mb-8 leading-relaxed">
+          <p class="text-ink/80 mb-8 leading-relaxed font-sans">
             {{ message || 'Are you sure you want to proceed?' }}
           </p>
 

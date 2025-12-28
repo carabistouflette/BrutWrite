@@ -40,6 +40,10 @@ pub async fn save_chapter(
 
     // 2. Write content
     let repo = storage::LocalFileRepository;
+
+    // Create snapshot
+    storage::create_snapshot(&repo, &root_path, &chapter_id, &content).await?;
+
     storage::write_chapter_file(&repo, &root_path, &filename, &content).await?;
 
     // 3. Update word count
