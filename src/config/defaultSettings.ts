@@ -18,10 +18,17 @@ export interface InterfaceSettings {
   uiScaling: number; // 80 to 120 percentage
 }
 
+export interface IntelligenceSettings {
+  proximityWindow: number; // Word distance for proximity detection (10-200)
+  pruneThreshold: number; // Minimum edge weight to render (0.01-0.5)
+  autoAnalyzeOnSave: boolean; // Re-analyze after chapter save (debounced)
+}
+
 export interface AppSettings {
   general: GeneralSettings;
   editor: EditorSettings;
   interface: InterfaceSettings;
+  intelligence: IntelligenceSettings;
 }
 
 export const defaultSettings: AppSettings = {
@@ -41,5 +48,10 @@ export const defaultSettings: AppSettings = {
     theme: 'light',
     cyberGlassIntensity: 50,
     uiScaling: 100,
+  },
+  intelligence: {
+    proximityWindow: 50,
+    pruneThreshold: 0.05,
+    autoAnalyzeOnSave: false,
   },
 };
