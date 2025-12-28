@@ -11,8 +11,11 @@
 
 import { ref, defineAsyncComponent, computed } from 'vue';
 import { storeToRefs } from 'pinia';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeFile } from '@tauri-apps/plugin-fs';
 import { useProjectStore } from '../../stores/project';
 import { useCharacterGraph } from '../../composables/domain/intelligence/useCharacterGraph';
+import { useAppStatus } from '../../composables/ui/useAppStatus';
 
 const CharacterGraph = defineAsyncComponent(() => import('./CharacterGraph.vue'));
 
@@ -78,6 +81,8 @@ const clearFilter = async () => {
   await analyze();
 };
 
+const { notify, notifyError } = useAppStatus();
+
 /**
  * Export the graph as PNG
  */
@@ -112,7 +117,7 @@ const exportPng = async () => {
 
   // Create canvas and draw
   const img = new Image();
-  img.onload = () => {
+  img.onload = async () => {
     const canvas = document.createElement('canvas');
     canvas.width = 1000;
     canvas.height = 550;
@@ -123,13 +128,32 @@ const exportPng = async () => {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0);
 
-    // Download
-    const link = document.createElement('a');
-    link.download = `character-graph-${new Date().toISOString().split('T')[0]}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-
     URL.revokeObjectURL(url);
+
+    try {
+      // Get data URL and convert to Uint8Array
+      const dataUrl = canvas.toDataURL('image/png');
+      const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      // Open save dialog
+      const path = await save({
+        defaultPath: `character-graph-${new Date().toISOString().split('T')[0]}.png`,
+        filters: [{ name: 'Image', extensions: ['png'] }],
+      });
+
+      // Write to file if path selected
+      if (path) {
+        await writeFile(path, bytes);
+        notify('Graph exported successfully');
+      }
+    } catch (e) {
+      notifyError('Failed to export graph', e);
+    }
   };
   img.src = url;
 };
