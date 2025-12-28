@@ -11,6 +11,16 @@
 export type InteractionType = 'co_presence' | 'reference';
 
 /**
+ * Location of a character mention in the manuscript.
+ */
+export interface MentionLocation {
+  /** Chapter ID where the mention appears. */
+  chapterId: string;
+  /** Character offset within the chapter content. */
+  charOffset: number;
+}
+
+/**
  * A node in the character graph representing a single character.
  */
 export interface GraphNode {
@@ -24,6 +34,8 @@ export interface GraphNode {
   mentionCount: number;
   /** True if the character has at least 1 mention. */
   isMapped: boolean;
+  /** Location of the first mention (for click-to-jump). */
+  firstMention: MentionLocation | null;
 }
 
 /**

@@ -7,6 +7,7 @@
  */
 
 import { defineAsyncComponent } from 'vue';
+import { useProjectStore } from '../../stores/project';
 
 const CharacterGraph = defineAsyncComponent(() => import('./CharacterGraph.vue'));
 
@@ -18,8 +19,18 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
+const projectStore = useProjectStore();
+
 const close = () => {
   emit('close');
+};
+
+/**
+ * Navigate to a specific chapter when double-clicking a character node.
+ */
+const handleNavigateToMention = (chapterId: string) => {
+  projectStore.setActiveId(chapterId);
+  close();
 };
 </script>
 
@@ -52,24 +63,33 @@ const close = () => {
                 Narrative Gravity Visualization
               </p>
             </div>
-            <button
-              class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-ink/40 hover:text-ink transition-colors"
-              @click="close"
-            >
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+            <div class="flex items-center gap-4">
+              <span class="text-xs text-ink/30 hidden sm:inline">
+                Double-click a character to jump to their first mention
+              </span>
+              <button
+                class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-ink/40 hover:text-ink transition-colors"
+                @click="close"
+              >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
           </header>
 
           <!-- Graph Container -->
           <div class="flex-1 overflow-hidden bg-transparent">
-            <CharacterGraph :width="1000" :height="550" />
+            <CharacterGraph
+              :width="1000"
+              :height="550"
+              @navigate-to-mention="handleNavigateToMention"
+            />
           </div>
         </div>
       </div>

@@ -32,6 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   (e: 'nodeSelect', node: GraphNode | null): void;
+  (e: 'navigateToMention', chapterId: string): void;
 }>();
 
 // --- Composables ---
@@ -182,6 +183,7 @@ function initGraph() {
     .attr('role', 'button')
     .attr('aria-label', (d) => `${d.label}, ${d.mentionCount} mentions`)
     .on('click', (_event, d) => handleNodeClick(d))
+    .on('dblclick', (_event, d) => handleNodeDoubleClick(d))
     .on('focus', (_event, d) => handleNodeFocus(d))
     .on('blur', () => handleNodeBlur())
     .on('keydown', (event, d) => handleNodeKeydown(event, d, nodeData, linkData))
@@ -304,6 +306,12 @@ function handleNodeClick(node: D3Node) {
   } else {
     selectedNodeId.value = node.id;
     emit('nodeSelect', node);
+  }
+}
+
+function handleNodeDoubleClick(node: D3Node) {
+  if (node.firstMention) {
+    emit('navigateToMention', node.firstMention.chapterId);
   }
 }
 

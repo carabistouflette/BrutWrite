@@ -25,6 +25,16 @@ pub enum InteractionType {
     Reference,
 }
 
+/// Location of a character mention in the manuscript.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MentionLocation {
+    /// Chapter ID where the mention appears.
+    pub chapter_id: String,
+    /// Character offset within the chapter content.
+    pub char_offset: usize,
+}
+
 /// A node in the character graph.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,6 +49,8 @@ pub struct GraphNode {
     pub mention_count: u32,
     /// True if the character has at least 1 mention.
     pub is_mapped: bool,
+    /// Location of the first mention (for click-to-jump).
+    pub first_mention: Option<MentionLocation>,
 }
 
 /// An edge in the character graph.
@@ -213,6 +225,7 @@ async fn build_character_graph(
     let mut mention_counts: HashMap<String, u32> = HashMap::new();
     let mut chapter_presences: HashMap<String, HashSet<String>> = HashMap::new(); // char_id -> set of chapter_ids
     let mut char_mentions_by_chapter: HashMap<String, HashMap<String, Vec<usize>>> = HashMap::new(); // chapter_id -> char_id -> positions
+    let mut first_mentions: HashMap<String, MentionLocation> = HashMap::new(); // char_id -> first mention location
 
     for (chapter_id, content) in chapter_contents {
         let mut chapter_mentions: HashMap<String, Vec<usize>> = HashMap::new();
@@ -229,6 +242,17 @@ async fn build_character_graph(
                     .or_default()
                     .insert(chapter_id.clone());
 
+                // Track first mention
+                if !first_mentions.contains_key(&char_id) {
+                    first_mentions.insert(
+                        char_id.clone(),
+                        MentionLocation {
+                            chapter_id: chapter_id.clone(),
+                            char_offset: positions[0],
+                        },
+                    );
+                }
+
                 chapter_mentions.insert(char_id, positions);
             }
         }
@@ -244,11 +268,12 @@ async fn build_character_graph(
             let count = *mention_counts.get(&char_id).unwrap_or(&0);
             let valence = (1.0 + count as f32).ln() * role_weight(&c.role);
             GraphNode {
-                id: char_id,
+                id: char_id.clone(),
                 label: c.name.clone(),
                 valence,
                 mention_count: count,
                 is_mapped: count > 0,
+                first_mention: first_mentions.get(&char_id).cloned(),
             }
         })
         .collect();
