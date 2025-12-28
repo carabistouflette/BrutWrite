@@ -112,10 +112,15 @@ pub async fn branch_snapshot(
     let timestamp = snapshot_filename.split('_').next().unwrap_or("snapshot");
     let name = format!("Branch from {}", timestamp);
 
-    // We append to the end for now, or we could try to place it near the original.
-    // Let's just create it at the top level or same level if we knew parent.
-    // Creating at top level is safer as we don't know parent here easily without search.
-    let new_chapter = metadata.manifest.create_chapter(None, name);
+    // Find parent_id of the original chapter to place the branch as a sibling
+    let parent_id = metadata
+        .manifest
+        .chapters
+        .iter()
+        .find(|c| c.id == snapshot_chapter_id)
+        .and_then(|c| c.parent_id.clone());
+
+    let new_chapter = metadata.manifest.create_chapter(parent_id, name);
 
     // 3. Write file
     storage::write_chapter_file(&repo, &root_path, &new_chapter.filename, &content).await?;
