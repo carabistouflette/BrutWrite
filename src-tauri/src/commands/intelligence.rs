@@ -105,10 +105,14 @@ fn role_weight(role: &CharacterRole) -> f32 {
 }
 
 /// Find all positions where a character name or @tag appears in text.
+/// Find all positions where a character name or @tag appears in text.
 fn find_character_mentions(text: &str, character: &Character) -> Vec<usize> {
     let text_lower = text.to_lowercase();
     let name_lower = character.name.to_lowercase();
     let tag = format!("@{}", name_lower);
+    let id_ref = format!("data-id=\"{}\"", character.id);
+    // Also support data-entity-id for future proofing or alternative marks
+    let entity_ref = format!("data-entity-id=\"{}\"", character.id);
 
     let mut positions = Vec::new();
 
@@ -126,6 +130,21 @@ fn find_character_mentions(text: &str, character: &Character) -> Vec<usize> {
         let actual_pos = start + pos;
         positions.push(actual_pos);
         start = actual_pos + tag.len();
+    }
+
+    // Find ID references (The robust link)
+    start = 0;
+    while let Some(pos) = text_lower[start..].find(&id_ref) {
+        let actual_pos = start + pos;
+        positions.push(actual_pos);
+        start = actual_pos + id_ref.len();
+    }
+
+    start = 0;
+    while let Some(pos) = text_lower[start..].find(&entity_ref) {
+        let actual_pos = start + pos;
+        positions.push(actual_pos);
+        start = actual_pos + entity_ref.len();
     }
 
     positions.sort();
