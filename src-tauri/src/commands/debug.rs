@@ -89,49 +89,70 @@ pub async fn seed_demo_project(
         crate::commands::save_character(state.clone(), project_id_uuid, char.clone()).await?;
     }
 
-    // Helper to create mention HTML
-    let mention = |char: &Character| -> String {
+    // Helper to create mention HTML with alias support
+    // This matches the Tiptap textStyle mark structure: <span data-id="..." ...>Text</span>
+    let mention = |char: &Character, alias: Option<&str>| -> String {
+        let text = alias.unwrap_or(&char.name);
         format!(
-            r#"<span data-type="characterMention" class="mention" data-id="{}" data-label="{}">@{}</span>"#,
-            char.id, char.name, char.name
+            r#"<span data-id="{}" data-type="character-mention" class="mention">{}</span>"#,
+            char.id, text
         )
     };
 
-    // 3. Add Chapters with mentions
+    // 3. Add Chapters with mentions (Using Aliases!)
     let chapters_data = vec![
         (
             "Chapter 1: The Wakeup", 
             format!(
                 "<p>The neon rain fell hard on the pavement. {} adjusted his collar. He was waiting for {}. 'Where is the data?' asked {}.</p><p>{} laughed. 'You think {} lets anything slip?'</p>", 
-                mention(&characters[0]), mention(&characters[2]), mention(&characters[0]), mention(&characters[2]), mention(&characters[1])
+                mention(&characters[0], Some("The hacker")), // Cipher -> The hacker
+                mention(&characters[2], Some("the kid")),    // Glitch -> the kid
+                mention(&characters[0], None),               // Cipher
+                mention(&characters[2], None),               // Glitch
+                mention(&characters[1], Some("The Architect")) // The Architect
             )
         ),
         (
             "Chapter 2: The Grid",
             format!(
                 "<p>{} connected to the mainframe. The presence of {} was overwhelming. 'I see you,' the voice boomed. {} tried to disconnect, but {} held the line.</p>",
-                mention(&characters[0]), mention(&characters[1]), mention(&characters[0]), mention(&characters[1])
+                mention(&characters[0], None), 
+                mention(&characters[1], Some("the machine god")), // The Architect -> the machine god
+                mention(&characters[0], Some("Cipher")), 
+                mention(&characters[1], None)
             )
         ),
         (
             "Chapter 3: Broken Memories",
             format!(
                 "<p>{} visited {}. 'I need to remember,' said {}. {} handed over a drive. 'This contains files on {}.'</p>",
-                mention(&characters[0]), mention(&characters[3]), mention(&characters[0]), mention(&characters[3]), mention(&characters[1])
+                mention(&characters[0], None), 
+                mention(&characters[3], Some("the memory broker")), // Echo -> the memory broker
+                mention(&characters[0], None), 
+                mention(&characters[3], None), 
+                mention(&characters[1], None)
             )
         ),
         (
             "Chapter 4: The Void Bar",
              format!(
                 "<p>{} was cleaning a glass. {} sat at the bar, looking defeated. 'Drink?' asked {}. 'Make it strong,' replied {}. {} slid a cred-chip across the counter.</p>",
-                mention(&characters[4]), mention(&characters[0]), mention(&characters[4]), mention(&characters[0]), mention(&characters[2])
+                mention(&characters[4], None), // Neon
+                mention(&characters[0], Some("The exhausted runner")), // Cipher
+                mention(&characters[4], None), 
+                mention(&characters[0], None), 
+                mention(&characters[2], None)
             )
         ),
         (
             "Chapter 5: Confrontation",
             format!(
                 "<p>The final showdown. {} vs {}. {} watched from the shadows. {} unleashed the virus. {} screamed in binary.</p>",
-                mention(&characters[0]), mention(&characters[1]), mention(&characters[2]), mention(&characters[0]), mention(&characters[1])
+                mention(&characters[0], None), 
+                mention(&characters[1], None), 
+                mention(&characters[2], None), 
+                mention(&characters[0], None), 
+                mention(&characters[1], None)
             )
         )
     ];
