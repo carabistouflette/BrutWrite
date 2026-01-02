@@ -1,77 +1,79 @@
 <template>
-  <div
-    class="flex-1 w-full flex flex-col items-center justify-center bg-paper text-ink selection:bg-accent/20 overflow-hidden relative"
-    :class="{ 'exit-active': isExiting }"
-  >
-    <!-- Background Decorative Elements -->
-    <div class="absolute inset-0 z-0 pointer-events-none opacity-30">
-      <div
-        class="absolute top-[10%] left-[5%] w-[40vw] h-[40vw] rounded-full bg-accent/5 blur-[120px] animate-pulse"
-      ></div>
-      <div
-        class="absolute bottom-[10%] right-[5%] w-[30vw] h-[30vw] rounded-full bg-accent/10 blur-[100px] animate-pulse stagger-1"
-      ></div>
-    </div>
-
+  <Transition name="exit" @after-leave="onAfterLeave">
     <div
-      class="relative z-10 w-full max-w-6xl px-12 grid grid-cols-1 lg:grid-cols-2 gap-24 items-center"
+      v-if="isVisible"
+      class="flex-1 w-full flex flex-col items-center justify-center bg-paper text-ink selection:bg-accent/20 overflow-hidden relative"
     >
-      <!-- Left: Recent Projects & Inspiration -->
-      <div class="hidden lg:flex flex-col space-y-8 animate-enter">
-        <RecentProjectList :recent-projects="recentProjects" @open-project="handleRecent" />
-
-        <div class="pt-12 border-t border-ink/5">
-          <p class="text-xs italic opacity-30 leading-relaxed max-w-sm">
-            "The first draft is just you telling yourself the story."
-            <br />— Terry Pratchett
-          </p>
-        </div>
+      <!-- Background Decorative Elements -->
+      <div class="absolute inset-0 z-0 pointer-events-none opacity-30">
+        <div
+          class="absolute top-[10%] left-[5%] w-[40vw] h-[40vw] rounded-full bg-accent/5 blur-[120px] animate-pulse"
+        ></div>
+        <div
+          class="absolute bottom-[10%] right-[5%] w-[30vw] h-[30vw] rounded-full bg-accent/10 blur-[100px] animate-pulse stagger-1"
+        ></div>
       </div>
 
-      <!-- Right: Branding & Core Actions -->
       <div
-        class="flex flex-col items-center lg:items-end lg:text-right space-y-12 animate-enter stagger-1"
+        class="relative z-10 w-full max-w-6xl px-12 grid grid-cols-1 lg:grid-cols-2 gap-24 items-center"
       >
-        <!-- Logo Container -->
-        <BrutWriteLogo />
+        <!-- Left: Recent Projects & Inspiration -->
+        <div class="hidden lg:flex flex-col space-y-8 animate-enter">
+          <RecentProjectList :recent-projects="recentProjects" @open-project="handleRecent" />
 
-        <!-- Main Actions -->
-        <WelcomeActions
-          @new-project="handleNewProject"
-          @open-project="handleOpenProject"
-          @demo-project="handleDemoProject"
-        />
+          <div class="pt-12 border-t border-ink/5">
+            <p class="text-xs italic opacity-30 leading-relaxed max-w-sm">
+              "The first draft is just you telling yourself the story."
+              <br />— Terry Pratchett
+            </p>
+          </div>
+        </div>
 
-        <!-- Footer Meta (Mobile only or additional) -->
-        <div class="lg:hidden w-full space-y-4 pt-8">
-          <h2 class="text-[10px] uppercase tracking-[0.2em] opacity-30 text-center font-bold">
-            Recent Projects
-          </h2>
-          <div class="flex gap-2 overflow-x-auto pb-4 px-2">
-            <button
-              v-for="path in recentProjects"
-              :key="path"
-              class="whitespace-nowrap px-4 py-2 rounded-full border border-ink/10 text-xs hover:bg-ink hover:text-paper transition-all"
-              @click="handleRecent(path)"
-            >
-              {{ path.split(/[\\/]/).pop()?.replace('.json', '') || 'Untitled' }}
-            </button>
+        <!-- Right: Branding & Core Actions -->
+        <div
+          class="flex flex-col items-center lg:items-end lg:text-right space-y-12 animate-enter stagger-1"
+        >
+          <!-- Logo Container -->
+          <BrutWriteLogo />
+
+          <!-- Main Actions -->
+          <WelcomeActions
+            @new-project="handleNewProject"
+            @open-project="handleOpenProject"
+            @demo-project="handleDemoProject"
+          />
+
+          <!-- Footer Meta (Mobile only or additional) -->
+          <div class="lg:hidden w-full space-y-4 pt-8">
+            <h2 class="text-[10px] uppercase tracking-[0.2em] opacity-30 text-center font-bold">
+              Recent Projects
+            </h2>
+            <div class="flex gap-2 overflow-x-auto pb-4 px-2">
+              <button
+                v-for="path in recentProjects"
+                :key="path"
+                class="whitespace-nowrap px-4 py-2 rounded-full border border-ink/10 text-xs hover:bg-ink hover:text-paper transition-all"
+                @click="handleRecent(path)"
+              >
+                {{ path.split(/[\\/]/).pop()?.replace('.json', '') || 'Untitled' }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Minimal Bottom Bar -->
-    <div
-      class="absolute bottom-8 left-0 right-0 px-12 flex justify-between items-end opacity-20 text-[10px] uppercase tracking-widest font-bold"
-    >
-      <span>© 2025 BrutWrite Studio</span>
-      <div class="flex gap-8">
-        <span class="hover:text-ink cursor-pointer transition-colors">Documentation</span>
-        <span class="hover:text-ink cursor-pointer transition-colors">Release Notes</span>
+      <!-- Minimal Bottom Bar -->
+      <div
+        class="absolute bottom-8 left-0 right-0 px-12 flex justify-between items-end opacity-20 text-[10px] uppercase tracking-widest font-bold"
+      >
+        <span>© 2025 BrutWrite Studio</span>
+        <div class="flex gap-8">
+          <span class="hover:text-ink cursor-pointer transition-colors">Documentation</span>
+          <span class="hover:text-ink cursor-pointer transition-colors">Release Notes</span>
+        </div>
       </div>
     </div>
-  </div>
+  </Transition>
 </template>
 
 <script setup lang="ts">
@@ -80,7 +82,6 @@ import { open, save } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { useProjectIO } from '../composables/domain/project/useProjectIO';
 import { useRecentProjects } from '../composables/domain/project/useRecentProjects';
-import { APP_CONSTANTS } from '../config/constants';
 import { useAppStatus } from '../composables/ui/useAppStatus';
 
 // Sub-components
@@ -91,28 +92,18 @@ import BrutWriteLogo from './common/BrutWriteLogo.vue';
 const { loadProject, createProject } = useProjectIO();
 const { recentProjects, loadRecentProjects } = useRecentProjects();
 const { notifyError } = useAppStatus();
-const isExiting = ref(false);
+
+const isVisible = ref(true);
+let exitResolve: (() => void) | undefined;
+
+const onAfterLeave = () => {
+  if (exitResolve) exitResolve();
+};
 
 const triggerExit = async () => {
-  isExiting.value = true;
-  // Wait for the animation to finish deterministically
+  isVisible.value = false;
   await new Promise<void>((resolve) => {
-    // If user has reduced motion or extensive lag, fallback safely
-    const fallback = setTimeout(resolve, APP_CONSTANTS.UI.ANIMATION_DURATION.SLOW + 200);
-
-    const onAnimationEnd = () => {
-      clearTimeout(fallback);
-      resolve();
-    };
-
-    // We can attach to the root element or just wait slightly longer if we want to be purely vibe-less.
-    // But better: use a watcher or ref. For now, since we modify the class on the root div,
-    // we can assume the browser will schedule the animation.
-    // Ideally we would use a Transition component, but refactoring the template is risky.
-    // Let's use the safer fallback + event listener combo if possible.
-    document
-      .querySelector('.exit-active')
-      ?.addEventListener('animationend', onAnimationEnd, { once: true });
+    exitResolve = resolve;
   });
 };
 
@@ -178,7 +169,7 @@ loadRecentProjects();
 </script>
 
 <style scoped>
-.exit-active {
+.exit-leave-active {
   animation: exit-scale 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
