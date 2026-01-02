@@ -55,7 +55,7 @@
                 class="whitespace-nowrap px-4 py-2 rounded-full border border-ink/10 text-xs hover:bg-ink hover:text-paper transition-all"
                 @click="handleRecent(path)"
               >
-                {{ path.split(/[\\/]/).pop()?.replace('.json', '') || 'Untitled' }}
+                {{ formatProjectName(path) }}
               </button>
             </div>
           </div>
@@ -83,6 +83,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useProjectIO } from '../composables/domain/project/useProjectIO';
 import { useRecentProjects } from '../composables/domain/project/useRecentProjects';
 import { useAppStatus } from '../composables/ui/useAppStatus';
+import { formatProjectName } from '../utils/paths';
 
 // Sub-components
 import RecentProjectList from './welcome/RecentProjectList.vue';
@@ -94,17 +95,29 @@ const { recentProjects, loadRecentProjects } = useRecentProjects();
 const { notifyError } = useAppStatus();
 
 const isVisible = ref(true);
-let exitResolve: (() => void) | undefined;
+
+// Use a promise to handle the exit animation
+const waitForExit = () => {
+  return new Promise<void>((resolve) => {
+    // We expose the resolve and call it in the template callback 'onAfterLeave'.
+    exitResolver.value = resolve;
+  });
+};
+
+const exitResolver = ref<(() => void) | null>(null);
 
 const onAfterLeave = () => {
-  if (exitResolve) exitResolve();
+  if (exitResolver.value) {
+    exitResolver.value();
+    exitResolver.value = null;
+  }
 };
 
 const triggerExit = async () => {
+  if (!isVisible.value) return; // Already exiting
+  const exitPromise = waitForExit();
   isVisible.value = false;
-  await new Promise<void>((resolve) => {
-    exitResolve = resolve;
-  });
+  await exitPromise;
 };
 
 const handleRecent = async (path: string) => {
@@ -137,7 +150,7 @@ const handleNewProject = async () => {
     });
 
     if (selected && typeof selected === 'string') {
-      const name = selected.split(/[\\/]/).pop()?.replace('.json', '') || 'Untitled Project';
+      const name = formatProjectName(selected);
       await triggerExit();
       await createProject(selected, name, 'Unknown Author');
     }
