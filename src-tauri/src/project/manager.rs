@@ -141,7 +141,10 @@ mod tests {
             .register_project(project_id, path.clone(), metadata)
             .await;
 
-        let (retrieved_path, _metadata_arc) = manager.get_context(project_id).await.unwrap();
+        let (retrieved_path, _metadata_arc) = manager
+            .get_context(project_id)
+            .await
+            .expect("Project should be retrievable after registration");
         assert_eq!(retrieved_path, path);
     }
 

@@ -240,14 +240,23 @@ async fn build_character_graph(
         };
     }
 
-    // Step 1: Count mentions per character and find positions
+    // Maps char_id -> Total references across project
     let mut mention_counts: HashMap<String, u32> = HashMap::new();
-    let mut chapter_presences: HashMap<String, HashSet<String>> = HashMap::new(); // char_id -> set of chapter_ids
-    let mut char_mentions_by_chapter: HashMap<String, HashMap<String, Vec<usize>>> = HashMap::new(); // chapter_id -> char_id -> positions
-    let mut first_mentions: HashMap<String, MentionLocation> = HashMap::new(); // char_id -> first mention location
+    // Maps char_id -> Set(chapter_id)
+    let mut chapter_presences: HashMap<String, HashSet<String>> = HashMap::new();
+    let mut first_mentions: HashMap<String, MentionLocation> = HashMap::new();
 
+    // Accumulate interaction weights: (id_a, id_b) -> weight
+    // Key must be sorted (a < b) to avoid duplicates
+    let mut interaction_weights: HashMap<(String, String), f32> = HashMap::new();
+    let mut interaction_types: HashMap<(String, String), InteractionType> = HashMap::new();
+
+    // Iterate chapters to process text
     for (chapter_id, content) in chapter_contents {
-        let mut chapter_mentions: HashMap<String, Vec<usize>> = HashMap::new();
+        // 1. Collect all mentions in this chapter
+        //    Format: (char_offset, word_index, char_id)
+        let mut chapter_mentions: Vec<(usize, usize, String)> = Vec::new();
+        let mut present_in_chapter: HashSet<String> = HashSet::new();
 
         for character in characters {
             let char_id = character.id.to_string();
@@ -255,13 +264,12 @@ async fn build_character_graph(
 
             if !positions.is_empty() {
                 *mention_counts.entry(char_id.clone()).or_default() += positions.len() as u32;
-
                 chapter_presences
                     .entry(char_id.clone())
                     .or_default()
                     .insert(chapter_id.clone());
+                present_in_chapter.insert(char_id.clone());
 
-                // Track first mention
                 if !first_mentions.contains_key(&char_id) {
                     first_mentions.insert(
                         char_id.clone(),
@@ -272,14 +280,67 @@ async fn build_character_graph(
                     );
                 }
 
-                chapter_mentions.insert(char_id, positions);
+                // Add to flat list for sliding window
+                for &pos in &positions {
+                    let word_idx = char_pos_to_word_index(content, pos);
+                    chapter_mentions.push((pos, word_idx, char_id.clone()));
+                }
             }
         }
 
-        char_mentions_by_chapter.insert(chapter_id.clone(), chapter_mentions);
+        // 2. Co-Presence Score (Base load)
+        //    All characters present in this chapter get +1.0 with each other
+        let present_list: Vec<String> = present_in_chapter.into_iter().collect();
+        for i in 0..present_list.len() {
+            for j in (i + 1)..present_list.len() {
+                let (a, b) = if present_list[i] < present_list[j] {
+                    (present_list[i].clone(), present_list[j].clone())
+                } else {
+                    (present_list[j].clone(), present_list[i].clone())
+                };
+
+                *interaction_weights
+                    .entry((a.clone(), b.clone()))
+                    .or_default() += 1.0;
+                interaction_types
+                    .entry((a, b))
+                    .or_insert(InteractionType::CoPresence);
+            }
+        }
+
+        // 3. Proximity Bonus (Sliding Window / Look-ahead)
+        //    Sort mentions by word index to allow linear scanning
+        chapter_mentions.sort_by_key(|k| k.1);
+
+        for i in 0..chapter_mentions.len() {
+            let (_, word_idx_a, ref id_a) = chapter_mentions[i];
+
+            // Look ahead until distance > proximity_window
+            for (_, word_idx_b, ref id_b) in chapter_mentions.iter().skip(i + 1) {
+                let dist = word_idx_b.saturating_sub(word_idx_a);
+                if dist > proximity_window {
+                    break;
+                }
+
+                // If different characters, add proximity bonus
+                if id_a != id_b {
+                    let (a, b) = if id_a < id_b {
+                        (id_a.clone(), id_b.clone())
+                    } else {
+                        (id_b.clone(), id_a.clone())
+                    };
+
+                    let bonus = proximity_bonus(dist, proximity_window);
+                    if bonus > 0.0 {
+                        *interaction_weights.entry((a, b)).or_default() += bonus;
+                    }
+                }
+            }
+        }
     }
 
-    // Step 2: Build nodes
+    // Step 4: Build nodes
+    // Safe handling: iterate original chars list
     let nodes: Vec<GraphNode> = characters
         .iter()
         .map(|c| {
@@ -297,71 +358,7 @@ async fn build_character_graph(
         })
         .collect();
 
-    // Step 3: Build interaction matrix
-    let n = characters.len();
-    let mut interaction_weights: HashMap<(String, String), f32> = HashMap::new();
-    let mut interaction_types: HashMap<(String, String), InteractionType> = HashMap::new();
-
-    // Co-presence: characters appearing in same chapter
-    for (chapter_id, content) in chapter_contents {
-        let mentions = char_mentions_by_chapter.get(chapter_id);
-        if mentions.is_none() {
-            continue;
-        }
-        let mentions = mentions.unwrap();
-
-        let present_chars: Vec<&String> = mentions.keys().collect();
-
-        // Co-presence score
-        for i in 0..present_chars.len() {
-            for j in (i + 1)..present_chars.len() {
-                let (a, b) = if present_chars[i] < present_chars[j] {
-                    (present_chars[i].clone(), present_chars[j].clone())
-                } else {
-                    (present_chars[j].clone(), present_chars[i].clone())
-                };
-
-                *interaction_weights
-                    .entry((a.clone(), b.clone()))
-                    .or_default() += 1.0;
-                interaction_types
-                    .entry((a, b))
-                    .or_insert(InteractionType::CoPresence);
-            }
-        }
-
-        // Proximity bonus within same chapter
-        for i in 0..present_chars.len() {
-            for j in (i + 1)..present_chars.len() {
-                let pos_a = &mentions[present_chars[i]];
-                let pos_b = &mentions[present_chars[j]];
-
-                let (a, b) = if present_chars[i] < present_chars[j] {
-                    (present_chars[i].clone(), present_chars[j].clone())
-                } else {
-                    (present_chars[j].clone(), present_chars[i].clone())
-                };
-
-                // Calculate proximity bonus for closest mentions
-                for &pa in pos_a {
-                    for &pb in pos_b {
-                        let word_a = char_pos_to_word_index(content, pa);
-                        let word_b = char_pos_to_word_index(content, pb);
-                        let distance = (word_a as isize - word_b as isize).unsigned_abs();
-
-                        let bonus = proximity_bonus(distance, proximity_window);
-                        if bonus > 0.0 {
-                            *interaction_weights
-                                .entry((a.clone(), b.clone()))
-                                .or_default() += bonus;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Step 4: Build edges (prune below threshold)
+    // Step 5: Build edges (prune)
     let edges: Vec<GraphEdge> = interaction_weights
         .into_iter()
         .filter(|(_, weight)| *weight >= prune_threshold)
@@ -379,7 +376,8 @@ async fn build_character_graph(
         })
         .collect();
 
-    // Step 5: Compute metrics
+    // Step 6: Compute metrics
+    let n = characters.len();
     let char_id_to_index: HashMap<String, usize> = characters
         .iter()
         .enumerate()
@@ -502,7 +500,7 @@ mod tests {
 
     fn make_test_character(id: &str, name: &str, role: CharacterRole) -> Character {
         Character {
-            id: Uuid::parse_str(id).unwrap(),
+            id: Uuid::parse_str(id).expect("Invalid UUID in test setup"),
             name: name.to_string(),
             role,
             archetype: String::new(),
