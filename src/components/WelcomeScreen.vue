@@ -95,9 +95,25 @@ const isExiting = ref(false);
 
 const triggerExit = async () => {
   isExiting.value = true;
-  await new Promise((resolve) =>
-    setTimeout(resolve, APP_CONSTANTS.UI.ANIMATION_DURATION.SLOW + 100)
-  ); // Wait for animation
+  // Wait for the animation to finish deterministically
+  await new Promise<void>((resolve) => {
+    // If user has reduced motion or extensive lag, fallback safely
+    const fallback = setTimeout(resolve, APP_CONSTANTS.UI.ANIMATION_DURATION.SLOW + 200);
+
+    const onAnimationEnd = () => {
+      clearTimeout(fallback);
+      resolve();
+    };
+
+    // We can attach to the root element or just wait slightly longer if we want to be purely vibe-less.
+    // But better: use a watcher or ref. For now, since we modify the class on the root div,
+    // we can assume the browser will schedule the animation.
+    // Ideally we would use a Transition component, but refactoring the template is risky.
+    // Let's use the safer fallback + event listener combo if possible.
+    document
+      .querySelector('.exit-active')
+      ?.addEventListener('animationend', onAnimationEnd, { once: true });
+  });
 };
 
 const handleRecent = async (path: string) => {

@@ -63,8 +63,8 @@ export function useProjectIO() {
       });
     } catch (e) {
       notifyError('Failed to load project', e);
-      // If load fails but we had a cache, maybe we should warn the user the data might be stale?
-      // For now, if load fails, we probably shouldn't rely on cache as 'truth' forever.
+      // Rethrow to allow caller to handle UI state (e.g. abort navigation)
+      throw e;
     }
   };
 

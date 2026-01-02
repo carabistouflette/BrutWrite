@@ -50,7 +50,11 @@ const isExiting = ref(false);
 // --- Event Handlers ---
 const handleChangeProject = async () => {
   isExiting.value = true;
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  // Allow the transition to complete (500ms in CSS)
+  // Using a promise with fallback is safer than assuming the event always fires (e.g. invalid CSS)
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, 500);
+  });
   closeProject();
 };
 
