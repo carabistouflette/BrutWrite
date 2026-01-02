@@ -27,28 +27,34 @@ export const useProjectStore = defineStore('project', () => {
   });
 
   // Internal Helper
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
   const rebuildMap = (fileNodes: FileNode[]) => {
-    const map = new Map<string, FileNode>();
-    const list: FileNode[] = [];
-    const stack: FileNode[] = [...fileNodes].reverse();
+    if (debounceTimer) clearTimeout(debounceTimer);
 
-    while (stack.length > 0) {
-      const node = stack.pop()!;
-      map.set(node.id, node);
-      list.push(node);
+    debounceTimer = setTimeout(() => {
+      const map = new Map<string, FileNode>();
+      const list: FileNode[] = [];
+      const stack: FileNode[] = [...fileNodes].reverse();
 
-      if (node.children && node.children.length > 0) {
-        for (let i = node.children.length - 1; i >= 0; i--) {
-          stack.push(node.children[i]);
+      while (stack.length > 0) {
+        const node = stack.pop()!;
+        map.set(node.id, node);
+        list.push(node);
+
+        if (node.children && node.children.length > 0) {
+          for (let i = node.children.length - 1; i >= 0; i--) {
+            stack.push(node.children[i]);
+          }
         }
       }
-    }
-    nodeMap.value = map;
-    flatNodes.value = list;
+      nodeMap.value = map;
+      flatNodes.value = list;
+    }, 50); // 50ms Debounce
   };
 
   // Watcher to keep lookups in sync
-  watch(nodes, (newVal) => rebuildMap(newVal), { deep: false });
+  watch(nodes, (newVal) => rebuildMap(newVal), { deep: true }); // Need deep true to catch children changes
 
   // --- Getters ---
 
