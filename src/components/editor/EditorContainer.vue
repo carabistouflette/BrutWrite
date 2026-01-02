@@ -1,167 +1,46 @@
 <script setup lang="ts">
-import { ref, computed, toRef, onBeforeUnmount, watch } from 'vue';
+import { ref, toRef } from 'vue';
 import { storeToRefs } from 'pinia';
 import EditorMain from './EditorMain.vue';
 import SnapshotManager from '../snapshots/SnapshotManager.vue';
-import { useProjectStore } from '../../stores/project';
-import { useResearchStore } from '../../stores/research';
-import { useProjectNodeOperations } from '../../composables/domain/project/useProjectNodeOperations';
-import { useGamification } from '../../composables/domain/gamification/useGamification';
 import { useSettingsStore } from '../../stores/settings';
-import { chaptersApi } from '../../api/chapters';
-import { useAppStatus } from '../../composables/ui/useAppStatus';
-import { APP_CONSTANTS } from '../../config/constants';
-import type { Chapter } from '../../types';
-import { useAutoSave } from '../../composables/editor/useAutoSave';
-import { useChapterSession } from '../../composables/domain/project/useChapterSession';
-import { useSnapshotStore } from '../../stores/snapshots';
-import { useCharacterGraph } from '../../composables/domain/intelligence/useCharacterGraph';
-
-const showSnapshotManager = ref(false);
-const editorRef = ref<InstanceType<typeof EditorMain> | null>(null);
+import { useEditorSession } from '../../composables/editor/useEditorSession';
 
 const props = defineProps<{
   chapterId: string;
   projectId: string;
 }>();
 
-const projectStore = useProjectStore();
-const snapshotStore = useSnapshotStore();
-const { activeId, nodeMap } = storeToRefs(projectStore);
-const researchStore = useResearchStore();
-const { updateNodeStats, renameNode } = useProjectNodeOperations();
-const { addWords } = useGamification();
+const showSnapshotManager = ref(false);
+const editorRef = ref<InstanceType<typeof EditorMain> | null>(null);
 const settingsStore = useSettingsStore();
 const { settings } = storeToRefs(settingsStore);
-const { notifyError } = useAppStatus();
-const { analyze: analyzeCharacterGraph } = useCharacterGraph();
 
-// 1. Session Management (Loading content)
-// We use toRef to keep reactivity for the composable
-const { content: activeChapterContent, isLoading } = useChapterSession(
-  toRef(props, 'projectId'),
-  toRef(props, 'chapterId')
-);
+// Use new composable
+const {
+  activeChapter,
+  currentHtml,
+  isLoading,
+  isDirty,
+  handleRename,
+  handleContentChange,
+  handleSave,
+  restoreSnapshot,
+  branchSnapshot,
+  openResearchArtifact,
+} = useEditorSession(toRef(props, 'projectId'), toRef(props, 'chapterId'));
 
-// --- Local Sync State ---
-const currentHtml = ref('');
-const isDirty = ref(false);
-
-watch(activeChapterContent, (newVal) => {
-  currentHtml.value = newVal;
-  isDirty.value = false;
-});
-
-// Find active chapter metadata
-const activeChapter = computed(() => {
-  return nodeMap.value.get(props.chapterId);
-});
-
-// Rename handler
-const handleRename = async (newName: string) => {
-  if (props.chapterId && newName !== activeChapter.value?.name) {
-    await renameNode(props.chapterId, newName);
-  }
-};
-
-// Word count/Content change handler
-const handleContentChange = (delta: number) => {
-  addWords(delta);
-  if (props.chapterId) {
-    const currentWordCount = activeChapter.value?.word_count || 0;
-    updateNodeStats(props.chapterId, currentWordCount + delta);
-  }
-};
-
-const handleResearchLinkClick = (id: string) => {
-  const artifact = researchStore.artifacts.find((a) => a.id === id);
-  if (artifact) {
-    researchStore.setActiveArtifact(artifact);
-  } else {
-    researchStore.fetchArtifacts().then(() => {
-      const found = researchStore.artifacts.find((a) => a.id === id);
-      if (found) researchStore.setActiveArtifact(found);
-    });
-  }
-};
-
-// Auto-save logic
-const saveActiveChapter = async (content: string) => {
-  if (!props.chapterId || !props.projectId) return;
-
-  try {
-    const metadata = await chaptersApi.saveContent(props.projectId, props.chapterId, content);
-
-    // Sync word count from backend
-    if (activeId.value === props.chapterId) {
-      const chapter = metadata.manifest.chapters.find((c: Chapter) => c.id === props.chapterId);
-      if (chapter) {
-        updateNodeStats(props.chapterId, chapter.word_count, false);
-      }
-    }
-
-    // Auto-analyze character graph if enabled
-    if (settings.value.intelligence.autoAnalyzeOnSave) {
-      analyzeCharacterGraph();
-    }
-
-    console.debug(`Auto-saved chapter ${props.chapterId}`);
-  } catch (e) {
-    notifyError(`Failed to save chapter ${props.chapterId}`, e);
-  }
-};
-
-const handleSave = async (content: string) => {
-  await saveActiveChapter(content);
-  isDirty.value = false;
-};
-
-// 2. Auto Save
-const autoSaveInterval = computed(
-  () => settings.value.general.autoSaveInterval || APP_CONSTANTS.EDITOR.AUTO_SAVE_INTERVAL
-);
-
-useAutoSave(async () => {
-  if (isDirty.value) {
-    await saveActiveChapter(currentHtml.value);
-    isDirty.value = false;
-  }
-}, autoSaveInterval);
-
-onBeforeUnmount(async () => {
-  // Final save on unmount is critical, so we keep this manual hook
-  if (isDirty.value) {
-    await saveActiveChapter(currentHtml.value);
-  }
-});
-
-const handleRestore = async (_content: string, filename: string) => {
+const onRestore = async (_content: string, filename: string) => {
   showSnapshotManager.value = false;
-  if (!props.chapterId) return;
-
-  try {
-    const newContent = await snapshotStore.restoreSnapshot(props.chapterId, filename);
-    if (newContent !== undefined && editorRef.value) {
-      editorRef.value.setContent(newContent);
-      currentHtml.value = newContent;
-      isDirty.value = false;
-      const wc = newContent.split(/\s+/).length;
-      updateNodeStats(props.chapterId, wc);
-    }
-  } catch (e) {
-    notifyError('Failed to restore snapshot', e);
+  const newContent = await restoreSnapshot(filename);
+  if (newContent && editorRef.value) {
+    editorRef.value.setContent(newContent);
   }
 };
 
-const handleBranch = async (_content: string, filename: string) => {
+const onBranch = async (_content: string, filename: string) => {
   showSnapshotManager.value = false;
-  if (!props.projectId || !props.chapterId) return;
-
-  try {
-    await snapshotStore.branchSnapshot(props.chapterId, filename);
-  } catch (e) {
-    notifyError('Failed to branch snapshot', e);
-  }
+  await branchSnapshot(filename);
 };
 </script>
 
@@ -177,14 +56,14 @@ const handleBranch = async (_content: string, filename: string) => {
     v-model:is-dirty="isDirty"
     :project-id="projectId"
     :title="activeChapter.name"
-    :initial-content="activeChapterContent"
+    :initial-content="currentHtml"
     :initial-word-count="activeChapter.word_count"
     :editor-settings="settings.editor"
     @update:title="handleRename"
     @update:content="(val) => (currentHtml = val)"
     @content-change="handleContentChange"
     @save="handleSave"
-    @research-link-click="handleResearchLinkClick"
+    @research-link-click="openResearchArtifact"
     @open-history="showSnapshotManager = true"
   />
 
@@ -193,7 +72,7 @@ const handleBranch = async (_content: string, filename: string) => {
     :chapter-id="props.chapterId"
     :current-content="currentHtml"
     @close="showSnapshotManager = false"
-    @restore="handleRestore"
-    @branch="handleBranch"
+    @restore="onRestore"
+    @branch="onBranch"
   />
 </template>
