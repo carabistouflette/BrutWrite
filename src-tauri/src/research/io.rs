@@ -50,7 +50,10 @@ pub async fn handle_fs_change(
             continue;
         }
 
-        let file_name = path.file_name().unwrap().to_string_lossy().to_string();
+        let file_name = match path.file_name() {
+            Some(n) => n.to_string_lossy().to_string(),
+            None => continue,
+        };
         let path_str = path.to_string_lossy().to_string();
 
         if path.exists() {
