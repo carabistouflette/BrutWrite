@@ -1,12 +1,5 @@
-/**
- * Character Graph Composable
- *
- * Provides reactive state management for character interaction analysis,
- * including caching, loading states, and derived computed properties.
- */
-
+import { defineStore, storeToRefs } from 'pinia';
 import { ref, computed } from 'vue';
-import { storeToRefs } from 'pinia';
 import { intelligenceApi } from '../../../api/intelligence';
 import type { CharacterGraphPayload, GraphNode, GraphAlert } from '../../../types/intelligence';
 import { useProjectStore } from '../../../stores/project';
@@ -19,60 +12,39 @@ interface CharacterGraphState {
   error: string | null;
 }
 
-// Module-level state for singleton behavior
-const state = ref<CharacterGraphState>({
-  payload: null,
-  isLoading: false,
-  lastAnalyzedAt: null,
-  error: null,
-});
+// Internal store definition
+const useCharacterGraphStore = defineStore('character-graph', () => {
+  const state = ref<CharacterGraphState>({
+    payload: null,
+    isLoading: false,
+    lastAnalyzedAt: null,
+    error: null,
+  });
 
-// Cooldown tracking
-let lastAnalysisTime = 0;
+  const lastAnalysisTime = ref(0);
 
-/**
- * Composable for character graph analysis.
- *
- * Provides:
- * - Reactive graph payload with caching
- * - Loading/error states
- * - Ghost (unmapped) character filtering
- * - Alert generation based on metrics
- * - Debounced analysis with cooldown
- */
-export function useCharacterGraph() {
   const projectStore = useProjectStore();
   const settingsStore = useSettingsStore();
   const { settings } = storeToRefs(settingsStore);
 
   // --- Computed ---
 
-  /**
-   * Characters with 0 mentions (declared but never referenced).
-   */
   const ghosts = computed<GraphNode[]>(() => {
     if (!state.value.payload) return [];
     return state.value.payload.nodes.filter((n) => !n.isMapped);
   });
 
-  /**
-   * Characters that are actively referenced in the manuscript.
-   */
   const mappedNodes = computed<GraphNode[]>(() => {
     if (!state.value.payload) return [];
     return state.value.payload.nodes.filter((n) => n.isMapped);
   });
 
-  /**
-   * Generate alerts based on current graph metrics.
-   */
   const alerts = computed<GraphAlert[]>(() => {
     if (!state.value.payload) return [];
 
     const { metrics, nodes } = state.value.payload;
     const result: GraphAlert[] = [];
 
-    // SOLIPSISM: Over 50% isolation
     if (metrics.isolationRatio > 0.5) {
       result.push({
         code: 'SOLIPSISM',
@@ -81,7 +53,6 @@ export function useCharacterGraph() {
       });
     }
 
-    // SATELLITE: Multiple disconnected components
     if (metrics.connectedComponents > 1) {
       result.push({
         code: 'SATELLITE',
@@ -90,7 +61,6 @@ export function useCharacterGraph() {
       });
     }
 
-    // GHOST: Unmapped characters exist
     if (ghosts.value.length > 0) {
       result.push({
         code: 'GHOST',
@@ -99,7 +69,6 @@ export function useCharacterGraph() {
       });
     }
 
-    // PROTAGONIST_ABSENT: Check if protagonist has low mentions
     const protagonists = nodes.filter((n) => {
       const char = projectStore.characterById(n.id);
       return char?.role === 'protagonist';
@@ -115,9 +84,6 @@ export function useCharacterGraph() {
     return result;
   });
 
-  /**
-   * Whether the cached data is stale (project updated since last analysis).
-   */
   const isStale = computed<boolean>(() => {
     if (!state.value.lastAnalyzedAt) return true;
     return false;
@@ -125,14 +91,6 @@ export function useCharacterGraph() {
 
   // --- Actions ---
 
-  /**
-   * Analyze the character graph for the current project.
-   *
-   * Respects a 2-second cooldown to prevent spam.
-   * Uses settings from the settings store.
-   *
-   * @param chapterIds - Optional array of chapter IDs to filter analysis
-   */
   async function analyze(chapterIds?: string[]): Promise<void> {
     const projectId = projectStore.projectId;
     if (!projectId) {
@@ -140,11 +98,9 @@ export function useCharacterGraph() {
       return;
     }
 
-    // Enforce cooldown (Default 2s, but should be configurable really)
-    // We'll keep it simple: 500ms is enough if backend is fast now.
     const cooldown = 500;
     const now = Date.now();
-    if (now - lastAnalysisTime < cooldown) {
+    if (now - lastAnalysisTime.value < cooldown) {
       return;
     }
 
@@ -152,7 +108,6 @@ export function useCharacterGraph() {
     state.value.error = null;
 
     try {
-      // Get settings and pass to API
       const { proximityWindow, pruneThreshold } = settings.value.intelligence;
 
       const payload = await intelligenceApi.getCharacterGraph(projectId, {
@@ -162,7 +117,7 @@ export function useCharacterGraph() {
       });
       state.value.payload = payload;
       state.value.lastAnalyzedAt = new Date().toISOString();
-      lastAnalysisTime = now;
+      lastAnalysisTime.value = now;
     } catch (err) {
       state.value.error = err instanceof Error ? err.message : String(err);
     } finally {
@@ -170,9 +125,6 @@ export function useCharacterGraph() {
     }
   }
 
-  /**
-   * Clear the cached graph data.
-   */
   function clear(): void {
     state.value = {
       payload: null,
@@ -180,24 +132,40 @@ export function useCharacterGraph() {
       lastAnalyzedAt: null,
       error: null,
     };
-    lastAnalysisTime = 0;
+    lastAnalysisTime.value = 0;
   }
 
   return {
-    // State (readonly)
-    payload: computed(() => state.value.payload),
-    isLoading: computed(() => state.value.isLoading),
-    lastAnalyzedAt: computed(() => state.value.lastAnalyzedAt),
-    error: computed(() => state.value.error),
-
-    // Derived
+    state,
     ghosts,
     mappedNodes,
     alerts,
     isStale,
-
-    // Actions
     analyze,
     clear,
+  };
+});
+
+/**
+ * Composable for character graph analysis.
+ * Wraps the Pinia store to maintain API compatibility while fixing singleton issues.
+ */
+export function useCharacterGraph() {
+  const store = useCharacterGraphStore();
+
+  // Extract state properties as readonly computed refs to match original API contract
+  return {
+    payload: computed(() => store.state.payload),
+    isLoading: computed(() => store.state.isLoading),
+    lastAnalyzedAt: computed(() => store.state.lastAnalyzedAt),
+    error: computed(() => store.state.error),
+
+    ghosts: computed(() => store.ghosts),
+    mappedNodes: computed(() => store.mappedNodes),
+    alerts: computed(() => store.alerts),
+    isStale: computed(() => store.isStale),
+
+    analyze: store.analyze,
+    clear: store.clear,
   };
 }
