@@ -37,7 +37,6 @@
 
     /* Semantic mappings */
     --bg-primary: var(--paper);
-    --bg-secondary: #ffffff; /* Modal bg needs to be distinct from paper/stone? Or stick to stone? Let's use Paper for main, Stone for secondary */
     --bg-secondary: var(--stone);
     --bg-tertiary: #d6d6d0; /* Darker stone */
 
