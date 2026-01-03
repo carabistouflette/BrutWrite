@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, shallowRef, computed, watch } from 'vue';
-import type { FileNode, ProjectSettings, Character, Plotline, ProjectMetadata } from '../types';
+import type { FileNode, ProjectSettings, Character, Plotline } from '../types';
 import { reconstructHierarchy } from '../utils/tree';
 
 export const useProjectStore = defineStore('project', () => {
@@ -85,6 +85,11 @@ export const useProjectStore = defineStore('project', () => {
   /**
    * Initialize the store with full project data from the backend.
    */
+  // --- Actions ---
+
+  /**
+   * Initialize the store with full project data from the backend.
+   */
   function setProjectData(
     id: string,
     projectPath: string,
@@ -124,6 +129,17 @@ export const useProjectStore = defineStore('project', () => {
     settings.value = null;
     plotlines.value = [];
     characters.value = [];
+
+    // Clear characters in dedicated store too
+    // Note: We avoid importing useCharacters at top level if possible to avoid cycles
+    // But since useCharacters imports projectStore, we have a cycle if we import it top level.
+    // Dynamic import or function-scoped usage is safer.
+    import('../composables/domain/characters/useCharacters').then(({ useCharacters }) => {
+      const { setCharacters } = useCharacters();
+      setCharacters([]);
+    });
+
+    localStorage.removeItem('last_opened_project_path');
   }
 
   // Granular Mutations
@@ -158,6 +174,107 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  // --- Async Actions (Merged from useProjectIO) ---
+
+  async function loadProject(projectPath: string) {
+    // Dynamic imports to avoid circular dependencies with composables that use this store
+    const { projectApi } = await import('../api/project');
+    const { useCharacters } = await import('../composables/domain/characters/useCharacters');
+    const { useRecentProjects } = await import('../composables/domain/project/useRecentProjects');
+    const { useProjectSession } = await import('../composables/domain/project/useProjectSession');
+
+    const metadata = await projectApi.load(projectPath);
+
+    // Sync characters
+    const { setCharacters } = useCharacters();
+    setCharacters(metadata.characters);
+
+    // Reconstruct hierarchy
+    const hierarchy = reconstructHierarchy(metadata.manifest.chapters);
+
+    // Set project data
+    setProjectData(metadata.id, projectPath, hierarchy, metadata.settings);
+    plotlines.value = metadata.plotlines;
+
+    // Side effects
+    localStorage.setItem('last_opened_project_path', projectPath);
+    const { addRecentProject } = useRecentProjects();
+    addRecentProject(projectPath);
+
+    // Set active ID
+    if (nodes.value.length > 0) {
+      if (!activeId.value) {
+        setActiveId(nodes.value[0].id);
+      }
+    }
+
+    // Update Cache
+    const { saveToCache } = useProjectSession();
+    saveToCache(projectPath, {
+      id: metadata.id,
+      nodes: hierarchy,
+      settings: metadata.settings,
+      plotlines: metadata.plotlines,
+      characters: metadata.characters,
+      activeId: activeId.value,
+    });
+  }
+
+  async function createProject(projectPath: string, name: string, author: string) {
+    const { projectApi } = await import('../api/project');
+    const { useCharacters } = await import('../composables/domain/characters/useCharacters');
+    const { useRecentProjects } = await import('../composables/domain/project/useRecentProjects');
+    const { useProjectSession } = await import('../composables/domain/project/useProjectSession');
+    const { chaptersApi } = await import('../api/chapters');
+
+    const metadata = await projectApi.create(projectPath, name, author);
+
+    // Reset characters
+    const { setCharacters } = useCharacters();
+    setCharacters([]);
+
+    // Set data (empty initially)
+    setProjectData(metadata.id, projectPath, [], metadata.settings);
+    plotlines.value = metadata.plotlines;
+
+    localStorage.setItem('last_opened_project_path', projectPath);
+    const { addRecentProject } = useRecentProjects();
+    addRecentProject(projectPath);
+
+    // Add default chapter
+    const chapterMetadata = await chaptersApi.createNode(metadata.id, undefined, 'New Chapter');
+    const hierarchy = reconstructHierarchy(chapterMetadata.manifest.chapters);
+    updateStructure(hierarchy);
+    if (hierarchy.length > 0) {
+      setActiveId(hierarchy[0].id);
+    }
+
+    // Initial Cache
+    const { saveToCache } = useProjectSession();
+    saveToCache(projectPath, {
+      id: metadata.id,
+      nodes: hierarchy,
+      settings: metadata.settings,
+      plotlines: metadata.plotlines,
+      characters: [],
+      activeId: activeId.value,
+    });
+  }
+
+  async function updateSettingsAction(newSettings: ProjectSettings) {
+    if (!projectId.value) return;
+    const { projectApi } = await import('../api/project');
+    const metadata = await projectApi.updateSettings(projectId.value, newSettings);
+    settings.value = metadata.settings;
+  }
+
+  async function updatePlotlinesAction(newPlotlines: Plotline[]) {
+    if (!projectId.value) return;
+    const { projectApi } = await import('../api/project');
+    const metadata = await projectApi.updatePlotlines(projectId.value, newPlotlines);
+    plotlines.value = metadata.plotlines;
+  }
+
   return {
     // State
     nodes,
@@ -184,29 +301,11 @@ export const useProjectStore = defineStore('project', () => {
     renameNodeAction,
     updateNodeStatsAction,
     updateNodeMetadataAction,
-    loadProject,
-  };
 
-  async function loadProject(id: string) {
-    // Import invoke dynamically or at top? Top is fine if valid.
-    // But we are inside defineStore callback.
-    const { invoke } = await import('@tauri-apps/api/core');
-    try {
-      const metadata = await invoke<ProjectMetadata>('load_project', { projectId: id });
-      // We need to parse keys.
-      // Actually setProjectData expects specific args.
-      // Let's assume metadata matches or we map it.
-      // backend load_project returns ProjectMetadata + root_path usually?
-      // Converting internal types might be needed.
-      // To stay safe and avoid huge refactor, let's look at how it was done before.
-      // Step 121 SnapshotManager didn't show loadProject.
-      // Let's check `useProjectIO.ts` or similar later if needed.
-      // But for now, let's just use `updateStructure` if we can.
-      const hierarchy = reconstructHierarchy(metadata.manifest.chapters);
-      updateStructure(hierarchy);
-      // Also update settings?
-    } catch (e) {
-      console.error('Failed to reload project', e);
-    }
-  }
+    // Async Actions
+    loadProject,
+    createProject,
+    updateSettingsAction,
+    updatePlotlinesAction,
+  };
 });

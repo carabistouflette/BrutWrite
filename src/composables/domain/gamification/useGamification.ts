@@ -2,7 +2,6 @@ import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useSettingsStore } from '../../../stores/settings';
 import { useProjectStore } from '../../../stores/project';
-import { useProjectIO } from '../project/useProjectIO'; // Import useProjectIO for updateSettings
 import { calculateStreak, calculateAverage, getBestDay, getTodayStats } from '../../../utils/stats';
 import { APP_CONSTANTS } from '../../../config/constants';
 import type { DailyStats } from '../../../utils/stats';
@@ -30,7 +29,6 @@ export function useGamification() {
   const projectStore = useProjectStore();
   const { settings } = storeToRefs(settingsStore);
   const { settings: projectSettings, flatNodes } = storeToRefs(projectStore);
-  const { updateSettings } = useProjectIO();
 
   const totalWords = computed(() => {
     let total = 0;
@@ -98,7 +96,7 @@ export function useGamification() {
   const setProjectTarget = async (target: number) => {
     // Update via project settings
     if (projectSettings.value) {
-      await updateSettings({
+      await projectStore.updateSettingsAction({
         ...projectSettings.value,
         word_target: target,
       });

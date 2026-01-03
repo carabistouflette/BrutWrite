@@ -3,7 +3,7 @@ import { ref, defineAsyncComponent, watch } from 'vue';
 import GamificationStatus from '../gamification/GamificationStatus.vue';
 import SidebarController from './SidebarController.vue';
 import { useResizable } from '../../composables/ui/useResizable';
-import { useProjectIO } from '../../composables/domain/project/useProjectIO';
+import { useProjectStore } from '../../stores/project';
 import { useResearchStore } from '../../stores/research';
 
 const ResearchPanel = defineAsyncComponent(() => import('../research/ResearchPanel.vue'));
@@ -36,7 +36,8 @@ const {
   edge: 'right',
 });
 
-const { closeProject } = useProjectIO();
+const projectStore = useProjectStore();
+const { closeProject } = projectStore;
 const researchStore = useResearchStore();
 
 // --- Local State ---

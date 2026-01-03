@@ -1,5 +1,5 @@
 import { useSettingsStore } from '../stores/settings';
-import { useProjectIO } from '../composables/domain/project/useProjectIO';
+import { useProjectStore } from '../stores/project';
 import { useProjectSession } from '../composables/domain/project/useProjectSession';
 import { useTheme } from '../composables/ui/useTheme';
 import { useAppStatus } from '../composables/ui/useAppStatus';
@@ -10,7 +10,7 @@ import { useAppStatus } from '../composables/ui/useAppStatus';
  */
 export async function initApp() {
   const settingsStore = useSettingsStore();
-  const { loadProject } = useProjectIO();
+  const projectStore = useProjectStore();
   const { restoreSession, setupAutoSave } = useProjectSession();
   const { initTheme } = useTheme();
 
@@ -39,7 +39,7 @@ export async function initApp() {
         ? (async () => {
             // Even if restored, we fetch fresh data
             console.debug('Loading fresh project data:', lastPath);
-            await loadProject(lastPath);
+            await projectStore.loadProject(lastPath);
           })()
         : Promise.resolve(),
     ]);

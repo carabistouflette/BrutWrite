@@ -80,7 +80,7 @@
 import { ref } from 'vue';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
-import { useProjectIO } from '../composables/domain/project/useProjectIO';
+import { useProjectStore } from '../stores/project';
 import { useRecentProjects } from '../composables/domain/project/useRecentProjects';
 import { useAppStatus } from '../composables/ui/useAppStatus';
 import { formatProjectName } from '../utils/paths';
@@ -90,7 +90,7 @@ import RecentProjectList from './welcome/RecentProjectList.vue';
 import WelcomeActions from './welcome/WelcomeActions.vue';
 import BrutWriteLogo from './common/BrutWriteLogo.vue';
 
-const { loadProject, createProject } = useProjectIO();
+const projectStore = useProjectStore();
 const { recentProjects, loadRecentProjects } = useRecentProjects();
 const { notifyError } = useAppStatus();
 
@@ -122,7 +122,11 @@ const triggerExit = async () => {
 
 const handleRecent = async (path: string) => {
   await triggerExit();
-  await loadProject(path);
+  try {
+    await projectStore.loadProject(path);
+  } catch (e) {
+    notifyError('Failed to load project', e);
+  }
 };
 
 const handleOpenProject = async () => {
@@ -134,7 +138,11 @@ const handleOpenProject = async () => {
 
     if (selected && typeof selected === 'string') {
       await triggerExit();
-      await loadProject(selected);
+      try {
+        await projectStore.loadProject(selected);
+      } catch (e) {
+        notifyError('Failed to load project', e);
+      }
     }
   } catch (e) {
     notifyError('Failed to open project dialog', e);
@@ -152,7 +160,7 @@ const handleNewProject = async () => {
     if (selected && typeof selected === 'string') {
       const name = formatProjectName(selected);
       await triggerExit();
-      await createProject(selected, name, 'Unknown Author');
+      await projectStore.createProject(selected, name, 'Unknown Author');
     }
   } catch (e) {
     notifyError('Failed to create new project', e);
@@ -170,7 +178,11 @@ const handleDemoProject = async () => {
     if (selected && typeof selected === 'string') {
       await invoke('seed_demo_project', { path: selected });
       await triggerExit();
-      await loadProject(selected);
+      try {
+        await projectStore.loadProject(selected);
+      } catch (e) {
+        notifyError('Failed to load demo project', e);
+      }
     }
   } catch (e) {
     notifyError('Failed to create demo project', e);
