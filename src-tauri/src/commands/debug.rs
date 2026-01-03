@@ -93,6 +93,7 @@ pub async fn seed_demo_project(
     // This matches the Tiptap textStyle mark structure: <span data-id="..." ...>Text</span>
     let mention = |char: &Character, alias: Option<&str>| -> String {
         let text = alias.unwrap_or(&char.name);
+        // Using strict format to avoid injection issues (even though input is internal here)
         format!(
             r#"<span data-id="{}" data-type="character-mention" class="mention">{}</span>"#,
             char.id, text
@@ -163,12 +164,22 @@ pub async fn seed_demo_project(
             crate::commands::create_node(state.clone(), project_id_uuid, None, title.to_string())
                 .await?;
 
-        // Find the node ID we just created (simplest way is to find by title)
-        if let Some(node) = md.manifest.chapters.iter().find(|c| c.title == title) {
-            // Save content
-            crate::commands::save_chapter(state.clone(), project_id_uuid, node.id.clone(), content)
-                .await?;
-        }
+        // Find the node ID we just created
+        let node = md
+            .manifest
+            .chapters
+            .iter()
+            .find(|c| c.title == title)
+            .ok_or_else(|| {
+                crate::errors::Error::Validation(format!(
+                    "Failed to retrieve created chapter: {}",
+                    title
+                ))
+            })?;
+
+        // Save content
+        crate::commands::save_chapter(state.clone(), project_id_uuid, node.id.clone(), content)
+            .await?;
     }
 
     Ok(project_id_uuid.to_string())

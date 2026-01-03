@@ -7,7 +7,7 @@ use crate::AppState;
 #[tauri::command]
 pub async fn get_research_artifacts(
     state: State<'_, AppState>,
-) -> crate::errors::Result<Vec<ResearchArtifact>> {
+) -> crate::errors::Result<Vec<std::sync::Arc<ResearchArtifact>>> {
     Ok(state.research.get_all().await)
 }
 
@@ -23,7 +23,7 @@ pub async fn add_research_files(
 pub async fn create_research_note(
     state: State<'_, AppState>,
     name: String,
-) -> crate::errors::Result<ResearchArtifact> {
+) -> crate::errors::Result<std::sync::Arc<ResearchArtifact>> {
     state.research.create_note(name).await
 }
 

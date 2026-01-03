@@ -21,7 +21,7 @@ pub async fn load_index<P: AsRef<Path>>(path: P) -> HashMap<String, ResearchArti
 
 pub async fn save_index<P: AsRef<Path>>(
     path: P,
-    artifacts: &HashMap<String, ResearchArtifact>,
+    artifacts: &HashMap<String, std::sync::Arc<ResearchArtifact>>,
 ) -> Result<()> {
     let index_path = path.as_ref().join(INDEX_FILENAME);
     let new_content = serde_json::to_string_pretty(artifacts)?;

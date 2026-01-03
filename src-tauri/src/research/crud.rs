@@ -14,7 +14,7 @@ fn validate_filename(name: &str) -> crate::errors::Result<()> {
 pub async fn create_note(
     state: &ResearchState,
     name: String,
-) -> crate::errors::Result<ResearchArtifact> {
+) -> crate::errors::Result<std::sync::Arc<ResearchArtifact>> {
     let root = state.get_root_path_safe().await?;
 
     validate_filename(&name)?;
@@ -40,8 +40,13 @@ pub async fn create_note(
         "text".to_string(),
     );
 
+    // state.persist_artifact now handles Arc internally, or expects explicit struct?
+    // In state.rs: persist_artifact(artifact: ResearchArtifact) -> Arc::new(artifact)
+    // So we pass Owned artifact.
     state.persist_artifact(artifact.clone()).await?;
-    Ok(artifact)
+
+    // We return Arc reference to it.
+    Ok(std::sync::Arc::new(artifact))
 }
 
 pub async fn update_content(
@@ -107,15 +112,21 @@ pub async fn rename_artifact(
     tokio::fs::rename(&old_path, &new_path).await?;
 
     // Update state
+    // Update state
     state
         .mutate_and_persist(|inner| {
-            if let Some(artifact) = inner.artifacts.get_mut(&id) {
+            if let Some(artifact_arc) = inner.artifacts.get_mut(&id) {
+                let mut artifact = (**artifact_arc).clone();
                 inner.path_map.remove(&artifact.path);
+
                 artifact.name = new_filename.clone();
                 artifact.path = new_path.to_string_lossy().to_string();
+
+                let new_arc = std::sync::Arc::new(artifact);
                 inner
                     .path_map
-                    .insert(artifact.path.clone(), artifact.id.clone());
+                    .insert(new_arc.path.clone(), new_arc.id.clone());
+                *artifact_arc = new_arc;
             }
             Ok(())
         })
@@ -197,7 +208,7 @@ mod tests {
         let note = create_note(&state, "valid".to_string()).await.unwrap();
 
         // Test rename with traversal
-        let result = rename_artifact(&state, note.id, "../evil".to_string()).await;
+        let result = rename_artifact(&state, note.id.clone(), "../evil".to_string()).await;
         assert!(matches!(result, Err(crate::errors::Error::Validation(_))));
     }
 

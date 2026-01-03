@@ -3,6 +3,8 @@ use crate::research::ResearchState;
 use notify::RecommendedWatcher;
 use std::path::PathBuf;
 
+use std::sync::Arc;
+
 pub async fn initialize(state: &ResearchState, path: PathBuf) -> crate::errors::Result<()> {
     // Ensure directory exists
     if !path.exists() {
@@ -23,6 +25,9 @@ pub async fn initialize(state: &ResearchState, path: PathBuf) -> crate::errors::
         .collect();
 
     // Save reconciled
+    // We need to deref for saving until storage is updated or map it.
+    // Ideally storage should accept the map as is if we update it.
+    // For now, let's assume we update storage.rs next.
     crate::storage::save_index(&path, &current_artifacts).await?;
 
     let mut inner = state.inner.lock().await;
@@ -37,7 +42,7 @@ pub async fn set_watcher(state: &ResearchState, watcher: RecommendedWatcher) {
     inner.watcher = Some(watcher);
 }
 
-pub async fn get_all(state: &ResearchState) -> Vec<ResearchArtifact> {
+pub async fn get_all(state: &ResearchState) -> Vec<Arc<ResearchArtifact>> {
     let inner = state.inner.lock().await;
     inner.artifacts.values().cloned().collect()
 }
@@ -45,7 +50,7 @@ pub async fn get_all(state: &ResearchState) -> Vec<ResearchArtifact> {
 fn reconcile_index(
     disk_files: std::collections::HashMap<String, String>,
     mut index: std::collections::HashMap<String, ResearchArtifact>,
-) -> std::collections::HashMap<String, ResearchArtifact> {
+) -> std::collections::HashMap<String, Arc<ResearchArtifact>> {
     let mut current_artifacts = std::collections::HashMap::new();
 
     // Build lookup map for O(1) access (Path -> ID)
@@ -61,12 +66,12 @@ fn reconcile_index(
         if let Some(id) = existing_id {
             if let Some(mut artifact) = index.remove(id) {
                 artifact.name = file_name;
-                current_artifacts.insert(id.clone(), artifact);
+                current_artifacts.insert(id.clone(), Arc::new(artifact));
             }
         } else {
             let file_type = ResearchArtifact::determine_type(&file_name);
             let artifact = ResearchArtifact::new(file_path, file_name, file_type);
-            current_artifacts.insert(artifact.id.clone(), artifact);
+            current_artifacts.insert(artifact.id.clone(), Arc::new(artifact));
         }
     }
     current_artifacts
