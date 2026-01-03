@@ -95,26 +95,30 @@ pub struct CharacterGraphPayload {
 // =============================================================================
 
 /// Get the role weight for valence calculation.
+/// Get the role weight for valence calculation.
+/// Uses a flattened curve to avoid over-biasing based on purely static roles.
 fn role_weight(role: &CharacterRole) -> f32 {
     match role {
-        CharacterRole::Protagonist => 4.0,
-        CharacterRole::Antagonist => 3.0,
-        CharacterRole::Secondary => 2.0,
-        CharacterRole::Extra => 1.0,
+        CharacterRole::Protagonist => 2.0, // Was 4.0
+        CharacterRole::Antagonist => 1.8,  // Was 3.0
+        CharacterRole::Secondary => 1.5,   // Was 2.0
+        CharacterRole::Extra => 1.0,       // Was 1.0
     }
 }
 
 /// Pre-compiled search patterns for all characters.
-struct CharacterScanner {
-    /// Combined regex for all character names and IDs.
+/// Pre-compiled search patterns for all characters.
+#[derive(Clone, Debug)]
+pub struct CharacterScanner {
+    /// Combined regex for all character names and ids.
     /// Each character's pattern is wrapped in a named capture group like `c0`, `c1`, etc.
-    regex: regex::Regex,
+    pub regex: regex::Regex,
     /// Maps capture group name (e.g., "c0") back to character ID.
-    index_to_id: Vec<String>,
+    pub index_to_id: Vec<String>,
 }
 
 impl CharacterScanner {
-    fn try_new(characters: &[Character]) -> Result<Self, String> {
+    pub fn try_new(characters: &[Character]) -> Result<Self, String> {
         let mut patterns = Vec::new();
         let mut index_to_id = Vec::new();
 
@@ -153,7 +157,7 @@ impl CharacterScanner {
     }
 
     /// Scans text and returns mentions as (offset, char_id)
-    fn scan(&self, text: &str) -> Vec<(usize, String)> {
+    pub fn scan(&self, text: &str) -> Vec<(usize, String)> {
         let mut mentions = Vec::new();
         for caps in self.regex.captures_iter(text) {
             // Find which group matched
@@ -269,11 +273,13 @@ impl UnionFind {
 // =============================================================================
 
 /// Analyze character interactions and build the graph.
+/// Analyze character interactions and build the graph.
 async fn build_character_graph(
     metadata: &ProjectMetadata,
     chapter_contents: &[(String, String)], // (chapter_id, content)
     proximity_window: usize,
     prune_threshold: f32,
+    scanner: Option<&CharacterScanner>,
 ) -> CharacterGraphPayload {
     let characters = &metadata.characters;
 
@@ -290,6 +296,8 @@ async fn build_character_graph(
         };
     }
 
+    let scanner = scanner.expect("Scanner required for non-empty character list");
+
     // Maps char_id -> Total references across project
     let mut mention_counts: HashMap<String, u32> = HashMap::new();
     // Maps char_id -> Set(chapter_id)
@@ -300,24 +308,6 @@ async fn build_character_graph(
     // Key must be sorted (a < b) to avoid duplicates
     let mut interaction_weights: HashMap<(String, String), f32> = HashMap::new();
     let mut interaction_types: HashMap<(String, String), InteractionType> = HashMap::new();
-
-    // Pre-compile combined scanner O(N)
-    let scanner = match CharacterScanner::try_new(characters) {
-        Ok(s) => s,
-        Err(e) => {
-            log::error!("Failed to initialize character scanner: {}", e);
-            return CharacterGraphPayload {
-                nodes: vec![],
-                edges: vec![],
-                metrics: GraphMetrics {
-                    network_density: 0.0,
-                    connected_components: 0,
-                    largest_component_size: 0,
-                    isolation_ratio: 0.0,
-                },
-            };
-        }
-    };
 
     // Iterate chapters to process text
     for (chapter_id, content) in chapter_contents {
@@ -541,11 +531,58 @@ pub async fn analyze_character_graph(
         }
     }
 
+    // Check for empty characters before scanner logic
+    if metadata.characters.is_empty() {
+        return Ok(
+            build_character_graph(&metadata, &[], proximity_window, prune_threshold, None).await,
+        );
+    }
+
+    // Cache Logic
+    let current_hash = {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut s = DefaultHasher::new();
+        for c in &metadata.characters {
+            c.id.hash(&mut s);
+            c.name.hash(&mut s);
+        }
+        s.finish()
+    };
+
+    let scanner = {
+        let cache = state.intelligence_cache.lock().unwrap();
+        if let Some((hash, scanner)) = cache.get(&project_id) {
+            if *hash == current_hash {
+                Some(scanner.clone())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    };
+
+    let scanner = if let Some(s) = scanner {
+        s
+    } else {
+        // Rebuild
+        let s = match CharacterScanner::try_new(&metadata.characters) {
+            Ok(s) => s,
+            Err(e) => return Err(crate::errors::Error::Intelligence(e)),
+        };
+        // Update cache
+        let mut cache = state.intelligence_cache.lock().unwrap();
+        cache.insert(project_id, (current_hash, s.clone()));
+        s
+    };
+
     let payload = build_character_graph(
         &metadata,
         &chapter_contents,
         proximity_window,
         prune_threshold,
+        Some(&scanner),
     )
     .await;
 
@@ -593,7 +630,7 @@ mod tests {
     #[tokio::test]
     async fn test_empty_project() {
         let metadata = make_test_metadata(vec![]);
-        let payload = build_character_graph(&metadata, &[], 50, 0.05).await;
+        let payload = build_character_graph(&metadata, &[], 50, 0.05, None).await;
 
         assert!(payload.nodes.is_empty());
         assert!(payload.edges.is_empty());
@@ -607,8 +644,9 @@ mod tests {
             "Alice",
             CharacterRole::Protagonist,
         )];
-        let metadata = make_test_metadata(characters);
-        let payload = build_character_graph(&metadata, &[], 50, 0.05).await;
+        let metadata = make_test_metadata(characters.clone());
+        let scanner = CharacterScanner::try_new(&characters).unwrap();
+        let payload = build_character_graph(&metadata, &[], 50, 0.05, Some(&scanner)).await;
 
         assert_eq!(payload.nodes.len(), 1);
         assert_eq!(payload.nodes[0].mention_count, 0);
@@ -629,14 +667,15 @@ mod tests {
                 CharacterRole::Secondary,
             ),
         ];
-        let metadata = make_test_metadata(characters);
+        let metadata = make_test_metadata(characters.clone());
+        let scanner = CharacterScanner::try_new(&characters).unwrap();
 
         let chapters = vec![(
             "ch1".to_string(),
             "Alice walked into the room. Bob was already there.".to_string(),
         )];
 
-        let payload = build_character_graph(&metadata, &chapters, 50, 0.05).await;
+        let payload = build_character_graph(&metadata, &chapters, 50, 0.05, Some(&scanner)).await;
 
         assert_eq!(payload.nodes.len(), 2);
         assert!(payload.nodes.iter().all(|n| n.is_mapped));
@@ -658,7 +697,8 @@ mod tests {
                 CharacterRole::Extra,
             ),
         ];
-        let metadata = make_test_metadata(characters);
+        let metadata = make_test_metadata(characters.clone());
+        let scanner = CharacterScanner::try_new(&characters).unwrap();
 
         let chapters = vec![
             (
@@ -668,7 +708,7 @@ mod tests {
             ("ch2".to_string(), "Extra appears once.".to_string()),
         ];
 
-        let payload = build_character_graph(&metadata, &chapters, 50, 0.05).await;
+        let payload = build_character_graph(&metadata, &chapters, 50, 0.05, Some(&scanner)).await;
 
         let hero = payload.nodes.iter().find(|n| n.label == "Hero").unwrap();
         let extra = payload.nodes.iter().find(|n| n.label == "Extra").unwrap();

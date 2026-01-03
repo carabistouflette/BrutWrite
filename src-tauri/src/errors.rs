@@ -35,6 +35,9 @@ pub enum Error {
 
     #[error("Artifact not found: {0}")]
     ArtifactNotFound(String),
+
+    #[error("Intelligence engine error: {0}")]
+    Intelligence(String),
 }
 
 impl serde::Serialize for Error {
@@ -63,6 +66,7 @@ impl Error {
             Error::Research(_) => "RESEARCH_ERROR",
             Error::ResearchVaultNotInitialized => "RESEARCH_NOT_INITIALIZED",
             Error::ArtifactNotFound(_) => "ARTIFACT_NOT_FOUND",
+            Error::Intelligence(_) => "INTELLIGENCE_ERROR",
         }
     }
 }

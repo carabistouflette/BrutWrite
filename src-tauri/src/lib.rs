@@ -14,6 +14,9 @@ use crate::project::manager::ProjectManager;
 pub struct AppState {
     pub projects: ProjectManager,
     pub research: research::ResearchState,
+    pub intelligence_cache: std::sync::Mutex<
+        std::collections::HashMap<uuid::Uuid, (u64, commands::intelligence::CharacterScanner)>,
+    >,
 }
 
 impl AppState {
@@ -21,6 +24,7 @@ impl AppState {
         Self {
             projects: ProjectManager::new(),
             research: research::ResearchState::new(),
+            intelligence_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
         }
     }
 }
