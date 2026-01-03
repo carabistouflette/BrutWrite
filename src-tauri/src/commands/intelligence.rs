@@ -11,6 +11,8 @@ use std::collections::{HashMap, HashSet};
 use tauri::State;
 use uuid::Uuid;
 
+use crate::models::utils::{UnionFind, WordIndexer};
+
 use aho_corasick::{AhoCorasick, MatchKind};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -245,99 +247,12 @@ fn is_word_boundary(text: &str, start: usize, end: usize) -> bool {
     true
 }
 
-/// Helper to map character positions to word indices efficiently.
-struct WordIndexer {
-    /// Byte offsets where words start.
-    word_starts: Vec<usize>,
-}
-
-impl WordIndexer {
-    fn new(text: &str) -> Self {
-        let mut word_starts = Vec::new();
-        // Use standard whitespace splitting logic consistent with split_whitespace()
-        // We track the start of each word token.
-        let mut in_word = false;
-
-        for (idx, c) in text.char_indices() {
-            if c.is_whitespace() {
-                in_word = false;
-            } else if !in_word {
-                in_word = true;
-                word_starts.push(idx);
-            }
-        }
-        Self { word_starts }
-    }
-
-    /// Convert character position to approximate word index using binary search.
-    /// Returns 0-based index.
-    fn get_word_index(&self, char_pos: usize) -> usize {
-        if self.word_starts.is_empty() {
-            return 0;
-        }
-        match self.word_starts.binary_search(&char_pos) {
-            Ok(idx) => idx,
-            // If not found, `idx` is where it could be inserted.
-            // This means it is before word[idx], so it belongs to word[idx-1] (or is in gap after it).
-            Err(idx) => idx.saturating_sub(1),
-        }
-    }
-}
-
 /// Calculate proximity bonus between two mention positions.
 fn proximity_bonus(word_distance: usize, proximity_window: usize) -> f32 {
     if word_distance == 0 || word_distance > proximity_window {
         0.0
     } else {
         0.1 * (proximity_window as f32 / word_distance as f32)
-    }
-}
-
-/// Union-Find data structure for connected components.
-struct UnionFind {
-    parent: Vec<usize>,
-    rank: Vec<usize>,
-}
-
-impl UnionFind {
-    fn new(n: usize) -> Self {
-        Self {
-            parent: (0..n).collect(),
-            rank: vec![0; n],
-        }
-    }
-
-    fn find(&mut self, x: usize) -> usize {
-        if self.parent[x] != x {
-            self.parent[x] = self.find(self.parent[x]);
-        }
-        self.parent[x]
-    }
-
-    fn union(&mut self, x: usize, y: usize) {
-        let px = self.find(x);
-        let py = self.find(y);
-        if px == py {
-            return;
-        }
-        if self.rank[px] < self.rank[py] {
-            self.parent[px] = py;
-        } else if self.rank[px] > self.rank[py] {
-            self.parent[py] = px;
-        } else {
-            self.parent[py] = px;
-            self.rank[px] += 1;
-        }
-    }
-
-    fn component_sizes(&mut self) -> Vec<u32> {
-        let n = self.parent.len();
-        let mut sizes: HashMap<usize, u32> = HashMap::new();
-        for i in 0..n {
-            let root = self.find(i);
-            *sizes.entry(root).or_default() += 1;
-        }
-        sizes.into_values().collect()
     }
 }
 
