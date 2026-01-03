@@ -22,7 +22,48 @@ pub async fn seed_demo_project(
     let project_id_uuid = metadata.id;
 
     // 2. Add Characters
-    let characters = vec![
+    let characters = get_demo_characters();
+
+    for char in &characters {
+        crate::commands::save_character(state.clone(), project_id_uuid, char.clone()).await?;
+    }
+
+    // 3. Add Chapters with mentions (Using Aliases!)
+    let chapters_data = get_demo_chapters(&characters);
+
+    for (title, content) in chapters_data {
+        // Create node
+        let md =
+            crate::commands::create_node(state.clone(), project_id_uuid, None, title.to_string())
+                .await?;
+
+        // Find the node ID we just created
+        let node = md
+            .manifest
+            .chapters
+            .iter()
+            .find(|c| c.title == title)
+            .ok_or_else(|| {
+                crate::errors::Error::Validation(format!(
+                    "Failed to retrieve created chapter: {}",
+                    title
+                ))
+            })?;
+
+        // Save content
+        crate::commands::save_chapter(state.clone(), project_id_uuid, node.id.clone(), content)
+            .await?;
+    }
+
+    Ok(project_id_uuid.to_string())
+}
+
+// =============================================================================
+// Internal Data Helpers
+// =============================================================================
+
+fn get_demo_characters() -> Vec<Character> {
+    vec![
         Character {
             id: Uuid::new_v4(),
             name: "Cipher".to_string(),
@@ -83,25 +124,22 @@ pub async fn seed_demo_project(
             arc: "".to_string(),
             notes: "".to_string(),
         },
-    ];
+    ]
+}
 
-    for char in &characters {
-        crate::commands::save_character(state.clone(), project_id_uuid, char.clone()).await?;
-    }
-
+fn get_demo_chapters(characters: &[Character]) -> Vec<(&'static str, String)> {
     // Helper to create mention HTML with alias support
-    // This matches the Tiptap textStyle mark structure: <span data-id="..." ...>Text</span>
+    // Uses html_escape to prevent injection
     let mention = |char: &Character, alias: Option<&str>| -> String {
         let text = alias.unwrap_or(&char.name);
-        // Using strict format to avoid injection issues (even though input is internal here)
+        let safe_text = html_escape::encode_text(text);
         format!(
             r#"<span data-id="{}" data-type="character-mention" class="mention">{}</span>"#,
-            char.id, text
+            char.id, safe_text
         )
     };
 
-    // 3. Add Chapters with mentions (Using Aliases!)
-    let chapters_data = vec![
+    vec![
         (
             "Chapter 1: The Wakeup",
             format!(
@@ -136,7 +174,7 @@ pub async fn seed_demo_project(
         ),
         (
             "Chapter 4: The Void Bar",
-             format!(
+            format!(
                 "<p>{} was cleaning a glass. {} sat at the bar, looking defeated. 'Drink?' asked {}. 'Make it strong,' replied {}. {} slid a cred-chip across the counter.</p>",
                 mention(&characters[4], None), // Neon
                 mention(&characters[0], Some("The exhausted runner")), // Cipher
@@ -156,31 +194,5 @@ pub async fn seed_demo_project(
                 mention(&characters[1], None)
             )
         )
-    ];
-
-    for (title, content) in chapters_data {
-        // Create node
-        let md =
-            crate::commands::create_node(state.clone(), project_id_uuid, None, title.to_string())
-                .await?;
-
-        // Find the node ID we just created
-        let node = md
-            .manifest
-            .chapters
-            .iter()
-            .find(|c| c.title == title)
-            .ok_or_else(|| {
-                crate::errors::Error::Validation(format!(
-                    "Failed to retrieve created chapter: {}",
-                    title
-                ))
-            })?;
-
-        // Save content
-        crate::commands::save_chapter(state.clone(), project_id_uuid, node.id.clone(), content)
-            .await?;
-    }
-
-    Ok(project_id_uuid.to_string())
+    ]
 }
