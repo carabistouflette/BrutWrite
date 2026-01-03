@@ -175,18 +175,20 @@ const exportPng = async () => {
 
         <!-- Modal Container -->
         <div
-          class="relative w-full max-w-6xl h-[85%] flex flex-col bg-paper/95 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-2xl overflow-hidden text-ink modal-container"
+          class="relative w-full max-w-6xl h-[85%] flex flex-col bg-[var(--paper)]/95 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-2xl overflow-hidden text-[var(--ink)] modal-container"
           style="box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.4)"
         >
           <!-- Header -->
           <header
-            class="px-8 py-4 border-b border-ink/5 flex justify-between items-center bg-paper/50"
+            class="px-8 py-4 border-b border-[var(--ink)]/5 flex justify-between items-center bg-[var(--paper)]/50"
           >
             <div>
-              <h2 class="text-2xl font-serif font-bold italic text-ink">Character Dynamics</h2>
-              <p class="text-xs uppercase tracking-widest text-ink/40 font-bold mt-0.5">
+              <h2 class="text-2xl font-serif font-bold italic text-[var(--ink)]">
+                Character Dynamics
+              </h2>
+              <p class="text-xs uppercase tracking-widest text-[var(--ink)]/40 font-bold mt-0.5">
                 Narrative Gravity Visualization
-                <span v-if="selectedChapterIds.length > 0" class="text-accent">
+                <span v-if="selectedChapterIds.length > 0" class="text-[var(--accent)]">
                   ({{ selectedChapterIds.length }} chapters filtered)
                 </span>
               </p>
@@ -194,8 +196,10 @@ const exportPng = async () => {
             <div class="flex items-center gap-2">
               <!-- Filter Button -->
               <button
-                class="header-btn"
-                :class="{ 'bg-accent/10 text-accent': selectedChapterIds.length > 0 }"
+                class="flex items-center justify-center w-8 h-8 rounded-lg text-black/40 transition-all hover:bg-black/5 hover:text-[var(--ink)]"
+                :class="{
+                  'bg-[var(--accent)]/10 text-[var(--accent)]': selectedChapterIds.length > 0,
+                }"
                 title="Filter by chapters"
                 @click="showChapterFilter = !showChapterFilter"
               >
@@ -210,7 +214,11 @@ const exportPng = async () => {
               </button>
 
               <!-- Export Button -->
-              <button class="header-btn" title="Export as PNG" @click="exportPng">
+              <button
+                class="flex items-center justify-center w-8 h-8 rounded-lg text-black/40 transition-all hover:bg-black/5 hover:text-[var(--ink)]"
+                title="Export as PNG"
+                @click="exportPng"
+              >
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     stroke-linecap="round"
@@ -223,7 +231,7 @@ const exportPng = async () => {
 
               <!-- Close Button -->
               <button
-                class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-ink/40 hover:text-ink transition-colors"
+                class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 text-[var(--ink)]/40 hover:text-[var(--ink)] transition-colors"
                 @click="close"
               >
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -245,20 +253,23 @@ const exportPng = async () => {
             leave-active-class="transition-all duration-150"
             leave-to-class="-translate-y-2 opacity-0"
           >
-            <div v-if="showChapterFilter" class="px-8 py-4 border-b border-ink/5 bg-ink/5">
+            <div
+              v-if="showChapterFilter"
+              class="px-8 py-4 border-b border-[var(--ink)]/5 bg-[var(--ink)]/5"
+            >
               <div class="flex items-center justify-between mb-3">
-                <h3 class="text-xs uppercase tracking-widest text-ink/60 font-bold">
+                <h3 class="text-xs uppercase tracking-widest text-[var(--ink)]/60 font-bold">
                   Filter by Chapters
                 </h3>
                 <div class="flex gap-2">
                   <button
-                    class="text-xs text-ink/50 hover:text-ink transition-colors"
+                    class="text-xs text-[var(--ink)]/50 hover:text-[var(--ink)] transition-colors"
                     @click="clearFilter"
                   >
                     Clear All
                   </button>
                   <button
-                    class="text-xs text-accent font-bold hover:text-accent/80 transition-colors"
+                    class="text-xs text-[var(--accent)] font-bold hover:text-[var(--accent)]/80 transition-colors"
                     @click="applyFilter"
                   >
                     Apply Filter
@@ -269,8 +280,11 @@ const exportPng = async () => {
                 <button
                   v-for="chapter in chapters"
                   :key="chapter.id"
-                  class="chapter-chip"
-                  :class="{ selected: selectedChapterIds.includes(chapter.id) }"
+                  class="px-3 py-1.5 text-xs font-medium text-black/60 bg-black/5 border border-black/10 rounded-full transition-all hover:bg-black/10 hover:text-[var(--ink)]"
+                  :class="{
+                    'bg-[var(--accent)] border-[var(--accent)] text-white hover:bg-[var(--accent)] hover:text-white':
+                      selectedChapterIds.includes(chapter.id),
+                  }"
                   @click="toggleChapter(chapter.id)"
                 >
                   {{ chapter.name }}
@@ -307,43 +321,5 @@ const exportPng = async () => {
     transform: scale(1);
     opacity: 1;
   }
-}
-
-.header-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 0.5rem;
-  color: rgba(26, 26, 26, 0.4);
-  transition: all 0.15s ease;
-}
-
-.header-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: var(--ink);
-}
-
-.chapter-chip {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: rgba(26, 26, 26, 0.6);
-  background-color: rgba(26, 26, 26, 0.05);
-  border: 1px solid rgba(26, 26, 26, 0.1);
-  border-radius: 9999px;
-  transition: all 0.15s ease;
-}
-
-.chapter-chip:hover {
-  background-color: rgba(26, 26, 26, 0.1);
-  color: var(--ink);
-}
-
-.chapter-chip.selected {
-  background-color: var(--accent);
-  border-color: var(--accent);
-  color: white;
 }
 </style>
