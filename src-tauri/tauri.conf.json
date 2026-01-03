@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' asset: data: blob:; script-src 'self' asset:; style-src 'self' 'unsafe-inline' asset:; img-src 'self' asset: data: blob:;"
+      "csp": "default-src 'self' asset: data: blob:; script-src 'self' asset:; style-src 'self' asset:; img-src 'self' asset: data: blob:;"
     }
   },
   "bundle": {
