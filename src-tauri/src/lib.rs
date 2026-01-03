@@ -11,14 +11,18 @@ pub mod project;
 
 use crate::project::manager::ProjectManager;
 
+type IntelligenceCache = tokio::sync::Mutex<
+    std::collections::HashMap<uuid::Uuid, (u64, commands::intelligence::CharacterScanner)>,
+>;
+
+type ChapterContentCache =
+    tokio::sync::Mutex<std::collections::HashMap<String, (u64, Vec<(usize, String)>)>>;
+
 pub struct AppState {
     pub projects: ProjectManager,
     pub research: research::ResearchState,
-    pub intelligence_cache: std::sync::Mutex<
-        std::collections::HashMap<uuid::Uuid, (u64, commands::intelligence::CharacterScanner)>,
-    >,
-    pub chapter_content_cache:
-        std::sync::Mutex<std::collections::HashMap<String, (u64, Vec<(usize, String)>)>>,
+    pub intelligence_cache: IntelligenceCache,
+    pub chapter_content_cache: ChapterContentCache,
 }
 
 impl AppState {
@@ -26,8 +30,8 @@ impl AppState {
         Self {
             projects: ProjectManager::new(),
             research: research::ResearchState::new(),
-            intelligence_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
-            chapter_content_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
+            intelligence_cache: tokio::sync::Mutex::new(std::collections::HashMap::new()),
+            chapter_content_cache: tokio::sync::Mutex::new(std::collections::HashMap::new()),
         }
     }
 }
