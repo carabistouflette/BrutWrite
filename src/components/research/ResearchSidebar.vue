@@ -216,8 +216,11 @@ onMounted(async () => {
   // Listen for file drops globally and check if we are the target (UI check is hard, so we just accept global drops for now as "Add to Vault")
   // Or we rely on the fact that if the user drops here, it triggers the event.
   // Actually, tauri://drag-drop payload contains paths.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  unlisten = await listen('tauri://drag-drop', (event: any) => {
+  interface TauriDragDropPayload {
+    paths: string[];
+  }
+
+  unlisten = await listen<TauriDragDropPayload>('tauri://drag-drop', (event) => {
     const paths = event.payload.paths;
     if (paths && paths.length > 0) {
       store.addFiles(paths);
