@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, shallowRef, computed, reactive } from 'vue';
+import { ref, shallowRef, computed, triggerRef } from 'vue';
 import type { FileNode, ProjectSettings, Character, Plotline } from '../types';
 
 export const useProjectStore = defineStore('project', () => {
@@ -97,9 +97,9 @@ export const useProjectStore = defineStore('project', () => {
     projectId.value = id;
     path.value = projectPath;
     // Make nodes deep reactive
-    const reactiveNodes = fileNodes.map((n) => reactive(n));
-    nodes.value = reactiveNodes;
-    rebuildAll(reactiveNodes); // Full rebuild on load
+    // OPTIMIZATION: Use plain objects with shallowRef + triggerRef to avoid overhead of 1000s of Proxies
+    nodes.value = fileNodes;
+    rebuildAll(fileNodes); // Full rebuild on load
 
     settings.value = projectSettingsData;
     activeId.value = undefined;
@@ -117,6 +117,7 @@ export const useProjectStore = defineStore('project', () => {
     // But for now, let's assume updateStructure might include new nodes.
     // If we knew it was just reorder, we'd call updateDerived(newNodes).
     rebuildAll(newNodes);
+    triggerRef(nodes);
   }
 
   function closeProject() {
@@ -130,6 +131,10 @@ export const useProjectStore = defineStore('project', () => {
     totalWordCount.value = 0;
 
     localStorage.removeItem('last_opened_project_path');
+
+    // Clear derived state
+    rebuildAll([]);
+    triggerRef(nodes);
   }
 
   // Granular Mutations (Optimized)
@@ -138,6 +143,7 @@ export const useProjectStore = defineStore('project', () => {
     const node = nodeMap.value.get(id);
     if (node) {
       node.name = name;
+      triggerRef(nodes);
     }
   }
 
@@ -147,6 +153,7 @@ export const useProjectStore = defineStore('project', () => {
       const diff = wordCount - (node.word_count || 0);
       node.word_count = wordCount;
       totalWordCount.value += diff;
+      triggerRef(nodes);
     }
   }
 
@@ -154,6 +161,7 @@ export const useProjectStore = defineStore('project', () => {
     const node = nodeMap.value.get(id);
     if (node) {
       Object.assign(node, updates);
+      triggerRef(nodes);
     }
   }
 
