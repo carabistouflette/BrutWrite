@@ -337,7 +337,10 @@ pub async fn analyze_character_graph(
 
     // Initialize Scanner (once per analysis run)
     let scanner = {
-        let cache = state.intelligence_cache.lock().unwrap();
+        let cache = state
+            .intelligence_cache
+            .lock()
+            .map_err(|e| crate::errors::Error::LockPoisoned(e.to_string()))?;
         if let Some((hash, scanner)) = cache.get(&project_id) {
             if *hash == current_hash {
                 Some(scanner.clone())
@@ -355,7 +358,10 @@ pub async fn analyze_character_graph(
         // Rebuild if stale or missing
         match CharacterScanner::try_new(&metadata.characters) {
             Ok(s) => {
-                let mut cache = state.intelligence_cache.lock().unwrap();
+                let mut cache = state
+                    .intelligence_cache
+                    .lock()
+                    .map_err(|e| crate::errors::Error::LockPoisoned(e.to_string()))?;
                 cache.insert(project_id, (current_hash, s.clone()));
                 s
             }
@@ -418,7 +424,10 @@ pub async fn analyze_character_graph(
 
                 // 3. Cache Check & Update (Sync - Lock)
                 let mentions = {
-                    let mut content_cache = state.chapter_content_cache.lock().unwrap();
+                    let mut content_cache = state
+                        .chapter_content_cache
+                        .lock()
+                        .map_err(|e| crate::errors::Error::LockPoisoned(e.to_string()))?;
 
                     if let Some((cached_hash, matches)) = content_cache.get(&cid) {
                         if *cached_hash == combined_hash {

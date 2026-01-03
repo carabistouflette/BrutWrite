@@ -13,7 +13,7 @@ interface CharacterGraphState {
 }
 
 // Internal store definition
-const useCharacterGraphStore = defineStore('character-graph', () => {
+export const useCharacterGraph = defineStore('character-graph', () => {
   const state = ref<CharacterGraphState>({
     payload: null,
     isLoading: false,
@@ -98,6 +98,7 @@ const useCharacterGraphStore = defineStore('character-graph', () => {
       return;
     }
 
+    // Rate limiting: prevent spamming
     const cooldown = 500;
     const now = Date.now();
     if (now - lastAnalysisTime.value < cooldown) {
@@ -145,27 +146,3 @@ const useCharacterGraphStore = defineStore('character-graph', () => {
     clear,
   };
 });
-
-/**
- * Composable for character graph analysis.
- * Wraps the Pinia store to maintain API compatibility while fixing singleton issues.
- */
-export function useCharacterGraph() {
-  const store = useCharacterGraphStore();
-
-  // Extract state properties as readonly computed refs to match original API contract
-  return {
-    payload: computed(() => store.state.payload),
-    isLoading: computed(() => store.state.isLoading),
-    lastAnalyzedAt: computed(() => store.state.lastAnalyzedAt),
-    error: computed(() => store.state.error),
-
-    ghosts: computed(() => store.ghosts),
-    mappedNodes: computed(() => store.mappedNodes),
-    alerts: computed(() => store.alerts),
-    isStale: computed(() => store.isStale),
-
-    analyze: store.analyze,
-    clear: store.clear,
-  };
-}

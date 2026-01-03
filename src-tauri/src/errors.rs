@@ -38,6 +38,9 @@ pub enum Error {
 
     #[error("Intelligence engine error: {0}")]
     Intelligence(String),
+
+    #[error("Lock poisoned: {0}")]
+    LockPoisoned(String),
 }
 
 impl serde::Serialize for Error {
@@ -67,6 +70,7 @@ impl Error {
             Error::ResearchVaultNotInitialized => "RESEARCH_NOT_INITIALIZED",
             Error::ArtifactNotFound(_) => "ARTIFACT_NOT_FOUND",
             Error::Intelligence(_) => "INTELLIGENCE_ERROR",
+            Error::LockPoisoned(_) => "LOCK_POISONED",
         }
     }
 }
