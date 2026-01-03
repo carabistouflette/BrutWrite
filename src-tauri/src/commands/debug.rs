@@ -93,7 +93,7 @@ fn get_demo_characters() -> Vec<Character> {
             name: "Glitch".to_string(),
             role: CharacterRole::Secondary,
             description: "Street urchin and informant.".to_string(),
-            archetype: " The Jester".to_string(),
+            archetype: "The Jester".to_string(),
             engine: CharacterEngine::default(),
             physical_features: "Neon tattoos".to_string(),
             traits: vec!["Fast talker".to_string()],
