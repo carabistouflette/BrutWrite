@@ -66,5 +66,8 @@ pub fn run() {
             commands::seed_demo_project
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .unwrap_or_else(|e| {
+            eprintln!("Fatal: Failed to start application: {}", e);
+            std::process::exit(1);
+        });
 }

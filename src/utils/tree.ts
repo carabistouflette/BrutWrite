@@ -84,9 +84,11 @@ export function reconstructHierarchy(chapters: Chapter[]): FileNode[] {
 
   // Second pass: link parents/children
   for (const c of sortedChapters) {
-    const node = nodeMap.get(c.id)!;
-    if (c.parent_id && nodeMap.has(c.parent_id)) {
-      nodeMap.get(c.parent_id)!.children?.push(node);
+    const node = nodeMap.get(c.id);
+    if (!node) continue;
+    if (c.parent_id) {
+      const parent = nodeMap.get(c.parent_id);
+      parent?.children?.push(node);
     } else {
       rootNodes.push(node);
     }

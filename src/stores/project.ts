@@ -122,9 +122,6 @@ export const useProjectStore = defineStore('project', () => {
     plotlines.value = [];
     characters.value = [];
 
-    // Clear characters
-    characters.value = [];
-
     localStorage.removeItem('last_opened_project_path');
   }
 

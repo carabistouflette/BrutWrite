@@ -75,9 +75,7 @@ export const useSettingsStore = defineStore('settings', () => {
     } catch (err) {
       notifyError('Failed to load settings', err);
     } finally {
-      setTimeout(() => {
-        isLoaded.value = true;
-      }, 100);
+      isLoaded.value = true;
     }
   }
 
