@@ -105,51 +105,38 @@ fn role_weight(role: &CharacterRole) -> f32 {
 }
 
 /// Find all positions where a character name or @tag appears in text.
-/// Find all positions where a character name or @tag appears in text.
-fn find_character_mentions(text: &str, character: &Character) -> Vec<usize> {
-    let text_lower = text.to_lowercase();
-    let name_lower = character.name.to_lowercase();
-    let tag = format!("@{}", name_lower);
-    let id_ref = format!("data-id=\"{}\"", character.id);
-    // Also support data-entity-id for future proofing or alternative marks
-    let entity_ref = format!("data-entity-id=\"{}\"", character.id);
+/// Pre-compiled search pattern for a character.
+struct CharacterPattern {
+    id: String,
+    // We use a regex to ensure word boundaries or specific formatting
+    pattern: regex::Regex,
+}
 
-    let mut positions = Vec::new();
+impl CharacterPattern {
+    fn new(c: &Character) -> Self {
+        let name_lower = regex::escape(&c.name.to_lowercase());
+        let id_ref = regex::escape(&c.id.to_string());
 
-    // Find name mentions
-    let mut start = 0;
-    while let Some(pos) = text_lower[start..].find(&name_lower) {
-        let actual_pos = start + pos;
-        positions.push(actual_pos);
-        start = actual_pos + name_lower.len();
+        // Match:
+        // 1. Name (case insensitive via flag in search)
+        // 2. @Name
+        // 3. data-id="UUID"
+        // 4. data-entity-id="UUID"
+        let raw = format!(
+            r"(?i)\b{}\b|@{}|data-(?:entity-)?id=[\x22\x27]{}[\x22\x27]",
+            name_lower, name_lower, id_ref
+        );
+
+        Self {
+            id: c.id.to_string(),
+            pattern: regex::Regex::new(&raw).unwrap_or_else(|_| regex::Regex::new("").unwrap()),
+        }
     }
+}
 
-    // Find @tag mentions
-    start = 0;
-    while let Some(pos) = text_lower[start..].find(&tag) {
-        let actual_pos = start + pos;
-        positions.push(actual_pos);
-        start = actual_pos + tag.len();
-    }
-
-    // Find ID references (The robust link)
-    start = 0;
-    while let Some(pos) = text_lower[start..].find(&id_ref) {
-        let actual_pos = start + pos;
-        positions.push(actual_pos);
-        start = actual_pos + id_ref.len();
-    }
-
-    start = 0;
-    while let Some(pos) = text_lower[start..].find(&entity_ref) {
-        let actual_pos = start + pos;
-        positions.push(actual_pos);
-        start = actual_pos + entity_ref.len();
-    }
-
-    positions.sort();
-    positions.dedup();
-    positions
+/// Find all mentions of a specific character using Regex.
+fn find_character_mentions(text: &str, pattern: &regex::Regex) -> Vec<usize> {
+    pattern.find_iter(text).map(|m| m.start()).collect()
 }
 
 /// Convert character position to approximate word index.
@@ -251,6 +238,9 @@ async fn build_character_graph(
     let mut interaction_weights: HashMap<(String, String), f32> = HashMap::new();
     let mut interaction_types: HashMap<(String, String), InteractionType> = HashMap::new();
 
+    // Pre-compile patterns O(N)
+    let patterns: Vec<CharacterPattern> = characters.iter().map(CharacterPattern::new).collect();
+
     // Iterate chapters to process text
     for (chapter_id, content) in chapter_contents {
         // 1. Collect all mentions in this chapter
@@ -258,9 +248,9 @@ async fn build_character_graph(
         let mut chapter_mentions: Vec<(usize, usize, String)> = Vec::new();
         let mut present_in_chapter: HashSet<String> = HashSet::new();
 
-        for character in characters {
-            let char_id = character.id.to_string();
-            let positions = find_character_mentions(content, character);
+        for pattern in &patterns {
+            let char_id = pattern.id.clone();
+            let positions = find_character_mentions(content, &pattern.pattern);
 
             if !positions.is_empty() {
                 *mention_counts.entry(char_id.clone()).or_default() += positions.len() as u32;

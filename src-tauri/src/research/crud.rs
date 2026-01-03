@@ -25,14 +25,22 @@ pub async fn create_note(
     }
 
     let file_path = root.join(&final_name);
-    if file_path.exists() {
-        return Err(crate::errors::Error::Research(
-            "Note already exists".to_string(),
-        ));
-    }
 
-    // IO without lock
-    tokio::fs::write(&file_path, "").await?;
+    // Atomic creation prevents TOCTOU races
+    let file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&file_path)
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::AlreadyExists {
+                crate::errors::Error::Research("Note already exists".to_string())
+            } else {
+                crate::errors::Error::Io(e)
+            }
+        })?;
+
+    // Close file immediately, we just wanted to create it empty safely
+    drop(file);
 
     let artifact = ResearchArtifact::new(
         file_path.to_string_lossy().to_string(),
