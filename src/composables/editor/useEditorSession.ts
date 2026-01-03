@@ -79,7 +79,7 @@ export function useEditorSession(projectId: Ref<string>, chapterId: Ref<string>)
         analyzeCharacterGraph();
       }
 
-      console.debug(`Auto-saved chapter ${chapterId.value}`);
+      // Chapter auto-saved
     } catch (e) {
       notifyError(`Failed to save chapter ${chapterId.value}`, e);
       throw e;

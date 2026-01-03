@@ -30,7 +30,7 @@ export function useProjectSync() {
 
       try {
         await projectApi.updateManifest(projectId.value, manifest);
-        console.debug('Manifest synced');
+        // Manifest synced
       } catch (e) {
         notifyError('Failed to sync manifest', e);
       }

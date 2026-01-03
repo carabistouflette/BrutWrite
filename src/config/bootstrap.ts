@@ -29,7 +29,7 @@ export async function initApp() {
     if (lastPath) {
       const restored = restoreSession(lastPath);
       if (restored) {
-        console.debug('Session restored from cache', lastPath);
+        // Session restored from cache
       }
     }
 
@@ -37,8 +37,7 @@ export async function initApp() {
       settingsStore.loadSettings(),
       lastPath
         ? (async () => {
-            // Even if restored, we fetch fresh data
-            console.debug('Loading fresh project data:', lastPath);
+            // Loading fresh project data
             await loadProject(lastPath);
           })()
         : Promise.resolve(),

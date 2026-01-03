@@ -57,7 +57,7 @@ export function useProjectSession() {
         return false;
       }
 
-      console.debug('Restoring project from cache:', path);
+      // Session restored from cache
 
       // 1. Restore Characters
       const { setCharacters } = useCharacters();
@@ -108,7 +108,7 @@ export function useProjectSession() {
           activeId: projectStore.activeId,
         });
 
-        console.debug('Project session auto-saved to cache');
+        // Session auto-saved
       }, APP_CONSTANTS.CACHE.DEBOUNCE_MS);
     };
 
