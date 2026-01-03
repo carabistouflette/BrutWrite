@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod errors;
 pub mod models;
+pub mod validation;
 
 pub mod research;
 pub mod storage;

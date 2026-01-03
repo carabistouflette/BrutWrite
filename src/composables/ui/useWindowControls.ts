@@ -7,25 +7,22 @@ export function useWindowControls() {
   const minimize = () => {
     if (isTauri) {
       getCurrentWindow().minimize();
-    } else {
-      console.log('Mock: Minimize Window');
     }
+    // Non-Tauri environments: no-op (e.g., browser dev mode)
   };
 
   const toggleMaximize = () => {
     if (isTauri) {
       getCurrentWindow().toggleMaximize();
-    } else {
-      console.log('Mock: Toggle Maximize Window');
     }
+    // Non-Tauri environments: no-op
   };
 
   const close = () => {
     if (isTauri) {
       getCurrentWindow().close();
-    } else {
-      console.log('Mock: Close Window');
     }
+    // Non-Tauri environments: no-op
   };
 
   return {

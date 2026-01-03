@@ -26,11 +26,12 @@ pub async fn create_note(
 
     let file_path = root.join(&final_name);
 
-    // Atomic creation prevents TOCTOU races
-    let file = std::fs::OpenOptions::new()
+    // Atomic creation prevents TOCTOU races - using async I/O
+    let file = tokio::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(&file_path)
+        .await
         .map_err(|e| {
             if e.kind() == std::io::ErrorKind::AlreadyExists {
                 crate::errors::Error::Research("Note already exists".to_string())

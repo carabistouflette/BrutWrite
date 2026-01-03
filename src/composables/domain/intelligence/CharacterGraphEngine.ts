@@ -285,9 +285,47 @@ export class CharacterGraphEngine {
   }
 
   public dispose() {
+    // Stop simulation first
     if (this.simulation) {
       this.simulation.stop();
       this.simulation = null;
     }
+
+    // Remove zoom behavior and its event listeners
+    if (this.zoomBehavior) {
+      this.svg.on('.zoom', null);
+      this.zoomBehavior = null;
+    }
+
+    // Clean up node event listeners
+    if (this.nodeSelection) {
+      this.nodeSelection
+        .on('click', null)
+        .on('dblclick', null)
+        .on('contextmenu', null)
+        .on('focus', null)
+        .on('blur', null)
+        .on('mouseenter', null)
+        .on('mouseleave', null)
+        .on('keydown', null);
+      this.nodeSelection = null;
+    }
+
+    // Clean up link selection
+    if (this.linkSelection) {
+      this.linkSelection = null;
+    }
+
+    // Clean up label selection
+    if (this.labelSelection) {
+      this.labelSelection = null;
+    }
+
+    // Clear all SVG content
+    this.svg.selectAll('*').remove();
+    this.mainGroup = null;
+
+    // Clear callback reference
+    this.onZoom = undefined;
   }
 }

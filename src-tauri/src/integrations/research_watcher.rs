@@ -1,4 +1,5 @@
 use crate::AppState;
+use log::{error, warn};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
@@ -15,7 +16,7 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
 
         // 1. Initialize State (Ensure dir exists, scan)
         if let Err(e) = state.initialize(research_path.clone()).await {
-            println!("Failed to initialize research state: {:?}", e);
+            error!("Failed to initialize research state: {:?}", e);
             return;
         }
 
@@ -31,7 +32,7 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
         match watcher_res {
             Ok(mut watcher) => {
                 if let Err(e) = watcher.watch(&research_path, RecursiveMode::Recursive) {
-                    println!("Failed to watch research directory: {:?}", e);
+                    error!("Failed to watch research directory: {:?}", e);
                     return;
                 }
 
@@ -48,16 +49,16 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
                             // To avoid spamming frontend, we might want to debounce emissions.
                             // But let's start simple.
                             if let Err(e) = state.handle_fs_change(event).await {
-                                println!("Error handling fs change: {:?}", e);
+                                warn!("Error handling fs change: {:?}", e);
                             } else {
                                 let _ = app_handle.emit("research-update", ());
                             }
                         }
-                        Err(e) => println!("watch error: {:?}", e),
+                        Err(e) => error!("Watch error: {:?}", e),
                     }
                 }
             }
-            Err(e) => println!("Failed to create watcher: {:?}", e),
+            Err(e) => error!("Failed to create watcher: {:?}", e),
         }
     });
 }

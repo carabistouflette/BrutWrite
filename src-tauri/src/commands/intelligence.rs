@@ -129,7 +129,11 @@ impl CharacterPattern {
 
         Self {
             id: c.id.to_string(),
-            pattern: regex::Regex::new(&raw).unwrap_or_else(|_| regex::Regex::new("").unwrap()),
+            // Safe fallback: ^$ matches nothing, which is correct behavior for invalid patterns
+            pattern: regex::Regex::new(&raw).unwrap_or_else(|_| {
+                // This static pattern is guaranteed to compile
+                regex::Regex::new(r"^\b$").expect("static regex must compile")
+            }),
         }
     }
 }
