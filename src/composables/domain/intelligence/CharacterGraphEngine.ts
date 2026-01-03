@@ -69,16 +69,32 @@ export class CharacterGraphEngine {
     this.onZoom = options.onZoom;
   }
 
-  public initialize(nodes: GraphNode[], edges: GraphEdge[]) {
-    // Clear previous
-    this.svg.selectAll('*').remove();
+  /**
+   * Initialize or update the graph with new data.
+   * Uses D3's data-join to minimize DOM churn and preserve state.
+   */
+  public update(nodes: GraphNode[], edges: GraphEdge[]) {
+    // 1. Prepare Data
+    const existingNodes = this.nodeSelection
+      ? new Map(this.nodeSelection.data().map((n) => [n.id, n]))
+      : new Map<string, D3Node>();
 
-    // Prepare data
-    const d3Nodes: D3Node[] = nodes.map((n) => ({
-      ...n,
-      x: this.width / 2 + (Math.random() - 0.5) * 100,
-      y: this.height / 2 + (Math.random() - 0.5) * 100,
-    }));
+    const d3Nodes: D3Node[] = nodes.map((n) => {
+      const existing = existingNodes.get(n.id);
+      if (existing) {
+        // Carry over position and velocity
+        return { ...existing, ...n };
+      }
+
+      // New node: Deterministic initial position based on ID if possible
+      // This prevents the graph from "jumping" randomly on every load
+      const hash = n.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      return {
+        ...n,
+        x: this.width / 2 + ((hash % 100) - 50),
+        y: this.height / 2 + ((hash % 70) - 35),
+      };
+    });
 
     const nodeById = new Map(d3Nodes.map((n) => [n.id, n]));
 
@@ -91,8 +107,20 @@ export class CharacterGraphEngine {
         interactionType: e.interactionType,
       }));
 
-    this.setupSimulation(d3Nodes, d3Links);
-    this.setupVisuals(d3Nodes, d3Links);
+    // 2. Update Simulation
+    if (!this.simulation) {
+      this.setupSimulation(d3Nodes, d3Links);
+    } else {
+      this.simulation.nodes(d3Nodes);
+      const linkForce = this.simulation.force<d3.ForceLink<D3Node, D3Link>>('link');
+      if (linkForce) {
+        linkForce.links(d3Links);
+      }
+      this.simulation.alpha(0.3).restart(); // Gentle restart
+    }
+
+    // 3. Update Visuals
+    this.renderGraph(d3Nodes, d3Links);
   }
 
   private setupSimulation(nodes: D3Node[], links: D3Link[]) {
@@ -124,27 +152,31 @@ export class CharacterGraphEngine {
     }
   }
 
-  private setupVisuals(nodes: D3Node[], links: D3Link[]) {
-    // Groups
-    this.mainGroup = this.svg.append('g').attr('class', 'main-group');
-    const linksGroup = this.mainGroup.append('g').attr('class', 'links-group');
-    const nodesGroup = this.mainGroup.append('g').attr('class', 'nodes-group');
-    const labelsGroup = this.mainGroup.append('g').attr('class', 'labels-group');
+  private renderGraph(nodes: D3Node[], links: D3Link[]) {
+    if (!this.mainGroup) {
+      this.mainGroup = this.svg.append('g').attr('class', 'main-group');
+      this.mainGroup.append('g').attr('class', 'links-group');
+      this.mainGroup.append('g').attr('class', 'nodes-group');
+      this.mainGroup.append('g').attr('class', 'labels-group');
 
-    // Zoom
-    this.zoomBehavior = d3
-      .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.5, 3])
-      .on('zoom', (event) => {
-        this.mainGroup?.attr('transform', event.transform);
-        this.onZoom?.(event.transform.k);
-      });
-    this.svg.call(this.zoomBehavior);
+      this.zoomBehavior = d3
+        .zoom<SVGSVGElement, unknown>()
+        .scaleExtent([0.5, 3])
+        .on('zoom', (event) => {
+          this.mainGroup?.attr('transform', event.transform);
+          this.onZoom?.(event.transform.k);
+        });
+      this.svg.call(this.zoomBehavior);
+    }
+
+    const linksGroup = this.mainGroup.select<SVGGElement>('.links-group');
+    const nodesGroup = this.mainGroup.select<SVGGElement>('.nodes-group');
+    const labelsGroup = this.mainGroup.select<SVGGElement>('.labels-group');
 
     // Links
     this.linkSelection = linksGroup
       .selectAll<SVGLineElement, D3Link>('line')
-      .data(links)
+      .data(links, (d) => `${(d.source as D3Node).id}-${(d.target as D3Node).id}`)
       .join('line')
       .attr('class', 'graph-link')
       .attr('stroke', 'rgba(26, 26, 26, 0.15)')
@@ -158,7 +190,7 @@ export class CharacterGraphEngine {
     // Nodes
     this.nodeSelection = nodesGroup
       .selectAll<SVGCircleElement, D3Node>('circle')
-      .data(nodes)
+      .data(nodes, (d) => d.id)
       .join('circle')
       .attr('class', 'graph-node')
       .attr('r', (d) => this.radiusScale!(d.valence))
@@ -181,7 +213,7 @@ export class CharacterGraphEngine {
     // Labels
     this.labelSelection = labelsGroup
       .selectAll<SVGTextElement, D3Node>('text')
-      .data(nodes)
+      .data(nodes, (d) => d.id)
       .join('text')
       .attr('class', 'graph-label')
       .attr('font-family', 'Playfair Display, Georgia, serif')
@@ -192,6 +224,9 @@ export class CharacterGraphEngine {
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'middle')
       .text((d) => d.label);
+
+    // Initial positioning
+    this.updatePositions();
   }
 
   private handleNodeKeydown(event: KeyboardEvent, node: D3Node) {

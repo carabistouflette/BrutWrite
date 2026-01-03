@@ -43,8 +43,6 @@ let engine: CharacterGraphEngine | null = null;
 
 // --- Computed ---
 
-const nodes = computed(() => payload.value?.nodes ?? []);
-const edges = computed(() => payload.value?.edges ?? []);
 const metrics = computed(() => payload.value?.metrics);
 
 // --- Helpers ---
@@ -127,7 +125,7 @@ function initEngine() {
     },
   });
 
-  engine.initialize(nodes.value, edges.value);
+  engine.update(payload.value.nodes, payload.value.edges);
 
   // Restore selection if ID persists
   if (selectedNodeId.value) {
@@ -188,13 +186,13 @@ watch(payload, () => {
     <!-- Loading State -->
     <div
       v-if="isLoading"
-      class="absolute inset-0 flex flex-col items-center justify-center bg-[var(--paper)]"
+      class="absolute inset-0 flex flex-col items-center justify-center bg-(--paper)"
     >
       <div class="flex flex-col items-center gap-3">
         <div
-          class="w-8 h-8 border-2 border-[var(--ink)]/20 border-t-[var(--accent)] rounded-full animate-spin"
+          class="w-8 h-8 border-2 border-(--ink)/20 border-t-(--accent) rounded-full animate-spin"
         ></div>
-        <span class="text-xs uppercase tracking-widest text-[var(--ink)]/40 font-bold"
+        <span class="text-xs uppercase tracking-widest text-(--ink)/40 font-bold"
           >Analyzing...</span
         >
       </div>
@@ -203,7 +201,7 @@ watch(payload, () => {
     <!-- Error State -->
     <div
       v-else-if="error"
-      class="absolute inset-0 flex flex-col items-center justify-center bg-[var(--paper)]"
+      class="absolute inset-0 flex flex-col items-center justify-center bg-(--paper)"
     >
       <div class="text-center">
         <div
@@ -235,13 +233,13 @@ watch(payload, () => {
     <!-- Tooltip -->
     <div
       v-if="tooltipData"
-      class="absolute transform -translate-x-1/2 -translate-y-full p-3 px-4 bg-[var(--paper)] border border-black/10 rounded-xl shadow-lg pointer-events-none z-[100] min-w-[150px]"
+      class="absolute transform -translate-x-1/2 -translate-y-full p-3 px-4 bg-(--paper) border border-black/10 rounded-xl shadow-lg pointer-events-none z-100 min-w-[150px]"
       :style="{ left: `${tooltipData.x}px`, top: `${tooltipData.y}px` }"
     >
-      <div class="font-serif text-sm font-semibold italic text-[var(--ink)] mb-0.5">
+      <div class="font-serif text-sm font-semibold italic text-(--ink) mb-0.5">
         {{ tooltipData.node.label }}
       </div>
-      <div class="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--accent)] mb-2">
+      <div class="text-[10px] font-bold uppercase tracking-widest text-(--accent) mb-2">
         {{ getRoleName(tooltipData.node.id) }}
       </div>
       <div class="flex gap-2 text-xs text-black/60">
@@ -256,17 +254,17 @@ watch(payload, () => {
     <Teleport to="body">
       <div
         v-if="contextMenuData"
-        class="fixed inset-0 z-[90]"
+        class="fixed inset-0 z-90"
         @click="closeContextMenu"
         @contextmenu.prevent="closeContextMenu"
       ></div>
       <div
         v-if="contextMenuData"
-        class="fixed z-[9999] p-2 bg-[var(--paper)] border border-black/10 rounded-xl shadow-2xl min-w-[180px]"
+        class="fixed z-9999 p-2 bg-(--paper) border border-black/10 rounded-xl shadow-2xl min-w-[180px]"
         :style="{ left: `${contextMenuData.x}px`, top: `${contextMenuData.y}px` }"
       >
         <button
-          class="flex items-center gap-2 w-full p-2 px-3 text-xs font-medium text-[var(--ink)] rounded-lg transition-all text-left hover:bg-[var(--accent)] hover:text-white"
+          class="flex items-center gap-2 w-full p-2 px-3 text-xs font-medium text-(--ink) rounded-lg transition-all text-left hover:bg-(--accent) hover:text-white"
           @click="copyCharacterTag"
         >
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -284,10 +282,10 @@ watch(payload, () => {
 
     <!-- Zoom Controls -->
     <div
-      class="absolute top-4 left-4 flex items-center gap-1 p-1 bg-[var(--paper)] border border-black/10 rounded-lg shadow-sm"
+      class="absolute top-4 left-4 flex items-center gap-1 p-1 bg-(--paper) border border-black/10 rounded-lg shadow-sm"
     >
       <button
-        class="flex items-center justify-center w-7 h-7 rounded text-black/60 transition-all hover:bg-black/5 hover:text-[var(--ink)]"
+        class="flex items-center justify-center w-7 h-7 rounded text-black/60 transition-all hover:bg-black/5 hover:text-(--ink)"
         title="Zoom in"
         @click="zoomIn"
       >
@@ -301,7 +299,7 @@ watch(payload, () => {
         </svg>
       </button>
       <button
-        class="flex items-center justify-center w-7 h-7 rounded text-black/60 transition-all hover:bg-black/5 hover:text-[var(--ink)]"
+        class="flex items-center justify-center w-7 h-7 rounded text-black/60 transition-all hover:bg-black/5 hover:text-(--ink)"
         title="Zoom out"
         @click="zoomOut"
       >
@@ -310,7 +308,7 @@ watch(payload, () => {
         </svg>
       </button>
       <button
-        class="flex items-center justify-center w-7 h-7 rounded text-black/60 transition-all hover:bg-black/5 hover:text-[var(--ink)]"
+        class="flex items-center justify-center w-7 h-7 rounded text-black/60 transition-all hover:bg-black/5 hover:text-(--ink)"
         title="Reset zoom"
         @click="resetZoom"
       >
@@ -328,7 +326,7 @@ watch(payload, () => {
     <!-- Ghost Panel -->
     <aside
       v-if="ghosts.length > 0"
-      class="absolute top-4 right-4 max-w-[200px] p-4 px-5 bg-gradient-to-br from-purple-500/5 to-transparent border border-purple-500/10 rounded-2xl backdrop-blur-md"
+      class="absolute top-4 right-4 max-w-[200px] p-4 px-5 bg-linear-to-br from-purple-500/5 to-transparent border border-purple-500/10 rounded-2xl backdrop-blur-md"
     >
       <div class="flex items-center gap-2 mb-3">
         <h4 class="text-xs uppercase tracking-widest text-purple-700/60 font-bold">
@@ -340,7 +338,7 @@ watch(payload, () => {
         <li
           v-for="ghost in ghosts"
           :key="ghost.id"
-          class="text-sm text-[var(--ink)]/60 font-medium flex items-center gap-2"
+          class="text-sm text-(--ink)/60 font-medium flex items-center gap-2"
         >
           <span class="w-1.5 h-1.5 rounded-full bg-purple-400/50"></span>
           {{ ghost.label }}
@@ -381,12 +379,12 @@ watch(payload, () => {
     <!-- Metrics HUD -->
     <footer
       v-if="metrics"
-      class="absolute bottom-0 left-0 right-0 flex justify-between items-center p-3 px-6 bg-gradient-to-t from-[var(--paper)] to-transparent border-t border-black/5"
+      class="absolute bottom-0 left-0 right-0 flex justify-between items-center p-3 px-6 bg-linear-to-t from-(--paper) to-transparent border-t border-black/5"
     >
       <div class="flex items-center gap-4">
         <div class="flex flex-col gap-0.5">
           <span class="text-[10px] font-bold uppercase tracking-widest text-black/40">Density</span>
-          <span class="text-sm font-semibold font-serif text-[var(--ink)]"
+          <span class="text-sm font-semibold font-serif text-(--ink)"
             >{{ (metrics.networkDensity * 100).toFixed(0) }}%</span
           >
         </div>
@@ -395,7 +393,7 @@ watch(payload, () => {
           <span class="text-[10px] font-bold uppercase tracking-widest text-black/40"
             >Components</span
           >
-          <span class="text-sm font-semibold font-serif text-[var(--ink)]">{{
+          <span class="text-sm font-semibold font-serif text-(--ink)">{{
             metrics.connectedComponents
           }}</span>
         </div>
@@ -404,7 +402,7 @@ watch(payload, () => {
           <span class="text-[10px] font-bold uppercase tracking-widest text-black/40"
             >Isolated</span
           >
-          <span class="text-sm font-semibold font-serif text-[var(--ink)]"
+          <span class="text-sm font-semibold font-serif text-(--ink)"
             >{{ (metrics.isolationRatio * 100).toFixed(0) }}%</span
           >
         </div>
@@ -415,7 +413,7 @@ watch(payload, () => {
         <span
           v-for="alert in alerts"
           :key="alert.code"
-          class="p-1.5 px-3 text-[10px] font-bold uppercase tracking-wide text-[var(--paper)] bg-[var(--accent)] rounded-lg cursor-help transition-all hover:-translate-y-px hover:shadow-lg hover:shadow-orange-500/30"
+          class="p-1.5 px-3 text-[10px] font-bold uppercase tracking-wide text-(--paper) bg-(--accent) rounded-lg cursor-help transition-all hover:-translate-y-px hover:shadow-lg hover:shadow-orange-500/30"
           :title="alert.tooltip"
         >
           {{ alert.primaryText }}

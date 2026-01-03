@@ -104,49 +104,68 @@ fn role_weight(role: &CharacterRole) -> f32 {
     }
 }
 
-/// Find all positions where a character name or @tag appears in text.
-/// Pre-compiled search pattern for a character.
-struct CharacterPattern {
-    id: String,
-    // We use a regex to ensure word boundaries or specific formatting
-    pattern: regex::Regex,
+/// Pre-compiled search patterns for all characters.
+struct CharacterScanner {
+    /// Combined regex for all character names and IDs.
+    /// Each character's pattern is wrapped in a named capture group like `c0`, `c1`, etc.
+    regex: regex::Regex,
+    /// Maps capture group name (e.g., "c0") back to character ID.
+    index_to_id: Vec<String>,
 }
 
-impl CharacterPattern {
-    fn try_new(c: &Character) -> Result<Self, String> {
-        // Security: Prevent excessive regex complexity from long names
-        if c.name.len() > 64 {
-            return Err(format!(
-                "Character name '{}' is too long for analysis",
-                c.name
-            ));
+impl CharacterScanner {
+    fn try_new(characters: &[Character]) -> Result<Self, String> {
+        let mut patterns = Vec::new();
+        let mut index_to_id = Vec::new();
+
+        for (i, c) in characters.iter().enumerate() {
+            // Security: Prevent excessive regex complexity from long names
+            if c.name.len() > 64 {
+                log::warn!(
+                    "Character name '{}' is too long, shortening for analysis",
+                    c.name
+                );
+            }
+            let safe_name = regex::escape(&c.name[..c.name.len().min(64)].to_lowercase());
+            let id_ref = regex::escape(&c.id.to_string());
+
+            // Build pattern for this character
+            let char_pattern = format!(
+                r"(?P<c{}>\b{}\b|@{}|data-(?:entity-)?id=[\x22\x27]{}[\x22\x27])",
+                i, safe_name, safe_name, id_ref
+            );
+            patterns.push(char_pattern);
+            index_to_id.push(c.id.to_string());
         }
 
-        let name_lower = regex::escape(&c.name.to_lowercase());
-        let id_ref = regex::escape(&c.id.to_string());
+        if patterns.is_empty() {
+            return Err("No characters to analyze".into());
+        }
 
-        // Match:
-        // 1. Name (case insensitive via flag in search)
-        // 2. @Name
-        // 3. data-id="UUID"
-        // 4. data-entity-id="UUID"
-        let raw = format!(
-            r"(?i)\b{}\b|@{}|data-(?:entity-)?id=[\x22\x27]{}[\x22\x27]",
-            name_lower, name_lower, id_ref
-        );
+        // Combine all into one massive case-insensitive regex
+        let combined = format!(r"(?i){}", patterns.join("|"));
+        let regex = regex::Regex::new(&combined).map_err(|e| {
+            log::error!("Failed to compile combined character regex: {}", e);
+            e.to_string()
+        })?;
 
-        let pattern = regex::Regex::new(&raw).map_err(|e| e.to_string())?;
-
-        Ok(Self {
-            id: c.id.to_string(),
-            pattern,
-        })
+        Ok(Self { regex, index_to_id })
     }
-}
 
-/// Find all mentions of a specific character using Regex.
-fn find_character_mentions(text: &str, pattern: &regex::Regex) -> Vec<usize> {
-    pattern.find_iter(text).map(|m| m.start()).collect()
+    /// Scans text and returns mentions as (offset, char_id)
+    fn scan(&self, text: &str) -> Vec<(usize, String)> {
+        let mut mentions = Vec::new();
+        for caps in self.regex.captures_iter(text) {
+            // Find which group matched
+            for (i, char_id) in self.index_to_id.iter().enumerate() {
+                if let Some(m) = caps.name(&format!("c{}", i)) {
+                    mentions.push((m.start(), char_id.clone()));
+                    break; // Only one group should match per capture in this setup
+                }
+            }
+        }
+        mentions
+    }
 }
 
 /// Helper to map character positions to word indices efficiently.
@@ -282,57 +301,54 @@ async fn build_character_graph(
     let mut interaction_weights: HashMap<(String, String), f32> = HashMap::new();
     let mut interaction_types: HashMap<(String, String), InteractionType> = HashMap::new();
 
-    // Pre-compile patterns O(N)
-    // Pre-compile patterns O(N)
-    let patterns: Vec<CharacterPattern> = characters
-        .iter()
-        .filter_map(|c| match CharacterPattern::try_new(c) {
-            Ok(p) => Some(p),
-            Err(e) => {
-                log::warn!("Skipping character analysis for {}: {}", c.name, e);
-                None
-            }
-        })
-        .collect();
+    // Pre-compile combined scanner O(N)
+    let scanner = match CharacterScanner::try_new(characters) {
+        Ok(s) => s,
+        Err(e) => {
+            log::error!("Failed to initialize character scanner: {}", e);
+            return CharacterGraphPayload {
+                nodes: vec![],
+                edges: vec![],
+                metrics: GraphMetrics {
+                    network_density: 0.0,
+                    connected_components: 0,
+                    largest_component_size: 0,
+                    isolation_ratio: 0.0,
+                },
+            };
+        }
+    };
 
     // Iterate chapters to process text
     for (chapter_id, content) in chapter_contents {
         // Optimization: Build O(1) word indexer for this chapter
         let word_indexer = WordIndexer::new(content);
 
-        // 1. Collect all mentions in this chapter
-        //    Format: (char_offset, word_index, char_id)
-        let mut chapter_mentions: Vec<(usize, usize, String)> = Vec::new();
+        // 1. Collect all mentions in this chapter in a single pass
+        let mentions = scanner.scan(content);
+        let mut chapter_mentions: Vec<(usize, usize, String)> = Vec::with_capacity(mentions.len());
         let mut present_in_chapter: HashSet<String> = HashSet::new();
 
-        for pattern in &patterns {
-            let char_id = pattern.id.clone();
-            let positions = find_character_mentions(content, &pattern.pattern);
+        for (pos, char_id) in mentions {
+            *mention_counts.entry(char_id.clone()).or_default() += 1;
+            chapter_presences
+                .entry(char_id.clone())
+                .or_default()
+                .insert(chapter_id.clone());
+            present_in_chapter.insert(char_id.clone());
 
-            if !positions.is_empty() {
-                *mention_counts.entry(char_id.clone()).or_default() += positions.len() as u32;
-                chapter_presences
-                    .entry(char_id.clone())
-                    .or_default()
-                    .insert(chapter_id.clone());
-                present_in_chapter.insert(char_id.clone());
-
-                if !first_mentions.contains_key(&char_id) {
-                    first_mentions.insert(
-                        char_id.clone(),
-                        MentionLocation {
-                            chapter_id: chapter_id.clone(),
-                            char_offset: positions[0],
-                        },
-                    );
-                }
-
-                // Add to flat list for sliding window
-                for &pos in &positions {
-                    let word_idx = word_indexer.get_word_index(pos);
-                    chapter_mentions.push((pos, word_idx, char_id.clone()));
-                }
+            if !first_mentions.contains_key(&char_id) {
+                first_mentions.insert(
+                    char_id.clone(),
+                    MentionLocation {
+                        chapter_id: chapter_id.clone(),
+                        char_offset: pos,
+                    },
+                );
             }
+
+            let word_idx = word_indexer.get_word_index(pos);
+            chapter_mentions.push((pos, word_idx, char_id));
         }
 
         // 2. Co-Presence Score (Base load)

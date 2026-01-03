@@ -4,7 +4,7 @@ import type { FileNode, ProjectSettings, Character, Plotline } from '../types';
 
 export const useProjectStore = defineStore('project', () => {
   // State
-  const nodes = ref<FileNode[]>([]);
+  const nodes = shallowRef<FileNode[]>([]);
   const activeId = ref<string | undefined>(undefined);
   const projectId = ref<string | undefined>(undefined);
   const path = ref<string | undefined>(undefined);
@@ -12,9 +12,15 @@ export const useProjectStore = defineStore('project', () => {
   const plotlines = ref<Plotline[]>([]);
   const characters = ref<Character[]>([]);
 
+  // Statistics (tracked separately to avoid O(N) traversals on every word count change)
+  const totalWordCount = ref(0);
+
   // Derived State (Optimized Lookups)
   const nodeMap = shallowRef(new Map<string, FileNode>());
   const flatNodes = shallowRef<FileNode[]>([]);
+
+  // Tracking version to trigger reactive updates for non-structural changes if needed
+  const statsVersion = ref(0);
 
   // Character map for O(1) access
   const characterMap = computed(() => {
@@ -29,11 +35,13 @@ export const useProjectStore = defineStore('project', () => {
     const map = new Map<string, FileNode>();
     const list: FileNode[] = [];
     const stack: FileNode[] = [...fileNodes].reverse();
+    let totalWc = 0;
 
     while (stack.length > 0) {
       const node = stack.pop()!;
       map.set(node.id, node);
       list.push(node);
+      totalWc += node.word_count || 0;
 
       if (node.children && node.children.length > 0) {
         for (let i = node.children.length - 1; i >= 0; i--) {
@@ -43,9 +51,10 @@ export const useProjectStore = defineStore('project', () => {
     }
     nodeMap.value = map;
     flatNodes.value = list;
+    totalWordCount.value = totalWc;
   };
 
-  // Watcher to keep lookups in sync (Shallow watch for structure changes only)
+  // Watcher to keep lookups in sync
   watch(nodes, (newVal) => rebuildMap(newVal ?? []), { immediate: true });
 
   // --- Getters ---
@@ -55,33 +64,11 @@ export const useProjectStore = defineStore('project', () => {
     return nodeMap.value.get(activeId.value);
   });
 
-  /**
-   * Get a chapter/node by ID with O(1) complexity.
-   */
   const chapterById = (id: string) => nodeMap.value.get(id);
-
-  /**
-   * Get a character by ID with O(1) complexity.
-   */
   const characterById = (id: string) => characterMap.value.get(id);
 
-  /**
-   * Total word count of all nodes in the project.
-   */
-  const totalWordCount = computed(() => {
-    return flatNodes.value.reduce((sum, node) => sum + (node.word_count || 0), 0);
-  });
-
   // --- Actions ---
 
-  /**
-   * Initialize the store with full project data from the backend.
-   */
-  // --- Actions ---
-
-  /**
-   * Initialize the store with full project data from the backend.
-   */
   function setProjectData(
     id: string,
     projectPath: string,
@@ -90,29 +77,19 @@ export const useProjectStore = defineStore('project', () => {
   ) {
     projectId.value = id;
     path.value = projectPath;
-    nodes.value = fileNodes;
+    nodes.value = fileNodes; // Triggers rebuildMap
     settings.value = projectSettingsData;
-    // Reset active ID on new project load
     activeId.value = undefined;
   }
 
-  /**
-   * Set the currently active node/chapter ID.
-   */
   function setActiveId(id: string | undefined) {
     activeId.value = id;
   }
 
-  /**
-   * Update the entire file structure (manifest).
-   */
   function updateStructure(newNodes: FileNode[]) {
-    nodes.value = newNodes;
+    nodes.value = [...newNodes]; // Force shallow trigger
   }
 
-  /**
-   * Clear all project data from the store.
-   */
   function closeProject() {
     projectId.value = undefined;
     path.value = undefined;
@@ -121,45 +98,46 @@ export const useProjectStore = defineStore('project', () => {
     settings.value = null;
     plotlines.value = [];
     characters.value = [];
+    totalWordCount.value = 0;
 
     localStorage.removeItem('last_opened_project_path');
   }
 
-  // Granular Mutations
+  // Granular Mutations (Optimized)
 
-  /**
-   * Optimistically rename a node in the local store.
-   */
   function renameNodeAction(id: string, name: string) {
     const node = nodeMap.value.get(id);
     if (node) {
       node.name = name;
+      statsVersion.value++; // Signal change for minor UI updates
     }
   }
 
-  /**
-   * Optimistically update word count for a node.
-   */
   function updateNodeStatsAction(id: string, wordCount: number) {
     const node = nodeMap.value.get(id);
     if (node) {
+      const diff = wordCount - (node.word_count || 0);
       node.word_count = wordCount;
+      totalWordCount.value += diff;
+      statsVersion.value++;
     }
   }
 
-  /**
-   * Optimistically update generic metadata for a node.
-   */
   function updateNodeMetadataAction(id: string, updates: Partial<FileNode>) {
     const node = nodeMap.value.get(id);
     if (node) {
       Object.assign(node, updates);
+      statsVersion.value++;
     }
   }
 
-  // --- Async Actions (Moved to useProjectLoader to avoid circular deps) ---
-  // The logic for loading/creating projects is now in useProjectLoader.ts
-  // The store only provides setters for the data.
+  const setSettings = (newSettings: ProjectSettings) => {
+    settings.value = newSettings;
+  };
+
+  const setPlotlines = (newPlotlines: Plotline[]) => {
+    plotlines.value = newPlotlines;
+  };
 
   return {
     // State
@@ -172,12 +150,13 @@ export const useProjectStore = defineStore('project', () => {
     characters,
     nodeMap,
     flatNodes,
+    totalWordCount,
+    statsVersion,
 
     // Getters
     activeChapter,
     chapterById,
     characterById,
-    totalWordCount,
 
     // Actions
     setProjectData,
@@ -187,5 +166,7 @@ export const useProjectStore = defineStore('project', () => {
     renameNodeAction,
     updateNodeStatsAction,
     updateNodeMetadataAction,
+    setSettings,
+    setPlotlines,
   };
 });
