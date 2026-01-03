@@ -113,7 +113,15 @@ struct CharacterPattern {
 }
 
 impl CharacterPattern {
-    fn new(c: &Character) -> Self {
+    fn try_new(c: &Character) -> Result<Self, String> {
+        // Security: Prevent excessive regex complexity from long names
+        if c.name.len() > 64 {
+            return Err(format!(
+                "Character name '{}' is too long for analysis",
+                c.name
+            ));
+        }
+
         let name_lower = regex::escape(&c.name.to_lowercase());
         let id_ref = regex::escape(&c.id.to_string());
 
@@ -127,14 +135,12 @@ impl CharacterPattern {
             name_lower, name_lower, id_ref
         );
 
-        Self {
+        let pattern = regex::Regex::new(&raw).map_err(|e| e.to_string())?;
+
+        Ok(Self {
             id: c.id.to_string(),
-            // Safe fallback: ^$ matches nothing, which is correct behavior for invalid patterns
-            pattern: regex::Regex::new(&raw).unwrap_or_else(|_| {
-                // This static pattern is guaranteed to compile
-                regex::Regex::new(r"^\b$").expect("static regex must compile")
-            }),
-        }
+            pattern,
+        })
     }
 }
 
@@ -243,7 +249,17 @@ async fn build_character_graph(
     let mut interaction_types: HashMap<(String, String), InteractionType> = HashMap::new();
 
     // Pre-compile patterns O(N)
-    let patterns: Vec<CharacterPattern> = characters.iter().map(CharacterPattern::new).collect();
+    // Pre-compile patterns O(N)
+    let patterns: Vec<CharacterPattern> = characters
+        .iter()
+        .filter_map(|c| match CharacterPattern::try_new(c) {
+            Ok(p) => Some(p),
+            Err(e) => {
+                log::warn!("Skipping character analysis for {}: {}", c.name, e);
+                None
+            }
+        })
+        .collect();
 
     // Iterate chapters to process text
     for (chapter_id, content) in chapter_contents {

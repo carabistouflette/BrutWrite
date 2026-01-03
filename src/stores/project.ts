@@ -52,8 +52,8 @@ export const useProjectStore = defineStore('project', () => {
     }, 50); // 50ms Debounce
   };
 
-  // Watcher to keep lookups in sync
-  watch(nodes, (newVal) => rebuildMap(newVal), { deep: true }); // Need deep true to catch children changes
+  // Watcher to keep lookups in sync (Shallow watch for structure changes only)
+  watch(nodes, (newVal) => rebuildMap(newVal));
 
   // --- Getters ---
 

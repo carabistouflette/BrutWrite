@@ -4,7 +4,8 @@ use std::sync::OnceLock;
 static HTML_TAG_REGEX: OnceLock<Regex> = OnceLock::new();
 
 pub fn count_words(content: &str) -> u32 {
-    let re = HTML_TAG_REGEX.get_or_init(|| Regex::new(r"<[^>]*>").unwrap());
+    let re =
+        HTML_TAG_REGEX.get_or_init(|| Regex::new(r"<[^>]*>").expect("static regex must compile"));
     let plain_text = re.replace_all(content, " ");
     plain_text.split_whitespace().count() as u32
 }

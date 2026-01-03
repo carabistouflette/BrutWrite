@@ -17,15 +17,25 @@ impl MockFileRepository {
     }
 
     pub fn set_content(&self, path: PathBuf, content: String) {
-        self.files.lock().unwrap().insert(path, content);
+        self.files
+            .lock()
+            .expect("mutex poisoned")
+            .insert(path, content);
     }
 
     pub fn get_content(&self, path: &Path) -> Option<String> {
-        self.files.lock().unwrap().get(path).cloned()
+        self.files
+            .lock()
+            .expect("mutex poisoned")
+            .get(path)
+            .cloned()
     }
 
     pub fn set_exists(&self, path: PathBuf, exists: bool) {
-        self.exists_override.lock().unwrap().insert(path, exists);
+        self.exists_override
+            .lock()
+            .expect("mutex poisoned")
+            .insert(path, exists);
     }
 }
 
@@ -34,7 +44,7 @@ impl FileRepository for MockFileRepository {
     async fn read_file(&self, path: &Path) -> Result<String> {
         self.files
             .lock()
-            .unwrap()
+            .expect("mutex poisoned")
             .get(path)
             .cloned()
             .ok_or_else(|| {
@@ -48,20 +58,29 @@ impl FileRepository for MockFileRepository {
     async fn write_file(&self, path: &Path, content: &str) -> Result<()> {
         self.files
             .lock()
-            .unwrap()
+            .expect("mutex poisoned")
             .insert(path.to_path_buf(), content.to_string());
         Ok(())
     }
 
     async fn exists(&self, path: &Path) -> Result<bool> {
-        if let Some(&exists) = self.exists_override.lock().unwrap().get(path) {
+        if let Some(&exists) = self
+            .exists_override
+            .lock()
+            .expect("mutex poisoned")
+            .get(path)
+        {
             return Ok(exists);
         }
-        Ok(self.files.lock().unwrap().contains_key(path))
+        Ok(self
+            .files
+            .lock()
+            .expect("mutex poisoned")
+            .contains_key(path))
     }
 
     async fn delete(&self, path: &Path) -> Result<()> {
-        self.files.lock().unwrap().remove(path);
+        self.files.lock().expect("mutex poisoned").remove(path);
         Ok(())
     }
 
@@ -70,7 +89,7 @@ impl FileRepository for MockFileRepository {
     }
 
     async fn read_dir(&self, path: &Path) -> Result<Vec<PathBuf>> {
-        let files = self.files.lock().unwrap();
+        let files = self.files.lock().expect("mutex poisoned");
         let paths: Vec<PathBuf> = files
             .keys()
             .filter(|p| p.starts_with(path))

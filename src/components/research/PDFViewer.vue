@@ -64,8 +64,7 @@ const renderPDF = async () => {
         canvas,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await page.render(renderContext as any).promise;
+      await page.render(renderContext).promise;
     }
   } catch (e: unknown) {
     console.error('PDF Render Error', e);

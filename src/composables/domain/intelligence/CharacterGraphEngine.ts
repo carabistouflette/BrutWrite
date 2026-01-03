@@ -28,6 +28,7 @@ export class CharacterGraphEngine {
   private width: number;
   private height: number;
   private options: GraphEngineOptions;
+  private radiusScale: d3.ScaleLinear<number, number> | null = null;
 
   // Elements
   private mainGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
@@ -127,7 +128,7 @@ export class CharacterGraphEngine {
 
     // Node Radius
     const maxValence = Math.max(...nodes.map((n) => n.valence), 1);
-    const radiusScale = d3.scaleLinear().domain([0, maxValence]).range([10, 28]);
+    this.radiusScale = d3.scaleLinear().domain([0, maxValence]).range([10, 28]);
 
     // Nodes
     this.nodeSelection = nodesGroup
@@ -135,7 +136,7 @@ export class CharacterGraphEngine {
       .data(nodes)
       .join('circle')
       .attr('class', 'graph-node')
-      .attr('r', (d) => radiusScale(d.valence))
+      .attr('r', (d) => this.radiusScale!(d.valence))
       .attr('fill', (d) => this.options.getNodeColor(d.id))
       .attr('stroke', 'var(--paper)')
       .attr('stroke-width', 2)
@@ -202,23 +203,14 @@ export class CharacterGraphEngine {
   }
 
   private updatePositions() {
-    if (!this.nodeSelection || !this.linkSelection || !this.labelSelection) return;
-
-    // We recalculate radius scale every tick? No, defined in setup.
-    // But we need it for Y offset of labels.
-    // Easier to store it or recalculated. Since valence is static, static scale is fine.
-    // I will duplicate logic or pass it. For simplicity, just use the same linear math here or access datum.
-
-    // Recalculating maxValence locally is cheap
-    const nodes = this.nodeSelection.data();
-    const maxValence = Math.max(...nodes.map((n) => n.valence), 1);
-    const radiusScale = d3.scaleLinear().domain([0, maxValence]).range([10, 28]);
+    if (!this.nodeSelection || !this.linkSelection || !this.labelSelection || !this.radiusScale)
+      return;
 
     this.nodeSelection.attr('cx', (d) => d.x ?? 0).attr('cy', (d) => d.y ?? 0);
 
     this.labelSelection
       .attr('x', (d) => d.x ?? 0)
-      .attr('y', (d) => (d.y ?? 0) + radiusScale(d.valence) + 16);
+      .attr('y', (d) => (d.y ?? 0) + this.radiusScale!(d.valence) + 16);
 
     this.linkSelection
       .attr('x1', (d) => (d.source as D3Node).x ?? 0)

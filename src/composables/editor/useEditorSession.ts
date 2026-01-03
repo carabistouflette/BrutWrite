@@ -112,8 +112,14 @@ export function useEditorSession(projectId: Ref<string>, chapterId: Ref<string>)
         currentHtml.value = newContent;
         isDirty.value = false;
 
-        // Update stats
-        const wc = newContent.split(/\s+/).length; // Rough count
+        // Robust word count
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = newContent;
+        const text = tempDiv.textContent || tempDiv.innerText || '';
+        const wc = text
+          .trim()
+          .split(/\s+/)
+          .filter((w) => w.length > 0).length;
         updateNodeStats(chapterId.value, wc);
         return newContent;
       }
