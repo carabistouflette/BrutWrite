@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, shallowRef, computed } from 'vue';
+import { ref, shallowRef, computed, reactive } from 'vue';
 import type { FileNode, ProjectSettings, Character, Plotline } from '../types';
 
 export const useProjectStore = defineStore('project', () => {
@@ -20,7 +20,7 @@ export const useProjectStore = defineStore('project', () => {
   const flatNodes = shallowRef<FileNode[]>([]);
 
   // Tracking version to trigger reactive updates for non-structural changes if needed
-  const statsVersion = ref(0);
+  // REMOVED: statsVersion hack. We now use reactive() on nodes.
 
   // Character map for O(1) access
   const characterMap = computed(() => {
@@ -31,15 +31,33 @@ export const useProjectStore = defineStore('project', () => {
     return map;
   });
 
-  const rebuildMap = (fileNodes: FileNode[]) => {
+  const indexNodes = (fileNodes: FileNode[]) => {
     const map = new Map<string, FileNode>();
+    const stack: FileNode[] = [...fileNodes].reverse();
+
+    while (stack.length > 0) {
+      const node = stack.pop()!;
+      map.set(node.id, node);
+
+      if (node.children && node.children.length > 0) {
+        for (let i = node.children.length - 1; i >= 0; i--) {
+          stack.push(node.children[i]);
+        }
+      }
+    }
+    nodeMap.value = map;
+  };
+
+  const updateDerived = (fileNodes: FileNode[]) => {
+    // Rebuild flat list and total word count
+    // This is O(N) but valid for structure updates.
+    // Optimizing map creation is the bigger win as it involves hashing.
     const list: FileNode[] = [];
     const stack: FileNode[] = [...fileNodes].reverse();
     let totalWc = 0;
 
     while (stack.length > 0) {
       const node = stack.pop()!;
-      map.set(node.id, node);
       list.push(node);
       totalWc += node.word_count || 0;
 
@@ -49,12 +67,14 @@ export const useProjectStore = defineStore('project', () => {
         }
       }
     }
-    nodeMap.value = map;
     flatNodes.value = list;
     totalWordCount.value = totalWc;
   };
 
-  // No detailed watcher here. Rebuilds must be triggered explicitly when structure changes.
+  const rebuildAll = (fileNodes: FileNode[]) => {
+    indexNodes(fileNodes);
+    updateDerived(fileNodes);
+  };
 
   // --- Getters ---
 
@@ -76,8 +96,10 @@ export const useProjectStore = defineStore('project', () => {
   ) {
     projectId.value = id;
     path.value = projectPath;
-    nodes.value = fileNodes;
-    rebuildMap(fileNodes); // Explicit rebuild
+    // Make nodes deep reactive
+    const reactiveNodes = fileNodes.map((n) => reactive(n));
+    nodes.value = reactiveNodes;
+    rebuildAll(reactiveNodes); // Full rebuild on load
 
     settings.value = projectSettingsData;
     activeId.value = undefined;
@@ -89,7 +111,12 @@ export const useProjectStore = defineStore('project', () => {
 
   function updateStructure(newNodes: FileNode[]) {
     nodes.value = [...newNodes];
-    rebuildMap(newNodes); // Explicit rebuild
+    // Structure update (drag & drop) usually doesn't add/remove nodes,
+    // so map (id->node) might stay valid, but let's be safe and rebuild indexes
+    // if we suspect new nodes. For pure reorder, we could just updateDerived.
+    // But for now, let's assume updateStructure might include new nodes.
+    // If we knew it was just reorder, we'd call updateDerived(newNodes).
+    rebuildAll(newNodes);
   }
 
   function closeProject() {
@@ -111,7 +138,6 @@ export const useProjectStore = defineStore('project', () => {
     const node = nodeMap.value.get(id);
     if (node) {
       node.name = name;
-      statsVersion.value++; // Signal change for minor UI updates
     }
   }
 
@@ -121,7 +147,6 @@ export const useProjectStore = defineStore('project', () => {
       const diff = wordCount - (node.word_count || 0);
       node.word_count = wordCount;
       totalWordCount.value += diff;
-      statsVersion.value++;
     }
   }
 
@@ -129,7 +154,6 @@ export const useProjectStore = defineStore('project', () => {
     const node = nodeMap.value.get(id);
     if (node) {
       Object.assign(node, updates);
-      statsVersion.value++;
     }
   }
 
@@ -153,7 +177,6 @@ export const useProjectStore = defineStore('project', () => {
     nodeMap,
     flatNodes,
     totalWordCount,
-    statsVersion,
 
     // Getters
     activeChapter,
