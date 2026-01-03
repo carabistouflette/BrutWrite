@@ -55,11 +55,11 @@ function getNodeColor(nodeId: string): string {
     case 'protagonist':
       return 'var(--accent)'; // Orange
     case 'antagonist':
-      return '#DC2626'; // Red
+      return 'var(--antagonist, #DC2626)'; // Red
     case 'secondary':
       return 'var(--ink)'; // Default black
     case 'extra':
-      return 'rgba(26, 26, 26, 0.5)'; // Muted
+      return 'var(--ink-muted, rgba(26, 26, 26, 0.5))'; // Muted
     default:
       return 'var(--ink)';
   }
@@ -234,7 +234,7 @@ watch(payload, () => {
     <!-- Tooltip -->
     <div
       v-if="tooltipData"
-      class="absolute transform -translate-x-1/2 -translate-y-full p-3 px-4 bg-(--paper) border border-black/10 rounded-xl shadow-lg pointer-events-none z-100 min-w-[150px]"
+      class="absolute transform -translate-x-1/2 -translate-y-full p-3 px-4 bg-(--paper) border border-black/10 rounded-xl shadow-lg pointer-events-none z-tooltip min-w-[150px]"
       :style="{ left: `${tooltipData.x}px`, top: `${tooltipData.y}px` }"
     >
       <div class="font-serif text-sm font-semibold italic text-(--ink) mb-0.5">
@@ -261,7 +261,7 @@ watch(payload, () => {
       ></div>
       <div
         v-if="contextMenuData"
-        class="fixed z-9999 p-2 bg-(--paper) border border-black/10 rounded-xl shadow-2xl min-w-[180px]"
+        class="fixed z-max p-2 bg-(--paper) border border-black/10 rounded-xl shadow-2xl min-w-[180px]"
         :style="{ left: `${contextMenuData.x}px`, top: `${contextMenuData.y}px` }"
       >
         <button

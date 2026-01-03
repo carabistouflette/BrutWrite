@@ -70,7 +70,7 @@ const chartData = computed(() => {
     >
       <div
         v-if="show"
-        class="fixed top-20 right-8 w-80 bg-paper/90 backdrop-blur-xl border border-stone/20 shadow-2xl rounded-2xl p-6 z-100 text-ink"
+        class="fixed top-20 right-8 w-80 bg-paper/90 backdrop-blur-xl border border-stone/20 shadow-2xl rounded-2xl p-6 z-dialog text-ink"
       >
         <!-- Header -->
         <div class="flex justify-between items-center mb-6">
