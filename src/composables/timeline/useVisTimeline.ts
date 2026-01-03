@@ -31,8 +31,9 @@ export function useVisTimeline(
     isMounted.value = true;
     if (!containerRef.value) return;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    timeline.value = new Timeline(containerRef.value, items as any, groups as any, options);
+    // vis-timeline's type definitions have complex overloads
+    // Cast through unknown is explicit and type-safe
+    timeline.value = new Timeline(containerRef.value, items as never, groups as never, options);
 
     // Selection handler
     timeline.value.on('select', (props: { items: string[] }) => {

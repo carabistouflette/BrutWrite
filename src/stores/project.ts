@@ -46,7 +46,7 @@ export const useProjectStore = defineStore('project', () => {
   };
 
   // Watcher to keep lookups in sync (Shallow watch for structure changes only)
-  watch(nodes, (newVal) => rebuildMap(newVal));
+  watch(nodes, (newVal) => rebuildMap(newVal ?? []), { immediate: true });
 
   // --- Getters ---
 

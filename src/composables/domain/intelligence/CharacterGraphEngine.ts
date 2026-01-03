@@ -1,6 +1,26 @@
 import * as d3 from 'd3';
 import type { GraphNode, GraphEdge } from '../../../types/intelligence';
 
+// =============================================================================
+// Graph Simulation Constants
+// =============================================================================
+
+/** Configuration for D3 force simulation parameters */
+const GRAPH_CONFIG = {
+  /** Repulsion force between nodes (negative = repel) */
+  CHARGE_STRENGTH: -400,
+  /** Base distance for links before weight adjustment */
+  LINK_BASE_DISTANCE: 120,
+  /** Offset to prevent division by zero in link distance */
+  LINK_WEIGHT_OFFSET: 0.1,
+  /** Gravity strength toward center */
+  CENTER_STRENGTH: 0.05,
+  /** Simulation damping factor (0-1, higher = slower) */
+  VELOCITY_DECAY: 0.85,
+  /** Ticks for static layout in reduced-motion mode */
+  STATIC_TICKS: 300,
+} as const;
+
 // Extended types for D3
 export type D3Node = GraphNode & d3.SimulationNodeDatum;
 export type D3Link = d3.SimulationLinkDatum<D3Node> & {
@@ -78,21 +98,26 @@ export class CharacterGraphEngine {
   private setupSimulation(nodes: D3Node[], links: D3Link[]) {
     this.simulation = d3
       .forceSimulation<D3Node>(nodes)
-      .force('charge', d3.forceManyBody().strength(-400))
+      .force('charge', d3.forceManyBody().strength(GRAPH_CONFIG.CHARGE_STRENGTH))
       .force(
         'link',
         d3
           .forceLink<D3Node, D3Link>(links)
           .id((d) => d.id)
-          .distance((d) => 120 / (d.weight + 0.1))
+          .distance(
+            (d) => GRAPH_CONFIG.LINK_BASE_DISTANCE / (d.weight + GRAPH_CONFIG.LINK_WEIGHT_OFFSET)
+          )
       )
-      .force('center', d3.forceCenter(this.width / 2, this.height / 2).strength(0.05))
-      .velocityDecay(0.85);
+      .force(
+        'center',
+        d3.forceCenter(this.width / 2, this.height / 2).strength(GRAPH_CONFIG.CENTER_STRENGTH)
+      )
+      .velocityDecay(GRAPH_CONFIG.VELOCITY_DECAY);
 
     // Reduced motion check
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       this.simulation.stop();
-      for (let i = 0; i < 300; i++) this.simulation.tick();
+      for (let i = 0; i < GRAPH_CONFIG.STATIC_TICKS; i++) this.simulation.tick();
       this.updatePositions();
     } else {
       this.simulation.on('tick', () => this.updatePositions());
