@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue';
 import { CharacterRole, type Character } from '../../types';
 
 const props = defineProps<{
@@ -11,16 +12,43 @@ const emit = defineEmits(['update:modelValue', 'change', 'save', 'delete', 'clos
 // Roles for select
 const roles = Object.values(CharacterRole);
 
+// OPTIMIZATION: Use a local ref to batch updates and avoid O(N) object spreading on every keystroke
+const localCharacter = ref<Character>({ ...props.modelValue });
+
+// Sync prop changes back to local (e.g., when parent resets or changes character)
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    localCharacter.value = { ...newVal };
+  },
+  { deep: true }
+);
+
 const updateField = (field: keyof Character, value: string) => {
-  emit('update:modelValue', { ...props.modelValue, [field]: value });
+  // Create a new character object with the updated field
+  // Using object spread to avoid type issues
+  localCharacter.value = {
+    ...localCharacter.value,
+    [field]: value,
+  };
+  // Emit the updated object (Vue will handle reactivity)
+  emit('update:modelValue', { ...localCharacter.value });
   emit('change');
 };
 
 const updateEngineField = (field: string, value: string) => {
-  emit('update:modelValue', {
-    ...props.modelValue,
-    engine: { ...props.modelValue.engine, [field]: value },
-  });
+  // Ensure engine exists and properly typed
+  const currentEngine = localCharacter.value.engine || {
+    desire: '',
+    fear: '',
+    wound: '',
+    secret: '',
+  };
+  localCharacter.value = {
+    ...localCharacter.value,
+    engine: { ...currentEngine, [field]: value },
+  };
+  emit('update:modelValue', { ...localCharacter.value });
   emit('change');
 };
 </script>
