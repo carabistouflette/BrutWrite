@@ -42,7 +42,28 @@ impl serde::Serialize for Error {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(&self.to_string())
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("Error", 2)?;
+        state.serialize_field("code", &self.code())?;
+        state.serialize_field("message", &self.to_string())?;
+        state.end()
+    }
+}
+
+impl Error {
+    pub fn code(&self) -> &'static str {
+        match self {
+            Error::Io(_) => "IO_ERROR",
+            Error::Serialization(_) => "SERIALIZATION_ERROR",
+            Error::ProjectExists(_) => "PROJECT_EXISTS",
+            Error::InvalidStructure { .. } => "INVALID_STRUCTURE",
+            Error::Validation(_) => "VALIDATION_ERROR",
+            Error::ChapterNotFound { .. } => "CHAPTER_NOT_FOUND",
+            Error::CharacterNotFound { .. } => "CHARACTER_NOT_FOUND",
+            Error::Research(_) => "RESEARCH_ERROR",
+            Error::ResearchVaultNotInitialized => "RESEARCH_NOT_INITIALIZED",
+            Error::ArtifactNotFound(_) => "ARTIFACT_NOT_FOUND",
+        }
     }
 }
 

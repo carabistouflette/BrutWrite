@@ -14,17 +14,26 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
         let app_state = app_handle.state::<AppState>();
         let state = &app_state.research;
 
-        // 1. Initialize State (Ensure dir exists, scan)
+        // 1. Synchronize initialization
+        let _lock = state.init_lock.lock().await;
+
+        // Ensure we stop any existing watcher before starting a new one
+        state.stop().await;
+
+        // 2. Initialize State (Ensure dir exists, scan)
         if let Err(e) = state.initialize(research_path.clone()).await {
             error!("Failed to initialize research state: {:?}", e);
             return;
         }
 
-        // 2. Setup Watcher
+        // 3. Setup Watcher
         let (tx, mut rx) = mpsc::unbounded_channel();
         let watcher_res = RecommendedWatcher::new(
             move |res| {
-                let _ = tx.send(res);
+                if let Err(e) = tx.send(res) {
+                    // This is expected when the channel is closed
+                    warn!("Watcher failed to send event: {}", e);
+                }
             },
             Config::default(),
         );
@@ -36,18 +45,14 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
                     return;
                 }
 
-                // Save watcher in state
+                // Save watcher in state. This drops any previous watcher,
+                // which closes its associated channel and stops its task.
                 state.set_watcher(watcher).await;
 
-                // 3. Handle Events
+                // 4. Handle Events
                 while let Some(res) = rx.recv().await {
                     match res {
                         Ok(event) => {
-                            // Handle incremental change
-                            // Debouncing could be added here or in state.
-                            // For now, let's trust simple events.
-                            // To avoid spamming frontend, we might want to debounce emissions.
-                            // But let's start simple.
                             if let Err(e) = state.handle_fs_change(event).await {
                                 warn!("Error handling fs change: {:?}", e);
                             } else {
@@ -57,6 +62,7 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
                         Err(e) => error!("Watch error: {:?}", e),
                     }
                 }
+                warn!("Research watcher task for {:?} exiting.", research_path);
             }
             Err(e) => error!("Failed to create watcher: {:?}", e),
         }

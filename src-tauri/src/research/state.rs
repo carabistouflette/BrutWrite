@@ -22,6 +22,8 @@ pub struct PersistenceState {
 pub struct ResearchState {
     pub inner: Mutex<ResearchInner>,
     pub persistence: Mutex<PersistenceState>,
+    /// Prevents concurrent initializations during rapid project switching
+    pub init_lock: Mutex<()>,
 }
 
 impl Default for ResearchState {
@@ -37,6 +39,7 @@ impl Default for ResearchState {
             persistence: Mutex::new(PersistenceState {
                 last_saved_version: 0,
             }),
+            init_lock: Mutex::new(()),
         }
     }
 }
@@ -82,7 +85,11 @@ impl ResearchState {
         crate::research::io::handle_fs_change(self, event).await
     }
 
-    /// Helper to safely get the root path without holding the lock for long
+    pub async fn stop(&self) {
+        let mut inner = self.inner.lock().await;
+        inner.watcher = None; // Dropping the watcher stops the underlying implementation
+        inner.root_path = None;
+    }
     pub async fn get_root_path_safe(&self) -> crate::errors::Result<PathBuf> {
         let inner = self.inner.lock().await;
         inner
