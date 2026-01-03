@@ -149,9 +149,43 @@ fn find_character_mentions(text: &str, pattern: &regex::Regex) -> Vec<usize> {
     pattern.find_iter(text).map(|m| m.start()).collect()
 }
 
-/// Convert character position to approximate word index.
-fn char_pos_to_word_index(text: &str, char_pos: usize) -> usize {
-    text[..char_pos.min(text.len())].split_whitespace().count()
+/// Helper to map character positions to word indices efficiently.
+struct WordIndexer {
+    /// Byte offsets where words start.
+    word_starts: Vec<usize>,
+}
+
+impl WordIndexer {
+    fn new(text: &str) -> Self {
+        let mut word_starts = Vec::new();
+        // Use standard whitespace splitting logic consistent with split_whitespace()
+        // We track the start of each word token.
+        let mut in_word = false;
+
+        for (idx, c) in text.char_indices() {
+            if c.is_whitespace() {
+                in_word = false;
+            } else if !in_word {
+                in_word = true;
+                word_starts.push(idx);
+            }
+        }
+        Self { word_starts }
+    }
+
+    /// Convert character position to approximate word index using binary search.
+    /// Returns 0-based index.
+    fn get_word_index(&self, char_pos: usize) -> usize {
+        if self.word_starts.is_empty() {
+            return 0;
+        }
+        match self.word_starts.binary_search(&char_pos) {
+            Ok(idx) => idx,
+            // If not found, `idx` is where it could be inserted.
+            // This means it is before word[idx], so it belongs to word[idx-1] (or is in gap after it).
+            Err(idx) => idx.saturating_sub(1),
+        }
+    }
 }
 
 /// Calculate proximity bonus between two mention positions.
@@ -263,6 +297,9 @@ async fn build_character_graph(
 
     // Iterate chapters to process text
     for (chapter_id, content) in chapter_contents {
+        // Optimization: Build O(1) word indexer for this chapter
+        let word_indexer = WordIndexer::new(content);
+
         // 1. Collect all mentions in this chapter
         //    Format: (char_offset, word_index, char_id)
         let mut chapter_mentions: Vec<(usize, usize, String)> = Vec::new();
@@ -292,7 +329,7 @@ async fn build_character_graph(
 
                 // Add to flat list for sliding window
                 for &pos in &positions {
-                    let word_idx = char_pos_to_word_index(content, pos);
+                    let word_idx = word_indexer.get_word_index(pos);
                     chapter_mentions.push((pos, word_idx, char_id.clone()));
                 }
             }
