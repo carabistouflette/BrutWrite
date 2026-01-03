@@ -20,7 +20,21 @@ pub fn resolve_chapter_path<P: AsRef<Path>>(
         .map(|c| c.filename.clone());
 
     if let Some(fname) = filename {
-        Ok(root.join(MANUSCRIPT_DIR).join(fname))
+        let path = Path::new(&fname);
+        // Security: Strictly validate components to prevent traversal or absolute path injection
+        for component in path.components() {
+            match component {
+                std::path::Component::Normal(_) => {}
+                std::path::Component::CurDir => {} // "." is fine
+                _ => {
+                    // ParentDir (..), RootDir (/), or Prefix (C:) are not allowed
+                    return Err(Error::ChapterNotFound {
+                        id: chapter_id.to_string(),
+                    });
+                }
+            }
+        }
+        Ok(root.join(MANUSCRIPT_DIR).join(path))
     } else {
         Err(Error::ChapterNotFound {
             id: chapter_id.to_string(),

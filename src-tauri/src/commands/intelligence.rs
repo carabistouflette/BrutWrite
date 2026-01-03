@@ -4,7 +4,7 @@
 //! building a graph-theory based model of narrative relationships.
 
 use crate::models::{Character, CharacterRole, ProjectMetadata};
-use crate::storage::{self, LocalFileRepository};
+use crate::storage::LocalFileRepository;
 use crate::AppState;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -314,15 +314,15 @@ pub async fn analyze_character_graph(
         .as_ref()
         .map(|ids| ids.iter().map(|s| s.as_str()).collect());
 
-    // Check for empty characters before scanner logic (Moved up)
+    // Check for empty characters before scanner logic
     if metadata.characters.is_empty() {
-        return Ok(build_character_graph_cached(
+        return build_character_graph_cached(
             &metadata,
             &HashMap::new(),
             &HashMap::new(),
             proximity_window,
             prune_threshold,
-        ));
+        );
     }
 
     // Cache Logic (Scanner Init)
@@ -353,87 +353,98 @@ pub async fn analyze_character_graph(
         s
     } else {
         // Rebuild if stale or missing
-        let s = match CharacterScanner::try_new(&metadata.characters) {
-            Ok(s) => s,
+        match CharacterScanner::try_new(&metadata.characters) {
+            Ok(s) => {
+                let mut cache = state.intelligence_cache.lock().unwrap();
+                cache.insert(project_id, (current_hash, s.clone()));
+                s
+            }
             Err(e) => return Err(crate::errors::Error::Intelligence(e)),
-        };
-        // Update cache
-        let mut cache = state.intelligence_cache.lock().unwrap();
-        cache.insert(project_id, (current_hash, s.clone()));
-        s
+        }
     };
 
-    // 4. Process chapters with caching
+    // 4. Process chapters with concurrency
     // -------------------------------------------------------------------------
     let mut chapter_mentions_map: HashMap<String, Vec<(usize, String)>> = HashMap::new();
     let mut chapter_texts: HashMap<String, String> = HashMap::new();
 
-    // We only need to read file content if cache miss
     let repo = LocalFileRepository;
 
-    // NOTE: We cannot hold the mutex across async calls (await).
-    // So we iterate, read file (async), compute hash, then lock/update cache.
-    // This is slightly less efficient for lock contention but safe.
-
+    // Prepare tasks for parallel reading
+    let mut tasks = Vec::new();
     for chapter in &metadata.manifest.chapters {
-        // Filter check
         if let Some(ref filter) = chapter_filter {
             if !filter.contains(chapter.id.as_str()) {
                 continue;
             }
         }
 
-        // 1. Read content (IO - Async)
-        // We do this blindly because checking cache first requires locking, then unlocking, then re-locking.
-        // Given we need the content for the graph builder anyway (to get references/word indices),
-        // we might as well read it.
-        // Optimization: In a real system, we'd check file mtime before reading content.
-        let content =
-            match storage::read_chapter_content(&repo, &root_path, &metadata, &chapter.id).await {
-                Ok(c) => c,
-                Err(_) => continue,
-            };
-
-        // 2. Compute Hash (CPU)
-        let mut hasher = DefaultHasher::new();
-        content.hash(&mut hasher);
-        current_hash.hash(&mut hasher);
-        let combined_hash = hasher.finish();
-
-        // 3. Cache Check & Update (Sync - Lock)
-        let mentions = {
-            let mut content_cache = state.chapter_content_cache.lock().unwrap();
-
-            if let Some((cached_hash, matches)) = content_cache.get(&chapter.id) {
-                if *cached_hash == combined_hash {
-                    // HIT
-                    matches.clone()
-                } else {
-                    // MISS (Content changed)
-                    let m = scanner.scan(&content);
-                    content_cache.insert(chapter.id.clone(), (combined_hash, m.clone()));
-                    m
-                }
-            } else {
-                // MISS (New chapter)
-                let m = scanner.scan(&content);
-                content_cache.insert(chapter.id.clone(), (combined_hash, m.clone()));
-                m
-            }
-        };
-
-        // 4. Accumulate for Graph Builder
-        chapter_mentions_map.insert(chapter.id.clone(), mentions);
-        chapter_texts.insert(chapter.id.clone(), content);
+        // Resolve path synchronously to avoid passing entire metadata clone to tasks
+        // We log warnings instead of failing the whole batch if one file is missing
+        match crate::storage::resolve_chapter_path(&root_path, &metadata, &chapter.id) {
+            Ok(path) => tasks.push((chapter.id.clone(), path)),
+            Err(e) => log::warn!("Skipping chapter {}: {}", chapter.id, e),
+        }
     }
 
-    // Now build graph using the pre-calculated mentions
-    // We need to modify build_character_graph to accept pre-scanned mentions
-    // For now, we'll adapt by reconstructing the expected input or refactoring the helper.
-    // Refactoring helper is safer.
+    // Spawn parallel reads using Tokio JoinSet
+    // Robustness: Handle File I/O completely separately from logic
+    let mut join_set = tokio::task::JoinSet::new();
 
-    // ... Actually, the helper `build_character_graph` does the scanning.
-    // We should split it or pass the map. Let's pass the map.
+    for (cid, path) in tasks {
+        let repo = repo.clone();
+        join_set.spawn(async move {
+            use crate::storage::traits::FileRepository;
+            // Robustness: Treat read failure as empty content rather than panic.
+            // This ensures analysis continues even if one file is locked/missing transiently.
+            let content = repo.read_file(&path).await.unwrap_or_default();
+            (cid, content)
+        });
+    }
+
+    // Process results as they arrive
+    while let Some(res) = join_set.join_next().await {
+        match res {
+            Ok((cid, content)) => {
+                if content.is_empty() {
+                    continue;
+                }
+
+                // 2. Compute Hash (CPU)
+                let mut hasher = DefaultHasher::new();
+                content.hash(&mut hasher);
+                current_hash.hash(&mut hasher);
+                let combined_hash = hasher.finish();
+
+                // 3. Cache Check & Update (Sync - Lock)
+                let mentions = {
+                    let mut content_cache = state.chapter_content_cache.lock().unwrap();
+
+                    if let Some((cached_hash, matches)) = content_cache.get(&cid) {
+                        if *cached_hash == combined_hash {
+                            // HIT
+                            matches.clone()
+                        } else {
+                            // MISS (Content changed)
+                            let m = scanner.scan(&content);
+                            content_cache.insert(cid.clone(), (combined_hash, m.clone()));
+                            m
+                        }
+                    } else {
+                        // MISS (New chapter)
+                        let m = scanner.scan(&content);
+                        content_cache.insert(cid.clone(), (combined_hash, m.clone()));
+                        m
+                    }
+                };
+
+                // 4. Accumulate
+                chapter_mentions_map.insert(cid.clone(), mentions);
+                chapter_texts.insert(cid, content);
+            }
+            Err(e) => log::error!("Analysis task join error: {}", e),
+        }
+    }
 
     let payload = build_character_graph_cached(
         &metadata,
@@ -441,11 +452,12 @@ pub async fn analyze_character_graph(
         &chapter_mentions_map,
         proximity_window,
         prune_threshold,
-    );
+    )?;
 
     Ok(payload)
 }
 
+/// Optimized builder that uses pre-scanned mentions
 /// Optimized builder that uses pre-scanned mentions
 fn build_character_graph_cached(
     metadata: &ProjectMetadata,
@@ -453,11 +465,11 @@ fn build_character_graph_cached(
     chapter_mentions: &HashMap<String, Vec<(usize, String)>>,
     proximity_window: usize,
     prune_threshold: f32,
-) -> CharacterGraphPayload {
+) -> crate::errors::Result<CharacterGraphPayload> {
     let characters = &metadata.characters;
 
     if characters.is_empty() {
-        return CharacterGraphPayload {
+        return Ok(CharacterGraphPayload {
             nodes: vec![],
             edges: vec![],
             metrics: GraphMetrics {
@@ -466,7 +478,7 @@ fn build_character_graph_cached(
                 largest_component_size: 0,
                 isolation_ratio: 0.0,
             },
-        };
+        });
     }
 
     let mut mention_counts: HashMap<String, u32> = HashMap::new();
@@ -476,9 +488,13 @@ fn build_character_graph_cached(
 
     for (chapter_id, mentions) in chapter_mentions {
         // We need content only for word indexer
-        let content = chapter_contents
-            .get(chapter_id)
-            .expect("Content missing for analyzed chapter");
+        let content = chapter_contents.get(chapter_id).ok_or_else(|| {
+            crate::errors::Error::Intelligence(format!(
+                "Content missing for analyzed chapter: {}",
+                chapter_id
+            ))
+        })?;
+
         let word_indexer = WordIndexer::new(content);
 
         let mut current_chapter_formatted: Vec<(usize, usize, String)> =
@@ -503,7 +519,6 @@ fn build_character_graph_cached(
             current_chapter_formatted.push((*pos, word_idx, char_id.clone()));
         }
 
-        // ... (Logic for Co-Presence and Proximity matches original) ...
         // Co-Presence
         let present_list: Vec<String> = present_in_chapter.into_iter().collect();
         for i in 0..present_list.len() {
@@ -620,7 +635,7 @@ fn build_character_graph_cached(
     let max_edges = if n > 1 { n * (n - 1) / 2 } else { 1 };
     let network_density = edges.len() as f32 / max_edges as f32;
 
-    CharacterGraphPayload {
+    Ok(CharacterGraphPayload {
         nodes,
         edges,
         metrics: GraphMetrics {
@@ -629,7 +644,7 @@ fn build_character_graph_cached(
             largest_component_size,
             isolation_ratio,
         },
-    }
+    })
 }
 
 // =============================================================================
@@ -667,6 +682,7 @@ mod tests {
             proximity,
             prune,
         )
+        .expect("Graph build failed in test")
     }
 
     fn make_test_character(id: &str, name: &str, role: CharacterRole) -> Character {
