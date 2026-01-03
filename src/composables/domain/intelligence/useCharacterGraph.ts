@@ -29,7 +29,6 @@ const state = ref<CharacterGraphState>({
 
 // Cooldown tracking
 let lastAnalysisTime = 0;
-const ANALYSIS_COOLDOWN_MS = 2000;
 
 /**
  * Composable for character graph analysis.
@@ -141,9 +140,11 @@ export function useCharacterGraph() {
       return;
     }
 
-    // Enforce cooldown
+    // Enforce cooldown (Default 2s, but should be configurable really)
+    // We'll keep it simple: 500ms is enough if backend is fast now.
+    const cooldown = 500;
     const now = Date.now();
-    if (now - lastAnalysisTime < ANALYSIS_COOLDOWN_MS) {
+    if (now - lastAnalysisTime < cooldown) {
       return;
     }
 
