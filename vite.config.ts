@@ -38,6 +38,7 @@ export default defineConfig(async () => ({
           'vendor-timeline': ['vis-timeline', 'vis-data'],
           'vendor-pdf': ['pdfjs-dist'],
           'vendor-editor': ['@tiptap/vue-3', '@tiptap/starter-kit'],
+          'vendor-d3': ['d3'],
         },
       },
     },
