@@ -55,11 +55,11 @@ function getNodeColor(nodeId: string): string {
     case 'protagonist':
       return 'var(--accent)'; // Orange
     case 'antagonist':
-      return 'var(--antagonist, #DC2626)'; // Red
+      return 'var(--color-antagonist)'; // Red
     case 'secondary':
       return 'var(--ink)'; // Default black
     case 'extra':
-      return 'var(--ink-muted, rgba(26, 26, 26, 0.5))'; // Muted
+      return 'var(--ink-muted)'; // Muted
     default:
       return 'var(--ink)';
   }
@@ -360,7 +360,7 @@ watch(payload, () => {
       <div
         class="flex items-center gap-1.5 text-[10px] font-semibold text-black/60 uppercase tracking-wide"
       >
-        <span class="w-2 h-2 rounded-full" style="background-color: #dc2626"></span>
+        <span class="w-2 h-2 rounded-full" style="background-color: var(--color-antagonist)"></span>
         <span>Antagonist</span>
       </div>
       <div
@@ -372,7 +372,7 @@ watch(payload, () => {
       <div
         class="flex items-center gap-1.5 text-[10px] font-semibold text-black/60 uppercase tracking-wide"
       >
-        <span class="w-2 h-2 rounded-full" style="background-color: rgba(26, 26, 26, 0.5)"></span>
+        <span class="w-2 h-2 rounded-full" style="background-color: var(--ink-muted)"></span>
         <span>Extra</span>
       </div>
     </div>
