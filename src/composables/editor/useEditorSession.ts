@@ -11,6 +11,7 @@ import { useAppStatus } from '../ui/useAppStatus';
 import { useAutoSave } from '../../composables/editor/useAutoSave';
 import { useChapterSession } from '../domain/project/useChapterSession';
 import { chaptersApi } from '../../api/chapters';
+import { countWords } from '../../utils/stats';
 import { APP_CONSTANTS } from '../../config/constants';
 import type { Chapter } from '../../types';
 
@@ -112,14 +113,7 @@ export function useEditorSession(projectId: Ref<string>, chapterId: Ref<string>)
         currentHtml.value = newContent;
         isDirty.value = false;
 
-        // Robust word count
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = newContent;
-        const text = tempDiv.textContent || tempDiv.innerText || '';
-        const wc = text
-          .trim()
-          .split(/\s+/)
-          .filter((w) => w.length > 0).length;
+        const wc = countWords(newContent);
         updateNodeStats(chapterId.value, wc);
         return newContent;
       }

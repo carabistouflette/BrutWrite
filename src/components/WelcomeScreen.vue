@@ -79,7 +79,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { invoke } from '@tauri-apps/api/core';
 import { useRecentProjects } from '../composables/domain/project/useRecentProjects';
 import { useProjectLoader } from '../composables/domain/project/useProjectLoader';
 import { useAppStatus } from '../composables/ui/useAppStatus';
@@ -90,7 +89,7 @@ import RecentProjectList from './welcome/RecentProjectList.vue';
 import WelcomeActions from './welcome/WelcomeActions.vue';
 import BrutWriteLogo from './common/BrutWriteLogo.vue';
 
-const { loadProject, createProject } = useProjectLoader();
+const { loadProject, createProject, createDemoProject } = useProjectLoader();
 const { recentProjects, loadRecentProjects } = useRecentProjects();
 const { notifyError } = useAppStatus();
 
@@ -176,12 +175,11 @@ const handleDemoProject = async () => {
     });
 
     if (selected && typeof selected === 'string') {
-      await invoke('seed_demo_project', { path: selected });
       await triggerExit();
       try {
-        await loadProject(selected);
+        await createDemoProject(selected);
       } catch (e) {
-        notifyError('Failed to load demo project', e);
+        notifyError('Failed to create demo project', e);
       }
     }
   } catch (e) {

@@ -1,4 +1,5 @@
 import { useProjectStore } from '../../../stores/project';
+import { invoke } from '@tauri-apps/api/core';
 import { useCharacters } from '../characters/useCharacters';
 import { useRecentProjects } from './useRecentProjects';
 import { useProjectSession } from './useProjectSession';
@@ -110,10 +111,21 @@ export function useProjectLoader() {
     projectStore.plotlines = metadata.plotlines;
   };
 
+  /**
+   * Create and seed a demo project
+   */
+  const createDemoProject = async (projectPath: string) => {
+    // 1. Seed on backend
+    await invoke('seed_demo_project', { path: projectPath });
+    // 2. Load it
+    await loadProject(projectPath);
+  };
+
   return {
     loadProject,
     createProject,
     updateSettings,
     updatePlotlines,
+    createDemoProject,
   };
 }

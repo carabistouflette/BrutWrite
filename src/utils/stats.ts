@@ -43,3 +43,26 @@ export function getBestDay(history: DailyStats[]): number {
   if (history.length === 0) return 0;
   return Math.max(...history.map((h) => h.wordCount));
 }
+
+/**
+ * Counts words in an HTML string using a robust regex approach.
+ * Replaces DOM-based counting to avoid main thread blocking.
+ */
+export function countWords(html: string): number {
+  if (!html) return 0;
+  // 1. Replace block tags with newline to ensure word separation
+  const withNewlines = html.replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n');
+  // 2. Strip all tags
+  const text = withNewlines.replace(/<[^>]*>/g, ' ');
+  // 3. Decode common entities
+  const decoded = text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+
+  return decoded
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0).length;
+}
