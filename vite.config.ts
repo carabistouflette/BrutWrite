@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
-// @ts-expect-error process is a nodejs global
+// process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
@@ -35,6 +35,9 @@ export default defineConfig(async () => ({
         manualChunks: {
           'vendor-core': ['vue', 'pinia'],
           'vendor-markdown': ['marked'],
+          'vendor-timeline': ['vis-timeline', 'vis-data'],
+          'vendor-pdf': ['pdfjs-dist'],
+          'vendor-editor': ['@tiptap/vue-3', '@tiptap/starter-kit'],
         },
       },
     },

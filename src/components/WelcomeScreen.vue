@@ -80,8 +80,8 @@
 import { ref } from 'vue';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
-import { useProjectStore } from '../stores/project';
 import { useRecentProjects } from '../composables/domain/project/useRecentProjects';
+import { useProjectLoader } from '../composables/domain/project/useProjectLoader';
 import { useAppStatus } from '../composables/ui/useAppStatus';
 import { formatProjectName } from '../utils/paths';
 
@@ -90,7 +90,7 @@ import RecentProjectList from './welcome/RecentProjectList.vue';
 import WelcomeActions from './welcome/WelcomeActions.vue';
 import BrutWriteLogo from './common/BrutWriteLogo.vue';
 
-const projectStore = useProjectStore();
+const { loadProject, createProject } = useProjectLoader();
 const { recentProjects, loadRecentProjects } = useRecentProjects();
 const { notifyError } = useAppStatus();
 
@@ -123,7 +123,7 @@ const triggerExit = async () => {
 const handleRecent = async (path: string) => {
   await triggerExit();
   try {
-    await projectStore.loadProject(path);
+    await loadProject(path);
   } catch (e) {
     notifyError('Failed to load project', e);
   }
@@ -139,7 +139,7 @@ const handleOpenProject = async () => {
     if (selected && typeof selected === 'string') {
       await triggerExit();
       try {
-        await projectStore.loadProject(selected);
+        await loadProject(selected);
       } catch (e) {
         notifyError('Failed to load project', e);
       }
@@ -160,7 +160,7 @@ const handleNewProject = async () => {
     if (selected && typeof selected === 'string') {
       const name = formatProjectName(selected);
       await triggerExit();
-      await projectStore.createProject(selected, name, 'Unknown Author');
+      await createProject(selected, name, 'Unknown Author');
     }
   } catch (e) {
     notifyError('Failed to create new project', e);
@@ -179,7 +179,7 @@ const handleDemoProject = async () => {
       await invoke('seed_demo_project', { path: selected });
       await triggerExit();
       try {
-        await projectStore.loadProject(selected);
+        await loadProject(selected);
       } catch (e) {
         notifyError('Failed to load demo project', e);
       }

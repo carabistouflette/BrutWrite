@@ -1,5 +1,6 @@
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '../../../stores/project';
+import { useProjectLoader } from '../project/useProjectLoader';
 import type { Plotline } from '../../../types';
 
 // Default plotline colors for auto-assignment
@@ -18,9 +19,8 @@ const PLOTLINE_COLORS = [
 
 export function usePlotlines() {
   const projectStore = useProjectStore();
+  const { updatePlotlines } = useProjectLoader();
   const { plotlines } = storeToRefs(projectStore);
-
-  const updatePlotlines = projectStore.updatePlotlinesAction;
 
   async function addPlotline(name: string) {
     const id = `plotline-${Date.now()}`;
@@ -29,7 +29,7 @@ export function usePlotlines() {
       ...(plotlines.value || []),
       { id, name, color: PLOTLINE_COLORS[colorIdx] },
     ];
-    await projectStore.updatePlotlinesAction(newPlotlines);
+    await updatePlotlines(newPlotlines);
     return id;
   }
 
@@ -38,7 +38,7 @@ export function usePlotlines() {
     const newPlotlines = plotlines.value.map((p: Plotline) =>
       p.id === id ? { ...p, ...updates } : p
     );
-    await projectStore.updatePlotlinesAction(newPlotlines);
+    await updatePlotlines(newPlotlines);
   }
 
   return {
