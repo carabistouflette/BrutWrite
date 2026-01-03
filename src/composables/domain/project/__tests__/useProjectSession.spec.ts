@@ -101,15 +101,18 @@ describe('useProjectSession Auto-Save', () => {
     projectStore.setProjectData('p1', '/path/to/p1', [], { daily_target: 0, word_target: 0 });
     setupAutoSave();
 
-    // Add a node
-    projectStore.nodes.push({ id: 'n1', name: 'New Node' });
+    // Use updateStructure which triggers the action subscription
+    projectStore.updateStructure([{ id: 'n1', name: 'New Node', children: [] }]);
 
     await nextTick();
 
     vi.advanceTimersByTime(APP_CONSTANTS.CACHE.DEBOUNCE_MS + 100);
 
-    const expectedKey = `${APP_CONSTANTS.CACHE.KEY_PREFIX}/path/to/p1`;
-    expect(setItemSpy).toHaveBeenCalledWith(expectedKey, expect.stringContaining('New Node'));
+    // CRITICAL: We should NOT save nodes to localStorage (per optimization)
+    // This test verifies that even when nodes UPDATE, they are NOT saved
+    expect(setItemSpy).toHaveBeenCalled(); // Still called because action triggers
+    const savedData = JSON.parse(setItemSpy.mock.calls[0][1]);
+    expect(savedData.nodes).toBeUndefined(); // Nodes should NOT be saved
   });
 
   it('updates cache when activeId changes', async () => {

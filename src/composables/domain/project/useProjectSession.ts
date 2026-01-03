@@ -22,13 +22,22 @@ export function useProjectSession() {
 
   const saveToCache = (path: string, data: SessionData) => {
     try {
-      localStorage.setItem(
-        getCacheKey(path),
-        JSON.stringify({
-          ...data,
-          timestamp: Date.now(),
-        })
-      );
+      // CRITICAL FIX: Do NOT save the entire nodes tree to localStorage!
+      // The nodes tree can be 100s of KB (or MB for large projects) and will:
+      // 1. Hit the 5MB localStorage quota
+      // 2. Block the main thread with expensive JSON.stringify
+      // Instead, we save only lightweight metadata.
+      const lightweightCache = {
+        id: data.id,
+        // nodes: data.nodes, // REMOVED - this is the performance killer
+        settings: data.settings,
+        plotlines: data.plotlines,
+        characters: data.characters,
+        activeId: data.activeId,
+        timestamp: Date.now(),
+      };
+
+      localStorage.setItem(getCacheKey(path), JSON.stringify(lightweightCache));
     } catch (e) {
       console.warn('Failed to cache project session', e);
     }
@@ -54,22 +63,23 @@ export function useProjectSession() {
       const { setCharacters } = useCharacters();
       if (data.characters) setCharacters(data.characters);
 
-      // 2. Restore Project Data
-      projectStore.setProjectData(data.id, path, data.nodes, data.settings);
+      // 2. Restore Project Data (BUT NOT NODES - they come from disk via loadProject)
+      // We only restore the ID and path here as a hint that this project was open.
+      projectStore.projectId = data.id;
+      projectStore.path = path;
 
       // 3. Restore Plotlines
       if (data.plotlines) projectPlotlines.value = data.plotlines;
 
       // 4. Restore Active ID (if it was valid)
+      // NOTE: We can't validate this until nodes are loaded from disk.
+      // The main loadProject flow will handle setting activeId properly.
       if (data.activeId) {
-        // We need to wait for nodeMap to be rebuilt which happens in watcher
-        // But since we set nodes above, it should trigger.
-        // Ideally we check if id exists in nodes, but for speed we just set it.
         projectStore.setActiveId(data.activeId);
-      } else if (data.nodes.length > 0) {
-        projectStore.setActiveId(data.nodes[0].id);
       }
 
+      // IMPORTANT: The caller (bootstrap or loadProject) must call the backend
+      // to actually load the nodes from disk. This cache is just for metadata.
       return true;
     } catch (e) {
       console.warn('Failed to restore session', e);
@@ -91,7 +101,7 @@ export function useProjectSession() {
 
         saveToCache(projectStore.path, {
           id: projectStore.projectId,
-          nodes: projectStore.nodes,
+          nodes: projectStore.nodes, // This is NOT saved to localStorage (see saveToCache)
           settings: projectStore.settings || { daily_target: 0, word_target: 0 },
           plotlines: projectStore.plotlines,
           characters: projectStore.characters,
