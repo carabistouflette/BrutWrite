@@ -1,5 +1,5 @@
+import { watch, onUnmounted, getCurrentInstance } from 'vue';
 import { storeToRefs } from 'pinia';
-import { watch } from 'vue';
 import { useProjectStore } from '../../../stores/project';
 import { useCharacters } from '../characters/useCharacters';
 import type { FileNode, ProjectSettings, Plotline, Character } from '../../../types';
@@ -79,35 +79,60 @@ export function useProjectSession() {
 
   const setupAutoSave = () => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
+    let unsubscribeActions: (() => void) | null = null;
 
-    const { nodes, settings, plotlines, characters, activeId } = storeToRefs(projectStore);
+    const triggerSave = () => {
+      // Debounce
+      if (timeout) clearTimeout(timeout);
 
-    // Watch for ANY change in the session-critical data
-    // We watch deep on specific objects that are mutable but might not trigger shallow reference changes if mutated in place (though store refs should trigger)
-    watch(
-      [nodes, settings, plotlines, characters, activeId],
-      () => {
-        // Debounce
+      timeout = setTimeout(() => {
+        // Guard: Only save if we have a valid open project and path
+        if (!projectStore.projectId || !projectStore.path) return;
+
+        saveToCache(projectStore.path, {
+          id: projectStore.projectId,
+          nodes: projectStore.nodes,
+          settings: projectStore.settings || { daily_target: 0, word_target: 0 },
+          plotlines: projectStore.plotlines,
+          characters: projectStore.characters,
+          activeId: projectStore.activeId,
+        });
+
+        console.debug('Project session auto-saved to cache');
+      }, APP_CONSTANTS.CACHE.DEBOUNCE_MS);
+    };
+
+    // 1. Structural Changes: Use Action Subscription to filter out noise
+    unsubscribeActions = projectStore.$onAction(({ name, after }) => {
+      // Ignore high-frequency stats updates
+      if (name === 'updateNodeStatsAction') return;
+
+      after(() => {
+        triggerSave();
+      });
+    });
+
+    // 2. Specific Watchers for non-action state changes
+    const { activeId, settings, plotlines, characters } = storeToRefs(projectStore);
+
+    // Watch settings deeply (small object)
+    watch(settings, triggerSave, { deep: true });
+
+    // Watch activeId (primitive)
+    watch(activeId, triggerSave);
+
+    // Watch arrays shallowly (reference change)
+    // If plotlines/characters are mutated in place WITHOUT an action, this won't catch it,
+    // but good practice is to use actions.
+    watch([plotlines, characters], triggerSave);
+
+    // Cleanup if used in a component
+    if (getCurrentInstance()) {
+      onUnmounted(() => {
         if (timeout) clearTimeout(timeout);
-
-        timeout = setTimeout(() => {
-          // Guard: Only save if we have a valid open project and path
-          if (!projectStore.projectId || !projectStore.path) return;
-
-          saveToCache(projectStore.path, {
-            id: projectStore.projectId,
-            nodes: projectStore.nodes,
-            settings: projectStore.settings || { daily_target: 0, word_target: 0 }, // Fallback if null (shouldn't happen in active project)
-            plotlines: projectStore.plotlines,
-            characters: projectStore.characters,
-            activeId: projectStore.activeId,
-          });
-
-          console.debug('Project session auto-saved to cache');
-        }, APP_CONSTANTS.CACHE.DEBOUNCE_MS);
-      },
-      { deep: true }
-    );
+        if (unsubscribeActions) unsubscribeActions();
+      });
+    }
   };
 
   return {

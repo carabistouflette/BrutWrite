@@ -9,6 +9,14 @@ import {
 } from '../../composables/domain/intelligence/CharacterGraphEngine';
 import type { GraphNode } from '../../types/intelligence';
 
+// Sub-components
+import GraphTooltip from './graph/GraphTooltip.vue';
+import GraphContextMenu from './graph/GraphContextMenu.vue';
+import GraphControls from './graph/GraphControls.vue';
+import GraphMetrics from './graph/GraphMetrics.vue';
+import GraphLegend from './graph/GraphLegend.vue';
+import GraphGhosts from './graph/GraphGhosts.vue';
+
 // --- Props & Emits ---
 
 interface Props {
@@ -43,7 +51,6 @@ const svgRef = ref<SVGSVGElement | null>(null);
 const selectedNodeId = ref<string | null>(null);
 const liveAnnouncement = ref('');
 const tooltipData = ref<{ node: D3Node; x: number; y: number } | null>(null);
-const currentZoom = ref(1); // Not synced with engine yet, maybe remove or expose getter
 const contextMenuData = ref<{ node: D3Node; x: number; y: number } | null>(null);
 
 let engine: CharacterGraphEngine | null = null;
@@ -126,9 +133,8 @@ function initEngine() {
       onNodeFocus: (node) => {
         liveAnnouncement.value = `${node.label}. ${node.mentionCount} mentions.`;
       },
-      onZoom: (k) => {
-        currentZoom.value = k;
-      },
+      // Zoom is handled by engine internally for transform,
+      // but if we need external sync, we can use onZoom callback.
     });
   }
 
@@ -159,9 +165,8 @@ function closeContextMenu() {
   contextMenuData.value = null;
 }
 
-async function copyCharacterTag() {
-  if (!contextMenuData.value) return;
-  const tag = `@${contextMenuData.value.node.label}`;
+async function copyCharacterTag(node: D3Node) {
+  const tag = `@${node.label}`;
   try {
     await navigator.clipboard.writeText(tag);
     liveAnnouncement.value = `Copied ${tag} to clipboard`;
@@ -238,196 +243,31 @@ watch(payload, () => {
       aria-label="Character interaction graph"
     />
 
-    <!-- Tooltip -->
-    <div
+    <!-- Overlays -->
+    <GraphTooltip
       v-if="tooltipData"
-      class="absolute transform -translate-x-1/2 -translate-y-full p-3 px-4 bg-white border border-black/10 rounded-xl shadow-lg pointer-events-none z-tooltip min-w-[150px]"
-      :style="{ left: `${tooltipData.x}px`, top: `${tooltipData.y}px` }"
-    >
-      <div class="font-serif text-sm font-semibold italic text-gray-900 mb-0.5">
-        {{ tooltipData.node.label }}
-      </div>
-      <div class="text-[10px] font-bold uppercase tracking-widest text-orange-500 mb-2">
-        {{ getRoleName(tooltipData.node.id) }}
-      </div>
-      <div class="flex gap-2 text-xs text-black/60">
-        <span>{{ tooltipData.node.mentionCount }} mentions</span>
-      </div>
-      <div class="text-[10px] text-black/40 mt-1.5">
-        Valence: {{ tooltipData.node.valence.toFixed(2) }}
-      </div>
-    </div>
+      :node="tooltipData.node"
+      :x="tooltipData.x"
+      :y="tooltipData.y"
+      :role-name="getRoleName(tooltipData.node.id)"
+    />
 
-    <!-- Context Menu -->
-    <Teleport to="body">
-      <div
-        v-if="contextMenuData"
-        class="fixed inset-0 z-90"
-        @click="closeContextMenu"
-        @contextmenu.prevent="closeContextMenu"
-      ></div>
-      <div
-        v-if="contextMenuData"
-        class="fixed z-max p-2 bg-white border border-black/10 rounded-xl shadow-2xl min-w-[180px]"
-        :style="{ left: `${contextMenuData.x}px`, top: `${contextMenuData.y}px` }"
-      >
-        <button
-          class="flex items-center gap-2 w-full p-2 px-3 text-xs font-medium text-gray-900 rounded-lg transition-all text-left hover:bg-orange-500 hover:text-white"
-          @click="copyCharacterTag"
-        >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
-            />
-          </svg>
-          Copy @{{ contextMenuData.node.label }}
-        </button>
-      </div>
-    </Teleport>
+    <GraphContextMenu
+      v-if="contextMenuData"
+      :node="contextMenuData.node"
+      :x="contextMenuData.x"
+      :y="contextMenuData.y"
+      @close="closeContextMenu"
+      @copy="copyCharacterTag"
+    />
 
-    <!-- Zoom Controls -->
-    <div
-      class="absolute top-4 left-4 flex items-center gap-1 p-1 bg-white border border-black/10 rounded-lg shadow-sm"
-    >
-      <button
-        class="flex items-center justify-center w-7 h-7 rounded text-black/60 transition-all hover:bg-black/5 hover:text-gray-900"
-        title="Zoom in"
-        @click="zoomIn"
-      >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
-      </button>
-      <button
-        class="flex items-center justify-center w-7 h-7 rounded text-black/60 transition-all hover:bg-black/5 hover:text-gray-900"
-        title="Zoom out"
-        @click="zoomOut"
-      >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-        </svg>
-      </button>
-      <button
-        class="flex items-center justify-center w-7 h-7 rounded text-black/60 transition-all hover:bg-black/5 hover:text-gray-900"
-        title="Reset zoom"
-        @click="resetZoom"
-      >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-          />
-        </svg>
-      </button>
-    </div>
+    <GraphControls @zoom-in="zoomIn" @zoom-out="zoomOut" @reset="resetZoom" />
 
-    <!-- Ghost Panel -->
-    <aside
-      v-if="ghosts.length > 0"
-      class="absolute top-4 right-4 max-w-[200px] p-4 px-5 bg-linear-to-br from-purple-500/5 to-transparent border border-purple-500/10 rounded-2xl backdrop-blur-md"
-    >
-      <div class="flex items-center gap-2 mb-3">
-        <h4 class="text-xs uppercase tracking-widest text-purple-700/60 font-bold">
-          Unmapped Characters
-        </h4>
-        <div class="h-px flex-1 bg-purple-500/10"></div>
-      </div>
-      <ul class="space-y-1.5">
-        <li
-          v-for="ghost in ghosts"
-          :key="ghost.id"
-          class="text-sm text-gray-900/60 font-medium flex items-center gap-2"
-        >
-          <span class="w-1.5 h-1.5 rounded-full bg-purple-400/50"></span>
-          {{ ghost.label }}
-        </li>
-      </ul>
-    </aside>
+    <GraphGhosts v-if="ghosts.length > 0" :ghosts="ghosts" />
 
-    <!-- Role Legend -->
-    <div
-      class="absolute bottom-14 left-4 flex gap-4 p-2 px-3 bg-white/80 border border-black/5 rounded-lg backdrop-blur-sm"
-    >
-      <div
-        class="flex items-center gap-1.5 text-[10px] font-semibold text-black/60 uppercase tracking-wide"
-      >
-        <span class="w-2 h-2 rounded-full" style="background-color: var(--accent)"></span>
-        <span>Protagonist</span>
-      </div>
-      <div
-        class="flex items-center gap-1.5 text-[10px] font-semibold text-black/60 uppercase tracking-wide"
-      >
-        <span class="w-2 h-2 rounded-full" style="background-color: var(--color-antagonist)"></span>
-        <span>Antagonist</span>
-      </div>
-      <div
-        class="flex items-center gap-1.5 text-[10px] font-semibold text-black/60 uppercase tracking-wide"
-      >
-        <span class="w-2 h-2 rounded-full" style="background-color: var(--ink)"></span>
-        <span>Secondary</span>
-      </div>
-      <div
-        class="flex items-center gap-1.5 text-[10px] font-semibold text-black/60 uppercase tracking-wide"
-      >
-        <span class="w-2 h-2 rounded-full" style="background-color: var(--ink-muted)"></span>
-        <span>Extra</span>
-      </div>
-    </div>
+    <GraphLegend />
 
-    <!-- Metrics HUD -->
-    <footer
-      v-if="metrics"
-      class="absolute bottom-0 left-0 right-0 flex justify-between items-center p-3 px-6 bg-linear-to-t from-white to-transparent border-t border-black/5"
-    >
-      <div class="flex items-center gap-4">
-        <div class="flex flex-col gap-0.5">
-          <span class="text-[10px] font-bold uppercase tracking-widest text-black/40">Density</span>
-          <span class="text-sm font-semibold font-serif text-gray-900"
-            >{{ (metrics.networkDensity * 100).toFixed(0) }}%</span
-          >
-        </div>
-        <div class="w-px h-6 bg-black/8"></div>
-        <div class="flex flex-col gap-0.5">
-          <span class="text-[10px] font-bold uppercase tracking-widest text-black/40"
-            >Components</span
-          >
-          <span class="text-sm font-semibold font-serif text-gray-900">{{
-            metrics.connectedComponents
-          }}</span>
-        </div>
-        <div class="w-px h-6 bg-black/8"></div>
-        <div class="flex flex-col gap-0.5">
-          <span class="text-[10px] font-bold uppercase tracking-widest text-black/40"
-            >Isolated</span
-          >
-          <span class="text-sm font-semibold font-serif text-gray-900"
-            >{{ (metrics.isolationRatio * 100).toFixed(0) }}%</span
-          >
-        </div>
-      </div>
-
-      <!-- Alert Badges -->
-      <div v-if="alerts.length > 0" class="flex gap-2">
-        <span
-          v-for="alert in alerts"
-          :key="alert.code"
-          class="p-1.5 px-3 text-[10px] font-bold uppercase tracking-wide text-white bg-orange-500 rounded-lg cursor-help transition-all hover:-translate-y-px hover:shadow-lg hover:shadow-orange-500/30"
-          :title="alert.tooltip"
-        >
-          {{ alert.primaryText }}
-        </span>
-      </div>
-    </footer>
+    <GraphMetrics v-if="metrics" :metrics="metrics" :alerts="alerts" />
 
     <!-- Screen Reader Live Region -->
     <div aria-live="polite" class="sr-only">{{ liveAnnouncement }}</div>
@@ -435,7 +275,7 @@ watch(payload, () => {
 </template>
 
 <style scoped>
-/* D3 Graph Styling */
+/* D3 Graph Styling - kept here as it's specific to the global SVG rendered by D3 */
 :deep(.graph-node) {
   transition:
     fill 0.2s ease,
