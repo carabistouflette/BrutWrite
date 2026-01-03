@@ -191,10 +191,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_concurrent_creation() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().expect("Failed to create temp dir");
         let path = dir.path().to_path_buf();
         let state = Arc::new(ResearchState::new());
-        state.initialize(path.clone()).await.unwrap();
+        state
+            .initialize(path.clone())
+            .await
+            .expect("State init failed");
 
         let mut handles = vec![];
         for i in 0..10 {
@@ -206,7 +209,10 @@ mod tests {
         }
 
         for handle in handles {
-            handle.await.unwrap().expect("Failed to create note");
+            handle
+                .await
+                .expect("Task join failed")
+                .expect("Failed to create note");
         }
 
         let all = state.get_all().await;
@@ -215,10 +221,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_path_traversal_protection() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().expect("Failed to create temp dir");
         let path = dir.path().to_path_buf();
         let state = Arc::new(ResearchState::new());
-        state.initialize(path.clone()).await.unwrap();
+        state
+            .initialize(path.clone())
+            .await
+            .expect("State init failed");
 
         // Test create with traversal
         let result = create_note(&state, "../evil".to_string()).await;
@@ -229,7 +238,9 @@ mod tests {
         assert!(matches!(result, Err(crate::errors::Error::Validation(_))));
 
         // Create valid note for rename test
-        let note = create_note(&state, "valid".to_string()).await.unwrap();
+        let note = create_note(&state, "valid".to_string())
+            .await
+            .expect("Create note failed");
 
         // Test rename with traversal
         let result = rename_artifact(&state, note.id.clone(), "../evil".to_string()).await;
@@ -238,24 +249,32 @@ mod tests {
 
     #[tokio::test]
     async fn test_rename_artifact() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().expect("Failed to create temp dir");
         let path = dir.path().to_path_buf();
         let state = Arc::new(ResearchState::new());
-        state.initialize(path.clone()).await.unwrap();
+        state
+            .initialize(path.clone())
+            .await
+            .expect("State init failed");
 
-        let note = create_note(&state, "original".to_string()).await.unwrap();
+        let note = create_note(&state, "original".to_string())
+            .await
+            .expect("Create note failed");
         let original_path = PathBuf::from(&note.path);
 
         rename_artifact(&state, note.id.clone(), "renamed".to_string())
             .await
-            .unwrap();
+            .expect("Rename failed");
 
         // Verify old file gone
         assert!(!original_path.exists());
 
         // Verify state up to date
         let files = state.get_all().await;
-        let renamed = files.iter().find(|a| a.id == note.id).unwrap();
+        let renamed = files
+            .iter()
+            .find(|a| a.id == note.id)
+            .expect("Renamed note not found");
         assert_eq!(renamed.name, "renamed.md");
 
         // Verify new file exists
@@ -264,16 +283,23 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_artifact() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().expect("Failed to create temp dir");
         let path = dir.path().to_path_buf();
         let state = Arc::new(ResearchState::new());
-        state.initialize(path.clone()).await.unwrap();
+        state
+            .initialize(path.clone())
+            .await
+            .expect("State init failed");
 
-        let note = create_note(&state, "to_delete".to_string()).await.unwrap();
+        let note = create_note(&state, "to_delete".to_string())
+            .await
+            .expect("Create note failed");
         let note_path = PathBuf::from(&note.path);
         assert!(note_path.exists());
 
-        delete_artifact(&state, note.id.clone()).await.unwrap();
+        delete_artifact(&state, note.id.clone())
+            .await
+            .expect("Delete failed");
 
         assert!(!note_path.exists());
     }

@@ -791,7 +791,7 @@ mod tests {
             CharacterRole::Protagonist,
         )];
         let metadata = make_test_metadata(characters.clone());
-        let scanner = CharacterScanner::try_new(&characters).unwrap();
+        let scanner = CharacterScanner::try_new(&characters).expect("Scanner init failed");
         let payload = helper_build_graph(&metadata, &[], 50, 0.05, Some(&scanner)).await;
 
         assert_eq!(payload.nodes.len(), 1);
@@ -814,7 +814,7 @@ mod tests {
             ),
         ];
         let metadata = make_test_metadata(characters.clone());
-        let scanner = CharacterScanner::try_new(&characters).unwrap();
+        let scanner = CharacterScanner::try_new(&characters).expect("Scanner init failed");
 
         let chapters = vec![(
             "ch1".to_string(),
@@ -844,7 +844,7 @@ mod tests {
             ),
         ];
         let metadata = make_test_metadata(characters.clone());
-        let scanner = CharacterScanner::try_new(&characters).unwrap();
+        let scanner = CharacterScanner::try_new(&characters).expect("Scanner init failed");
 
         let chapters = vec![
             (
@@ -856,8 +856,16 @@ mod tests {
 
         let payload = helper_build_graph(&metadata, &chapters, 50, 0.05, Some(&scanner)).await;
 
-        let hero = payload.nodes.iter().find(|n| n.label == "Hero").unwrap();
-        let extra = payload.nodes.iter().find(|n| n.label == "Extra").unwrap();
+        let hero = payload
+            .nodes
+            .iter()
+            .find(|n| n.label == "Hero")
+            .expect("Hero node missing");
+        let extra = payload
+            .nodes
+            .iter()
+            .find(|n| n.label == "Extra")
+            .expect("Extra node missing");
 
         // Protagonist with 2 mentions should have higher valence than Extra with 1
         assert!(hero.valence > extra.valence);
