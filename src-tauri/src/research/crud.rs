@@ -3,11 +3,26 @@ use crate::research::ResearchState;
 use std::path::PathBuf;
 
 fn validate_filename(name: &str) -> crate::errors::Result<()> {
-    if name.contains("..") || name.contains('/') || name.contains('\\') {
+    let path = std::path::Path::new(name);
+
+    // Check for any traversal components or absolute paths
+    for component in path.components() {
+        match component {
+            std::path::Component::Normal(_) => continue,
+            _ => return Err(crate::errors::Error::Validation(
+                "Invalid name: path traversal, absolute paths and subdirectories are not allowed"
+                    .to_string(),
+            )),
+        }
+    }
+
+    // Additional check for empty name or separators that might slip through on some OS
+    if name.trim().is_empty() || name.contains('/') || name.contains('\\') {
         return Err(crate::errors::Error::Validation(
-            "Invalid name: path traversal and subdirectories are not allowed".to_string(),
+            "Invalid name: contains separators or is empty".to_string(),
         ));
     }
+
     Ok(())
 }
 

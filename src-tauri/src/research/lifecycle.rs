@@ -84,19 +84,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_reconcile_index_path_map() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().expect("Failed to create temp dir");
         let path = dir.path().to_path_buf();
 
         // Create dummy files
         let file1 = path.join("note1.md");
-        tokio::fs::write(&file1, "content").await.unwrap();
+        tokio::fs::write(&file1, "content")
+            .await
+            .expect("Failed to write note1");
         let file2 = path.join("note2.md");
-        tokio::fs::write(&file2, "content").await.unwrap();
+        tokio::fs::write(&file2, "content")
+            .await
+            .expect("Failed to write note2");
 
         let state = Arc::new(ResearchState::new());
 
         // Initialize (this calls reconcile_index and builds path_map)
-        state.initialize(path.clone()).await.unwrap();
+        state
+            .initialize(path.clone())
+            .await
+            .expect("Failed to initialize state");
 
         let inner = state.inner.lock().await;
 
@@ -112,12 +119,12 @@ mod tests {
         assert!(inner.path_map.contains_key(&path1));
         assert!(inner.path_map.contains_key(&path2));
 
-        let id1 = inner.path_map.get(&path1).unwrap();
-        let artifact1 = inner.artifacts.get(id1).unwrap();
+        let id1 = inner.path_map.get(&path1).expect("Path1 should exist");
+        let artifact1 = inner.artifacts.get(id1).expect("Artifact1 should exist");
         assert_eq!(artifact1.path, path1);
 
-        let id2 = inner.path_map.get(&path2).unwrap();
-        let artifact2 = inner.artifacts.get(id2).unwrap();
+        let id2 = inner.path_map.get(&path2).expect("Path2 should exist");
+        let artifact2 = inner.artifacts.get(id2).expect("Artifact2 should exist");
         assert_eq!(artifact2.path, path2);
     }
 }

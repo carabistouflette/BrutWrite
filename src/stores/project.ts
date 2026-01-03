@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, shallowRef, computed, watch } from 'vue';
+import { ref, shallowRef, computed } from 'vue';
 import type { FileNode, ProjectSettings, Character, Plotline } from '../types';
 
 export const useProjectStore = defineStore('project', () => {
@@ -54,8 +54,7 @@ export const useProjectStore = defineStore('project', () => {
     totalWordCount.value = totalWc;
   };
 
-  // Watcher to keep lookups in sync
-  watch(nodes, (newVal) => rebuildMap(newVal ?? []), { immediate: true });
+  // No detailed watcher here. Rebuilds must be triggered explicitly when structure changes.
 
   // --- Getters ---
 
@@ -77,7 +76,9 @@ export const useProjectStore = defineStore('project', () => {
   ) {
     projectId.value = id;
     path.value = projectPath;
-    nodes.value = fileNodes; // Triggers rebuildMap
+    nodes.value = fileNodes;
+    rebuildMap(fileNodes); // Explicit rebuild
+
     settings.value = projectSettingsData;
     activeId.value = undefined;
   }
@@ -87,7 +88,8 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   function updateStructure(newNodes: FileNode[]) {
-    nodes.value = [...newNodes]; // Force shallow trigger
+    nodes.value = [...newNodes];
+    rebuildMap(newNodes); // Explicit rebuild
   }
 
   function closeProject() {
