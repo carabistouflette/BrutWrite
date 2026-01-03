@@ -35,13 +35,11 @@ const { closeProject } = projectStore;
 const isExiting = ref(false);
 
 // --- Event Handlers ---
-const handleChangeProject = async () => {
+const handleChangeProject = () => {
   isExiting.value = true;
-  // Allow the transition to complete (500ms in CSS)
-  // Using a promise with fallback is safer than assuming the event always fires (e.g. invalid CSS)
-  await new Promise<void>((resolve) => {
-    setTimeout(resolve, 500);
-  });
+};
+
+const onExited = () => {
   closeProject();
 };
 </script>
@@ -50,6 +48,7 @@ const handleChangeProject = async () => {
   <div
     class="animate-enter flex flex-1 w-full h-full text-ink font-sans overflow-hidden relative transition-all duration-500"
     :class="{ 'opacity-0 scale-95': isExiting }"
+    @transitionend="onExited"
   >
     <!-- Sidebar -->
     <aside
@@ -64,11 +63,6 @@ const handleChangeProject = async () => {
         @open-research="showResearch = !showResearch"
         @change-project="handleChangeProject"
       />
-
-      <!-- Global Modals (anchored here or elsewhere) -->
-      <SettingsModal :show="showSettings" @close="showSettings = false" />
-      <CharacterSheet :show="showCharacters" @close="showCharacters = false" />
-      <CharacterGraphModal :show="showCharacterGraph" @close="showCharacterGraph = false" />
 
       <!-- Resize Handle -->
       <div
@@ -113,6 +107,11 @@ const handleChangeProject = async () => {
         <ResearchPanel @close="showResearch = false" />
       </aside>
     </Transition>
+
+    <!-- Global Modals (Moved to root to prevent clipping/z-index issues) -->
+    <SettingsModal :show="showSettings" @close="showSettings = false" />
+    <CharacterSheet :show="showCharacters" @close="showCharacters = false" />
+    <CharacterGraphModal :show="showCharacterGraph" @close="showCharacterGraph = false" />
   </div>
 </template>
 

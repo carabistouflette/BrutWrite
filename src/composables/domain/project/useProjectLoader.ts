@@ -29,11 +29,7 @@ export function useProjectLoader() {
 
     // 4. Set project data in store
     projectStore.setProjectData(metadata.id, projectPath, hierarchy, metadata.settings);
-
-    // Set plotlines directly on store state (assuming the store exposes this ref or has a setter)
-    // Looking at the store, plotlines is a ref returned.
-    // Ideally we should use a setter, but direct mutation of store refs is allowed in Setup Stores.
-    projectStore.plotlines = metadata.plotlines;
+    projectStore.setPlotlines(metadata.plotlines);
 
     // 5. Side effects
     localStorage.setItem('last_opened_project_path', projectPath);
@@ -67,7 +63,7 @@ export function useProjectLoader() {
 
     // 3. Set data (empty initially)
     projectStore.setProjectData(metadata.id, projectPath, [], metadata.settings);
-    projectStore.plotlines = metadata.plotlines;
+    projectStore.setPlotlines(metadata.plotlines);
 
     localStorage.setItem('last_opened_project_path', projectPath);
     addRecentProject(projectPath);
@@ -98,7 +94,7 @@ export function useProjectLoader() {
   const updateSettings = async (newSettings: ProjectSettings) => {
     if (!projectStore.projectId) return;
     const metadata = await projectApi.updateSettings(projectStore.projectId, newSettings);
-    projectStore.settings = metadata.settings;
+    projectStore.setSettings(metadata.settings);
   };
 
   /**
@@ -107,8 +103,7 @@ export function useProjectLoader() {
   const updatePlotlines = async (newPlotlines: Plotline[]) => {
     if (!projectStore.projectId) return;
     const metadata = await projectApi.updatePlotlines(projectStore.projectId, newPlotlines);
-    // Again, direct assignment if possible
-    projectStore.plotlines = metadata.plotlines;
+    projectStore.setPlotlines(metadata.plotlines);
   };
 
   /**

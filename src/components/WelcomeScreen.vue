@@ -96,37 +96,24 @@ const { notifyError } = useAppStatus();
 const isVisible = ref(true);
 const currentYear = new Date().getFullYear();
 
-// Use a promise to handle the exit animation
-const waitForExit = () => {
-  return new Promise<void>((resolve) => {
-    // We expose the resolve and call it in the template callback 'onAfterLeave'.
-    exitResolver.value = resolve;
-  });
-};
+const pendingAction = ref<(() => Promise<void>) | null>(null);
 
-const exitResolver = ref<(() => void) | null>(null);
-
-const onAfterLeave = () => {
-  if (exitResolver.value) {
-    exitResolver.value();
-    exitResolver.value = null;
+const onAfterLeave = async () => {
+  if (pendingAction.value) {
+    await pendingAction.value();
+    pendingAction.value = null;
   }
 };
 
-const triggerExit = async () => {
-  if (!isVisible.value) return; // Already exiting
-  const exitPromise = waitForExit();
+const handleRecent = (path: string) => {
+  pendingAction.value = async () => {
+    try {
+      await loadProject(path);
+    } catch (e) {
+      notifyError('Failed to load project', e);
+    }
+  };
   isVisible.value = false;
-  await exitPromise;
-};
-
-const handleRecent = async (path: string) => {
-  await triggerExit();
-  try {
-    await loadProject(path);
-  } catch (e) {
-    notifyError('Failed to load project', e);
-  }
 };
 
 const handleOpenProject = async () => {
@@ -137,12 +124,14 @@ const handleOpenProject = async () => {
     });
 
     if (selected && typeof selected === 'string') {
-      await triggerExit();
-      try {
-        await loadProject(selected);
-      } catch (e) {
-        notifyError('Failed to load project', e);
-      }
+      pendingAction.value = async () => {
+        try {
+          await loadProject(selected);
+        } catch (e) {
+          notifyError('Failed to load project', e);
+        }
+      };
+      isVisible.value = false;
     }
   } catch (e) {
     notifyError('Failed to open project dialog', e);
@@ -159,8 +148,10 @@ const handleNewProject = async () => {
 
     if (selected && typeof selected === 'string') {
       const name = formatProjectName(selected);
-      await triggerExit();
-      await createProject(selected, name, 'Unknown Author');
+      pendingAction.value = async () => {
+        await createProject(selected, name, 'New Author');
+      };
+      isVisible.value = false;
     }
   } catch (e) {
     notifyError('Failed to create new project', e);
@@ -176,12 +167,14 @@ const handleDemoProject = async () => {
     });
 
     if (selected && typeof selected === 'string') {
-      await triggerExit();
-      try {
-        await createDemoProject(selected);
-      } catch (e) {
-        notifyError('Failed to create demo project', e);
-      }
+      pendingAction.value = async () => {
+        try {
+          await createDemoProject(selected);
+        } catch (e) {
+          notifyError('Failed to create demo project', e);
+        }
+      };
+      isVisible.value = false;
     }
   } catch (e) {
     notifyError('Failed to create demo project', e);
