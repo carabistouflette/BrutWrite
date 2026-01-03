@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { ref, defineAsyncComponent, watch } from 'vue';
+import { ref, defineAsyncComponent } from 'vue';
 import GamificationStatus from '../gamification/GamificationStatus.vue';
 import SidebarController from './SidebarController.vue';
-import { useResizable } from '../../composables/ui/useResizable';
+import { useLayoutController } from '../../composables/ui/useLayoutController';
 import { useProjectStore } from '../../stores/project';
-import { useResearchStore } from '../../stores/research';
 
 const ResearchPanel = defineAsyncComponent(() => import('../research/ResearchPanel.vue'));
 const SettingsModal = defineAsyncComponent(() => import('../settings/SettingsModal.vue'));
@@ -14,38 +13,25 @@ const CharacterGraphModal = defineAsyncComponent(
   () => import('../intelligence/CharacterGraphModal.vue')
 );
 
-// --- Composables ---
+// Extract layout logic
 const {
-  width: sidebarWidth,
-  isResizing,
-  startResize,
-} = useResizable({
-  initialWidth: 256,
-  minWidth: 200,
-  maxWidth: 600,
-});
-
-const {
-  width: researchWidth,
-  isResizing: isResizingResearch,
-  startResize: startResizeResearch,
-} = useResizable({
-  initialWidth: 400,
-  minWidth: 300,
-  maxWidth: 800,
-  edge: 'right',
-});
+  sidebarWidth,
+  isResizingSidebar,
+  startResizeSidebar,
+  researchWidth,
+  isResizingResearch,
+  startResizeResearch,
+  showSettings,
+  showCharacters,
+  showCharacterGraph,
+  showTimeline,
+  showResearch,
+} = useLayoutController();
 
 const projectStore = useProjectStore();
 const { closeProject } = projectStore;
-const researchStore = useResearchStore();
 
 // --- Local State ---
-const showSettings = ref(false);
-const showCharacters = ref(false);
-const showCharacterGraph = ref(false);
-const showTimeline = ref(false);
-const showResearch = ref(false);
 const isExiting = ref(false);
 
 // --- Event Handlers ---
@@ -58,15 +44,6 @@ const handleChangeProject = async () => {
   });
   closeProject();
 };
-
-watch(
-  () => researchStore.activeArtifact,
-  (artifact) => {
-    if (artifact && !showResearch.value) {
-      showResearch.value = true;
-    }
-  }
-);
 </script>
 
 <template>
@@ -96,8 +73,8 @@ watch(
       <!-- Resize Handle -->
       <div
         class="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-accent/50 transition-colors z-20"
-        :class="{ 'bg-accent/50': isResizing }"
-        @mousedown="startResize"
+        :class="{ 'bg-accent/50': isResizingSidebar }"
+        @mousedown="startResizeSidebar"
       ></div>
     </aside>
 
