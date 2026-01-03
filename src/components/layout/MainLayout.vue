@@ -35,14 +35,20 @@ const { closeProject } = projectStore;
 const isExiting = ref(false);
 
 // --- Event Handlers ---
+let exitTimeout: number | undefined;
+
 const handleChangeProject = () => {
   isExiting.value = true;
+  // Safety fallback in case transitionend fails
+  exitTimeout = setTimeout(() => {
+    closeProject();
+  }, 600);
 };
 
 const onExited = (e: TransitionEvent) => {
   // Only trigger if we are explicitly exiting and for the main opacity transition
-  // to avoid multiple calls for different transitioning properties.
   if (isExiting.value && e.propertyName === 'opacity') {
+    clearTimeout(exitTimeout);
     closeProject();
   }
 };
