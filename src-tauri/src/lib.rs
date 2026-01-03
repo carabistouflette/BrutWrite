@@ -17,6 +17,8 @@ pub struct AppState {
     pub intelligence_cache: std::sync::Mutex<
         std::collections::HashMap<uuid::Uuid, (u64, commands::intelligence::CharacterScanner)>,
     >,
+    pub chapter_content_cache:
+        std::sync::Mutex<std::collections::HashMap<String, (u64, Vec<(usize, String)>)>>,
 }
 
 impl AppState {
@@ -25,6 +27,7 @@ impl AppState {
             projects: ProjectManager::new(),
             research: research::ResearchState::new(),
             intelligence_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
+            chapter_content_cache: std::sync::Mutex::new(std::collections::HashMap::new()),
         }
     }
 }

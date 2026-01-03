@@ -11,7 +11,20 @@ use std::collections::{HashMap, HashSet};
 use tauri::State;
 use uuid::Uuid;
 
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+
 // =============================================================================
+// Constants
+// =============================================================================
+
+const MAX_NAME_LEN: usize = 64;
+
+// Role weights for valence calculation
+const WEIGHT_PROTAGONIST: f32 = 2.0;
+const WEIGHT_ANTAGONIST: f32 = 1.8;
+const WEIGHT_SECONDARY: f32 = 1.5;
+const WEIGHT_EXTRA: f32 = 1.0;
 // Types
 // =============================================================================
 
@@ -99,10 +112,10 @@ pub struct CharacterGraphPayload {
 /// Uses a flattened curve to avoid over-biasing based on purely static roles.
 fn role_weight(role: &CharacterRole) -> f32 {
     match role {
-        CharacterRole::Protagonist => 2.0, // Was 4.0
-        CharacterRole::Antagonist => 1.8,  // Was 3.0
-        CharacterRole::Secondary => 1.5,   // Was 2.0
-        CharacterRole::Extra => 1.0,       // Was 1.0
+        CharacterRole::Protagonist => WEIGHT_PROTAGONIST,
+        CharacterRole::Antagonist => WEIGHT_ANTAGONIST,
+        CharacterRole::Secondary => WEIGHT_SECONDARY,
+        CharacterRole::Extra => WEIGHT_EXTRA,
     }
 }
 
@@ -124,13 +137,14 @@ impl CharacterScanner {
 
         for (i, c) in characters.iter().enumerate() {
             // Security: Prevent excessive regex complexity from long names
-            if c.name.len() > 64 {
+            // Security: Prevent excessive regex complexity from long names
+            if c.name.len() > MAX_NAME_LEN {
                 log::warn!(
                     "Character name '{}' is too long, shortening for analysis",
                     c.name
                 );
             }
-            let safe_name = regex::escape(&c.name[..c.name.len().min(64)].to_lowercase());
+            let safe_name = regex::escape(&c.name[..c.name.len().min(MAX_NAME_LEN)].to_lowercase());
             let id_ref = regex::escape(&c.id.to_string());
 
             // Build pattern for this character
@@ -272,214 +286,6 @@ impl UnionFind {
 // Core Analysis
 // =============================================================================
 
-/// Analyze character interactions and build the graph.
-/// Analyze character interactions and build the graph.
-async fn build_character_graph(
-    metadata: &ProjectMetadata,
-    chapter_contents: &[(String, String)], // (chapter_id, content)
-    proximity_window: usize,
-    prune_threshold: f32,
-    scanner: Option<&CharacterScanner>,
-) -> CharacterGraphPayload {
-    let characters = &metadata.characters;
-
-    if characters.is_empty() {
-        return CharacterGraphPayload {
-            nodes: vec![],
-            edges: vec![],
-            metrics: GraphMetrics {
-                network_density: 0.0,
-                connected_components: 0,
-                largest_component_size: 0,
-                isolation_ratio: 0.0,
-            },
-        };
-    }
-
-    let scanner = scanner.expect("Scanner required for non-empty character list");
-
-    // Maps char_id -> Total references across project
-    let mut mention_counts: HashMap<String, u32> = HashMap::new();
-    // Maps char_id -> Set(chapter_id)
-    let mut chapter_presences: HashMap<String, HashSet<String>> = HashMap::new();
-    let mut first_mentions: HashMap<String, MentionLocation> = HashMap::new();
-
-    // Accumulate interaction weights: (id_a, id_b) -> weight
-    // Key must be sorted (a < b) to avoid duplicates
-    let mut interaction_weights: HashMap<(String, String), f32> = HashMap::new();
-    let mut interaction_types: HashMap<(String, String), InteractionType> = HashMap::new();
-
-    // Iterate chapters to process text
-    for (chapter_id, content) in chapter_contents {
-        // Optimization: Build O(1) word indexer for this chapter
-        let word_indexer = WordIndexer::new(content);
-
-        // 1. Collect all mentions in this chapter in a single pass
-        let mentions = scanner.scan(content);
-        let mut chapter_mentions: Vec<(usize, usize, String)> = Vec::with_capacity(mentions.len());
-        let mut present_in_chapter: HashSet<String> = HashSet::new();
-
-        for (pos, char_id) in mentions {
-            *mention_counts.entry(char_id.clone()).or_default() += 1;
-            chapter_presences
-                .entry(char_id.clone())
-                .or_default()
-                .insert(chapter_id.clone());
-            present_in_chapter.insert(char_id.clone());
-
-            if !first_mentions.contains_key(&char_id) {
-                first_mentions.insert(
-                    char_id.clone(),
-                    MentionLocation {
-                        chapter_id: chapter_id.clone(),
-                        char_offset: pos,
-                    },
-                );
-            }
-
-            let word_idx = word_indexer.get_word_index(pos);
-            chapter_mentions.push((pos, word_idx, char_id));
-        }
-
-        // 2. Co-Presence Score (Base load)
-        //    All characters present in this chapter get +1.0 with each other
-        let present_list: Vec<String> = present_in_chapter.into_iter().collect();
-        for i in 0..present_list.len() {
-            for j in (i + 1)..present_list.len() {
-                let (a, b) = if present_list[i] < present_list[j] {
-                    (present_list[i].clone(), present_list[j].clone())
-                } else {
-                    (present_list[j].clone(), present_list[i].clone())
-                };
-
-                *interaction_weights
-                    .entry((a.clone(), b.clone()))
-                    .or_default() += 1.0;
-                interaction_types
-                    .entry((a, b))
-                    .or_insert(InteractionType::CoPresence);
-            }
-        }
-
-        // 3. Proximity Bonus (Sliding Window / Look-ahead)
-        //    Sort mentions by word index to allow linear scanning
-        chapter_mentions.sort_by_key(|k| k.1);
-
-        for i in 0..chapter_mentions.len() {
-            let (_, word_idx_a, ref id_a) = chapter_mentions[i];
-
-            // Look ahead until distance > proximity_window
-            for (_, word_idx_b, ref id_b) in chapter_mentions.iter().skip(i + 1) {
-                let dist = word_idx_b.saturating_sub(word_idx_a);
-                if dist > proximity_window {
-                    break;
-                }
-
-                // If different characters, add proximity bonus
-                if id_a != id_b {
-                    let (a, b) = if id_a < id_b {
-                        (id_a.clone(), id_b.clone())
-                    } else {
-                        (id_b.clone(), id_a.clone())
-                    };
-
-                    let bonus = proximity_bonus(dist, proximity_window);
-                    if bonus > 0.0 {
-                        *interaction_weights.entry((a, b)).or_default() += bonus;
-                    }
-                }
-            }
-        }
-    }
-
-    // Step 4: Build nodes
-    // Safe handling: iterate original chars list
-    let nodes: Vec<GraphNode> = characters
-        .iter()
-        .map(|c| {
-            let char_id = c.id.to_string();
-            let count = *mention_counts.get(&char_id).unwrap_or(&0);
-            let valence = (1.0 + count as f32).ln() * role_weight(&c.role);
-            GraphNode {
-                id: char_id.clone(),
-                label: c.name.clone(),
-                valence,
-                mention_count: count,
-                is_mapped: count > 0,
-                first_mention: first_mentions.get(&char_id).cloned(),
-            }
-        })
-        .collect();
-
-    // Step 5: Build edges (prune)
-    let edges: Vec<GraphEdge> = interaction_weights
-        .into_iter()
-        .filter(|(_, weight)| *weight >= prune_threshold)
-        .map(|((source, target), weight)| {
-            let interaction_type = interaction_types
-                .get(&(source.clone(), target.clone()))
-                .cloned()
-                .unwrap_or(InteractionType::Reference);
-            GraphEdge {
-                source,
-                target,
-                weight,
-                interaction_type,
-            }
-        })
-        .collect();
-
-    // Step 6: Compute metrics
-    let n = characters.len();
-    let char_id_to_index: HashMap<String, usize> = characters
-        .iter()
-        .enumerate()
-        .map(|(i, c)| (c.id.to_string(), i))
-        .collect();
-
-    let mut uf = UnionFind::new(n);
-    for edge in &edges {
-        if let (Some(&i), Some(&j)) = (
-            char_id_to_index.get(&edge.source),
-            char_id_to_index.get(&edge.target),
-        ) {
-            uf.union(i, j);
-        }
-    }
-
-    let component_sizes = uf.component_sizes();
-    let connected_components = component_sizes.len() as u32;
-    let largest_component_size = component_sizes.iter().copied().max().unwrap_or(0);
-
-    // Isolated nodes = characters with 0 edges
-    let connected_chars: HashSet<&String> =
-        edges.iter().flat_map(|e| [&e.source, &e.target]).collect();
-    let isolated_count = characters
-        .iter()
-        .filter(|c| !connected_chars.contains(&c.id.to_string()))
-        .count();
-    let isolation_ratio = if n > 0 {
-        isolated_count as f32 / n as f32
-    } else {
-        0.0
-    };
-
-    // Network density: |E| / (|V| × (|V|-1) / 2)
-    let max_edges = if n > 1 { n * (n - 1) / 2 } else { 1 };
-    let network_density = edges.len() as f32 / max_edges as f32;
-
-    CharacterGraphPayload {
-        nodes,
-        edges,
-        metrics: GraphMetrics {
-            network_density,
-            connected_components,
-            largest_component_size,
-            isolation_ratio,
-        },
-    }
-}
-
 // =============================================================================
 // Tauri Command
 // =============================================================================
@@ -508,40 +314,19 @@ pub async fn analyze_character_graph(
         .as_ref()
         .map(|ids| ids.iter().map(|s| s.as_str()).collect());
 
-    // Load chapter contents (filtered if specified)
-    let repo = LocalFileRepository;
-    let mut chapter_contents: Vec<(String, String)> = Vec::new();
-
-    for chapter in &metadata.manifest.chapters {
-        // Skip if filter is active and chapter not in filter
-        if let Some(ref filter) = chapter_filter {
-            if !filter.contains(chapter.id.as_str()) {
-                continue;
-            }
-        }
-
-        match storage::read_chapter_content(&repo, &root_path, &metadata, &chapter.id).await {
-            Ok(content) => {
-                chapter_contents.push((chapter.id.clone(), content));
-            }
-            Err(_) => {
-                // Skip chapters that can't be read
-                continue;
-            }
-        }
-    }
-
-    // Check for empty characters before scanner logic
+    // Check for empty characters before scanner logic (Moved up)
     if metadata.characters.is_empty() {
-        return Ok(
-            build_character_graph(&metadata, &[], proximity_window, prune_threshold, None).await,
-        );
+        return Ok(build_character_graph_cached(
+            &metadata,
+            &HashMap::new(),
+            &HashMap::new(),
+            proximity_window,
+            prune_threshold,
+        ));
     }
 
-    // Cache Logic
+    // Cache Logic (Scanner Init)
     let current_hash = {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
         let mut s = DefaultHasher::new();
         for c in &metadata.characters {
             c.id.hash(&mut s);
@@ -550,6 +335,7 @@ pub async fn analyze_character_graph(
         s.finish()
     };
 
+    // Initialize Scanner (once per analysis run)
     let scanner = {
         let cache = state.intelligence_cache.lock().unwrap();
         if let Some((hash, scanner)) = cache.get(&project_id) {
@@ -566,7 +352,7 @@ pub async fn analyze_character_graph(
     let scanner = if let Some(s) = scanner {
         s
     } else {
-        // Rebuild
+        // Rebuild if stale or missing
         let s = match CharacterScanner::try_new(&metadata.characters) {
             Ok(s) => s,
             Err(e) => return Err(crate::errors::Error::Intelligence(e)),
@@ -577,16 +363,273 @@ pub async fn analyze_character_graph(
         s
     };
 
-    let payload = build_character_graph(
+    // 4. Process chapters with caching
+    // -------------------------------------------------------------------------
+    let mut chapter_mentions_map: HashMap<String, Vec<(usize, String)>> = HashMap::new();
+    let mut chapter_texts: HashMap<String, String> = HashMap::new();
+
+    // We only need to read file content if cache miss
+    let repo = LocalFileRepository;
+
+    // NOTE: We cannot hold the mutex across async calls (await).
+    // So we iterate, read file (async), compute hash, then lock/update cache.
+    // This is slightly less efficient for lock contention but safe.
+
+    for chapter in &metadata.manifest.chapters {
+        // Filter check
+        if let Some(ref filter) = chapter_filter {
+            if !filter.contains(chapter.id.as_str()) {
+                continue;
+            }
+        }
+
+        // 1. Read content (IO - Async)
+        // We do this blindly because checking cache first requires locking, then unlocking, then re-locking.
+        // Given we need the content for the graph builder anyway (to get references/word indices),
+        // we might as well read it.
+        // Optimization: In a real system, we'd check file mtime before reading content.
+        let content =
+            match storage::read_chapter_content(&repo, &root_path, &metadata, &chapter.id).await {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+
+        // 2. Compute Hash (CPU)
+        let mut hasher = DefaultHasher::new();
+        content.hash(&mut hasher);
+        current_hash.hash(&mut hasher);
+        let combined_hash = hasher.finish();
+
+        // 3. Cache Check & Update (Sync - Lock)
+        let mentions = {
+            let mut content_cache = state.chapter_content_cache.lock().unwrap();
+
+            if let Some((cached_hash, matches)) = content_cache.get(&chapter.id) {
+                if *cached_hash == combined_hash {
+                    // HIT
+                    matches.clone()
+                } else {
+                    // MISS (Content changed)
+                    let m = scanner.scan(&content);
+                    content_cache.insert(chapter.id.clone(), (combined_hash, m.clone()));
+                    m
+                }
+            } else {
+                // MISS (New chapter)
+                let m = scanner.scan(&content);
+                content_cache.insert(chapter.id.clone(), (combined_hash, m.clone()));
+                m
+            }
+        };
+
+        // 4. Accumulate for Graph Builder
+        chapter_mentions_map.insert(chapter.id.clone(), mentions);
+        chapter_texts.insert(chapter.id.clone(), content);
+    }
+
+    // Now build graph using the pre-calculated mentions
+    // We need to modify build_character_graph to accept pre-scanned mentions
+    // For now, we'll adapt by reconstructing the expected input or refactoring the helper.
+    // Refactoring helper is safer.
+
+    // ... Actually, the helper `build_character_graph` does the scanning.
+    // We should split it or pass the map. Let's pass the map.
+
+    let payload = build_character_graph_cached(
         &metadata,
-        &chapter_contents,
+        &chapter_texts,
+        &chapter_mentions_map,
         proximity_window,
         prune_threshold,
-        Some(&scanner),
-    )
-    .await;
+    );
 
     Ok(payload)
+}
+
+/// Optimized builder that uses pre-scanned mentions
+fn build_character_graph_cached(
+    metadata: &ProjectMetadata,
+    chapter_contents: &HashMap<String, String>,
+    chapter_mentions: &HashMap<String, Vec<(usize, String)>>,
+    proximity_window: usize,
+    prune_threshold: f32,
+) -> CharacterGraphPayload {
+    let characters = &metadata.characters;
+
+    if characters.is_empty() {
+        return CharacterGraphPayload {
+            nodes: vec![],
+            edges: vec![],
+            metrics: GraphMetrics {
+                network_density: 0.0,
+                connected_components: 0,
+                largest_component_size: 0,
+                isolation_ratio: 0.0,
+            },
+        };
+    }
+
+    let mut mention_counts: HashMap<String, u32> = HashMap::new();
+    let mut first_mentions: HashMap<String, MentionLocation> = HashMap::new();
+    let mut interaction_weights: HashMap<(String, String), f32> = HashMap::new();
+    let mut interaction_types: HashMap<(String, String), InteractionType> = HashMap::new();
+
+    for (chapter_id, mentions) in chapter_mentions {
+        // We need content only for word indexer
+        let content = chapter_contents
+            .get(chapter_id)
+            .expect("Content missing for analyzed chapter");
+        let word_indexer = WordIndexer::new(content);
+
+        let mut current_chapter_formatted: Vec<(usize, usize, String)> =
+            Vec::with_capacity(mentions.len());
+        let mut present_in_chapter: HashSet<String> = HashSet::new();
+
+        for (pos, char_id) in mentions {
+            *mention_counts.entry(char_id.clone()).or_default() += 1;
+            present_in_chapter.insert(char_id.clone());
+
+            if !first_mentions.contains_key(char_id) {
+                first_mentions.insert(
+                    char_id.clone(),
+                    MentionLocation {
+                        chapter_id: chapter_id.clone(),
+                        char_offset: *pos,
+                    },
+                );
+            }
+
+            let word_idx = word_indexer.get_word_index(*pos);
+            current_chapter_formatted.push((*pos, word_idx, char_id.clone()));
+        }
+
+        // ... (Logic for Co-Presence and Proximity matches original) ...
+        // Co-Presence
+        let present_list: Vec<String> = present_in_chapter.into_iter().collect();
+        for i in 0..present_list.len() {
+            for j in (i + 1)..present_list.len() {
+                let (a, b) = if present_list[i] < present_list[j] {
+                    (present_list[i].clone(), present_list[j].clone())
+                } else {
+                    (present_list[j].clone(), present_list[i].clone())
+                };
+
+                *interaction_weights
+                    .entry((a.clone(), b.clone()))
+                    .or_default() += 1.0;
+                interaction_types
+                    .entry((a, b))
+                    .or_insert(InteractionType::CoPresence);
+            }
+        }
+
+        // Proximity
+        current_chapter_formatted.sort_by_key(|k| k.1);
+        for i in 0..current_chapter_formatted.len() {
+            let (_, word_idx_a, ref id_a) = current_chapter_formatted[i];
+            for (_, word_idx_b, ref id_b) in current_chapter_formatted.iter().skip(i + 1) {
+                let dist = word_idx_b.saturating_sub(word_idx_a);
+                if dist > proximity_window {
+                    break;
+                }
+                if id_a != id_b {
+                    let (a, b) = if id_a < id_b {
+                        (id_a.clone(), id_b.clone())
+                    } else {
+                        (id_b.clone(), id_a.clone())
+                    };
+                    let bonus = proximity_bonus(dist, proximity_window);
+                    if bonus > 0.0 {
+                        *interaction_weights.entry((a, b)).or_default() += bonus;
+                    }
+                }
+            }
+        }
+    }
+
+    // Build Nodes
+    let nodes: Vec<GraphNode> = characters
+        .iter()
+        .map(|c| {
+            let char_id = c.id.to_string();
+            let count = *mention_counts.get(&char_id).unwrap_or(&0);
+            let valence = (1.0 + count as f32).ln() * role_weight(&c.role);
+            GraphNode {
+                id: char_id.clone(),
+                label: c.name.clone(),
+                valence,
+                mention_count: count,
+                is_mapped: count > 0,
+                first_mention: first_mentions.get(&char_id).cloned(),
+            }
+        })
+        .collect();
+
+    // Build Edges
+    let edges: Vec<GraphEdge> = interaction_weights
+        .into_iter()
+        .filter(|(_, weight)| *weight >= prune_threshold)
+        .map(|((source, target), weight)| {
+            let interaction_type = interaction_types
+                .get(&(source.clone(), target.clone()))
+                .cloned()
+                .unwrap_or(InteractionType::Reference);
+            GraphEdge {
+                source,
+                target,
+                weight,
+                interaction_type,
+            }
+        })
+        .collect();
+
+    // Metrics (UnionFind logic copied)
+    let n = characters.len();
+    let char_id_to_index: HashMap<String, usize> = characters
+        .iter()
+        .enumerate()
+        .map(|(i, c)| (c.id.to_string(), i))
+        .collect();
+
+    let mut uf = UnionFind::new(n);
+    for edge in &edges {
+        if let (Some(&i), Some(&j)) = (
+            char_id_to_index.get(&edge.source),
+            char_id_to_index.get(&edge.target),
+        ) {
+            uf.union(i, j);
+        }
+    }
+
+    let component_sizes = uf.component_sizes();
+    let connected_components = component_sizes.len() as u32;
+    let largest_component_size = component_sizes.iter().copied().max().unwrap_or(0);
+
+    let connected_chars: HashSet<&String> =
+        edges.iter().flat_map(|e| [&e.source, &e.target]).collect();
+    let isolated_count = characters
+        .iter()
+        .filter(|c| !connected_chars.contains(&c.id.to_string()))
+        .count();
+    let isolation_ratio = if n > 0 {
+        isolated_count as f32 / n as f32
+    } else {
+        0.0
+    };
+
+    let max_edges = if n > 1 { n * (n - 1) / 2 } else { 1 };
+    let network_density = edges.len() as f32 / max_edges as f32;
+
+    CharacterGraphPayload {
+        nodes,
+        edges,
+        metrics: GraphMetrics {
+            network_density,
+            connected_components,
+            largest_component_size,
+            isolation_ratio,
+        },
+    }
 }
 
 // =============================================================================
@@ -597,6 +640,34 @@ pub async fn analyze_character_graph(
 mod tests {
     use super::*;
     use crate::models::Manifest;
+
+    /// Helper to bridge old test format to new cached format
+    async fn helper_build_graph(
+        metadata: &ProjectMetadata,
+        chapters: &[(String, String)],
+        proximity: usize,
+        prune: f32,
+        scanner: Option<&CharacterScanner>,
+    ) -> CharacterGraphPayload {
+        let mut chapter_mentions = HashMap::new();
+        let mut chapter_texts = HashMap::new();
+
+        if let Some(s) = scanner {
+            for (id, content) in chapters {
+                let mentions = s.scan(content);
+                chapter_mentions.insert(id.clone(), mentions);
+                chapter_texts.insert(id.clone(), content.clone());
+            }
+        }
+
+        build_character_graph_cached(
+            metadata,
+            &chapter_texts,
+            &chapter_mentions,
+            proximity,
+            prune,
+        )
+    }
 
     fn make_test_character(id: &str, name: &str, role: CharacterRole) -> Character {
         Character {
@@ -630,7 +701,7 @@ mod tests {
     #[tokio::test]
     async fn test_empty_project() {
         let metadata = make_test_metadata(vec![]);
-        let payload = build_character_graph(&metadata, &[], 50, 0.05, None).await;
+        let payload = helper_build_graph(&metadata, &[], 50, 0.05, None).await;
 
         assert!(payload.nodes.is_empty());
         assert!(payload.edges.is_empty());
@@ -646,7 +717,7 @@ mod tests {
         )];
         let metadata = make_test_metadata(characters.clone());
         let scanner = CharacterScanner::try_new(&characters).unwrap();
-        let payload = build_character_graph(&metadata, &[], 50, 0.05, Some(&scanner)).await;
+        let payload = helper_build_graph(&metadata, &[], 50, 0.05, Some(&scanner)).await;
 
         assert_eq!(payload.nodes.len(), 1);
         assert_eq!(payload.nodes[0].mention_count, 0);
@@ -675,7 +746,7 @@ mod tests {
             "Alice walked into the room. Bob was already there.".to_string(),
         )];
 
-        let payload = build_character_graph(&metadata, &chapters, 50, 0.05, Some(&scanner)).await;
+        let payload = helper_build_graph(&metadata, &chapters, 50, 0.05, Some(&scanner)).await;
 
         assert_eq!(payload.nodes.len(), 2);
         assert!(payload.nodes.iter().all(|n| n.is_mapped));
@@ -708,7 +779,7 @@ mod tests {
             ("ch2".to_string(), "Extra appears once.".to_string()),
         ];
 
-        let payload = build_character_graph(&metadata, &chapters, 50, 0.05, Some(&scanner)).await;
+        let payload = helper_build_graph(&metadata, &chapters, 50, 0.05, Some(&scanner)).await;
 
         let hero = payload.nodes.iter().find(|n| n.label == "Hero").unwrap();
         let extra = payload.nodes.iter().find(|n| n.label == "Extra").unwrap();
