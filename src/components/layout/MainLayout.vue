@@ -39,8 +39,12 @@ const handleChangeProject = () => {
   isExiting.value = true;
 };
 
-const onExited = () => {
-  closeProject();
+const onExited = (e: TransitionEvent) => {
+  // Only trigger if we are explicitly exiting and for the main opacity transition
+  // to avoid multiple calls for different transitioning properties.
+  if (isExiting.value && e.propertyName === 'opacity') {
+    closeProject();
+  }
 };
 </script>
 
