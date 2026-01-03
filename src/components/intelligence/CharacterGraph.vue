@@ -76,55 +76,56 @@ function getRoleName(nodeId: string): string {
 function initEngine() {
   if (!svgRef.value || !payload.value) return;
 
-  // Dispose old engine if any
-  if (engine) engine.dispose();
+  // Initialize engine if it doesn't exist
+  if (!engine) {
+    engine = new CharacterGraphEngine(svgRef.value, {
+      width: props.width,
+      height: props.height,
+      getNodeColor,
+      onNodeClick: (node) => {
+        selectedNodeId.value = node.id === selectedNodeId.value ? null : node.id;
+        emit('nodeSelect', selectedNodeId.value ? node : null);
+        if (engine) engine.highlightNode(selectedNodeId.value);
+      },
+      onNodeDoubleClick: (node) => {
+        if (node.firstMention) {
+          emit('navigateToMention', node.firstMention.chapterId);
+        }
+      },
+      onNodeContextMenu: (event, node) => {
+        event.preventDefault();
+        const svgRect = svgRef.value?.getBoundingClientRect();
+        if (svgRect) {
+          contextMenuData.value = {
+            node,
+            x: event.clientX,
+            y: event.clientY,
+          };
+        }
+      },
+      onNodeHover: (event, node) => {
+        const svgRect = svgRef.value?.getBoundingClientRect();
+        if (svgRect) {
+          tooltipData.value = {
+            node,
+            x: event.clientX - svgRect.left,
+            y: event.clientY - svgRect.top - 10,
+          };
+        }
+      },
+      onNodeBlur: () => {
+        tooltipData.value = null;
+      },
+      onNodeFocus: (node) => {
+        liveAnnouncement.value = `${node.label}. ${node.mentionCount} mentions.`;
+      },
+      onZoom: (k) => {
+        currentZoom.value = k;
+      },
+    });
+  }
 
-  engine = new CharacterGraphEngine(svgRef.value, {
-    width: props.width,
-    height: props.height,
-    getNodeColor,
-    onNodeClick: (node) => {
-      selectedNodeId.value = node.id === selectedNodeId.value ? null : node.id;
-      emit('nodeSelect', selectedNodeId.value ? node : null);
-      if (engine) engine.highlightNode(selectedNodeId.value);
-    },
-    onNodeDoubleClick: (node) => {
-      if (node.firstMention) {
-        emit('navigateToMention', node.firstMention.chapterId);
-      }
-    },
-    onNodeContextMenu: (event, node) => {
-      event.preventDefault();
-      const svgRect = svgRef.value?.getBoundingClientRect();
-      if (svgRect) {
-        contextMenuData.value = {
-          node,
-          x: event.clientX,
-          y: event.clientY,
-        };
-      }
-    },
-    onNodeHover: (event, node) => {
-      const svgRect = svgRef.value?.getBoundingClientRect();
-      if (svgRect) {
-        tooltipData.value = {
-          node,
-          x: event.clientX - svgRect.left,
-          y: event.clientY - svgRect.top - 10,
-        };
-      }
-    },
-    onNodeBlur: () => {
-      tooltipData.value = null;
-    },
-    onNodeFocus: (node) => {
-      liveAnnouncement.value = `${node.label}. ${node.mentionCount} mentions.`;
-    },
-    onZoom: (k) => {
-      currentZoom.value = k;
-    },
-  });
-
+  // Update data without destroying simulation
   engine.update(payload.value.nodes, payload.value.edges);
 
   // Restore selection if ID persists

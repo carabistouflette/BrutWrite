@@ -6,11 +6,12 @@
     >
       <!-- Background Decorative Elements -->
       <div class="absolute inset-0 z-0 pointer-events-none opacity-30">
+        <!-- Optimized: Using radial gradients instead of expensive CSS blurs -->
         <div
-          class="absolute top-[10%] left-[5%] w-[40vw] h-[40vw] rounded-full bg-accent/5 blur-[120px] animate-pulse"
+          class="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-[radial-gradient(circle,var(--accent)_0%,transparent_70%)] opacity-10 animate-pulse"
         ></div>
         <div
-          class="absolute bottom-[10%] right-[5%] w-[30vw] h-[30vw] rounded-full bg-accent/10 blur-[100px] animate-pulse stagger-1"
+          class="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-[radial-gradient(circle,var(--accent)_0%,transparent_70%)] opacity-15 animate-pulse stagger-1"
         ></div>
       </div>
 

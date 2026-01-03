@@ -111,16 +111,23 @@ export class CharacterGraphEngine {
     if (!this.simulation) {
       this.setupSimulation(d3Nodes, d3Links);
     } else {
+      // Update nodes and links in existing simulation
       this.simulation.nodes(d3Nodes);
+
       const linkForce = this.simulation.force<d3.ForceLink<D3Node, D3Link>>('link');
       if (linkForce) {
         linkForce.links(d3Links);
       }
-      this.simulation.alpha(0.3).restart(); // Gentle restart
+
+      // Re-heat simulation slightly to settle new structure
+      this.simulation.alpha(0.3).restart();
     }
 
     // 3. Update Visuals
     this.renderGraph(d3Nodes, d3Links);
+
+    // Reset highlights on data update to avoid stale visual states
+    this.highlightNode(null);
   }
 
   private setupSimulation(nodes: D3Node[], links: D3Link[]) {
@@ -145,7 +152,8 @@ export class CharacterGraphEngine {
     // Reduced motion check
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       this.simulation.stop();
-      for (let i = 0; i < GRAPH_CONFIG.STATIC_TICKS; i++) this.simulation.tick();
+      // Run simulation synchronously to static state
+      this.simulation.tick(GRAPH_CONFIG.STATIC_TICKS);
       this.updatePositions();
     } else {
       this.simulation.on('tick', () => this.updatePositions());
