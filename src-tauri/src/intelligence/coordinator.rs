@@ -45,6 +45,7 @@ impl<'a> IntelligenceCoordinator<'a> {
                 &HashMap::new(),
                 options.proximity_window,
                 options.prune_threshold,
+                None,
             );
         }
 
@@ -63,6 +64,7 @@ impl<'a> IntelligenceCoordinator<'a> {
             &chapter_mentions,
             options.proximity_window,
             options.prune_threshold,
+            None,
         )
     }
 

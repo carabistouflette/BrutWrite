@@ -61,6 +61,7 @@ pub fn build_character_graph_cached(
     chapter_mentions: &HashMap<String, Vec<(usize, String)>>,
     proximity_window: usize,
     prune_threshold: f32,
+    custom_weights: Option<GraphWeights>,
 ) -> crate::errors::Result<CharacterGraphPayload> {
     let characters = &metadata.characters;
     let n_chars = characters.len();
@@ -78,7 +79,7 @@ pub fn build_character_graph_cached(
         });
     }
 
-    let weights = GraphWeights::default();
+    let weights = custom_weights.unwrap_or_default();
 
     // 1. Map Character IDs to Integers for O(1) array access and cheap copying
     let char_id_to_idx: HashMap<String, usize> = characters
