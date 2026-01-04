@@ -18,7 +18,7 @@ impl FileRepository for LocalFileRepository {
     }
 
     async fn exists(&self, path: &Path) -> Result<bool> {
-        Ok(tokio::fs::try_exists(path).await.unwrap_or(false))
+        Ok(tokio::fs::try_exists(path).await?)
     }
 
     async fn delete(&self, path: &Path) -> Result<()> {
