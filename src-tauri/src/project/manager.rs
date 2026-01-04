@@ -71,6 +71,17 @@ impl ProjectManager {
         name: String,
         author: String,
     ) -> crate::errors::Result<models::ProjectMetadata> {
+        if name.trim().is_empty() || name.len() > 100 {
+            return Err(crate::errors::Error::Validation(
+                "Project name must be between 1 and 100 characters".to_string(),
+            ));
+        }
+        if author.trim().len() > 100 {
+            return Err(crate::errors::Error::Validation(
+                "Author name must be under 100 characters".to_string(),
+            ));
+        }
+
         let metadata = storage::create_project_structure(&path, &name, &author).await?;
         self.register_project(metadata.id, path.clone(), metadata.clone())
             .await;
