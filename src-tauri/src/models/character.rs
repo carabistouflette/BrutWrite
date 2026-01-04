@@ -20,6 +20,8 @@ pub struct Character {
     pub arc: String,
     #[serde(default)]
     pub notes: String,
+    #[serde(default)]
+    pub aliases: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

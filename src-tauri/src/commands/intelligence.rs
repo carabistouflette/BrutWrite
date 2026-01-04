@@ -106,6 +106,7 @@ mod tests {
             traits: vec![],
             arc: String::new(),
             notes: String::new(),
+            aliases: vec![],
         }
     }
 

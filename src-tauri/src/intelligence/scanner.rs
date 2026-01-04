@@ -38,13 +38,24 @@ impl CharacterScanner {
             pattern_to_char_idx.push(i);
             requires_boundary.push(true);
 
-            // 2. @Mention (No left boundary check needed if @ is non-word, but we rely on AC)
+            // 2. Aliases
+            for alias in &c.aliases {
+                if alias.trim().is_empty() {
+                    continue;
+                }
+                let safe_alias = alias[..alias.len().min(MAX_NAME_LEN)].to_lowercase();
+                patterns.push(safe_alias); // Aliases act like names
+                pattern_to_char_idx.push(i);
+                requires_boundary.push(true);
+            }
+
+            // 3. @Mention (No left boundary check needed if @ is non-word, but we rely on AC)
             // Ideally we just want to match "@Name"
             patterns.push(format!("@{}", safe_name));
             pattern_to_char_idx.push(i);
             requires_boundary.push(false); // explicit symbol prefix usually suffices
 
-            // 3. data-id="..." (Exact machine match)
+            // 4. data-id="..." (Exact machine match)
             // Handle both single and double quotes if needed, though usually standardizing is better.
             // We'll add both common variants to be safe.
             patterns.push(format!("data-id=\"{}\"", id_str));
@@ -124,4 +135,78 @@ fn is_word_boundary(text: &str, start: usize, end: usize) -> bool {
         }
     }
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{Character, CharacterRole};
+
+    fn make_char(id: &str, name: &str, aliases: Vec<String>) -> Character {
+        Character {
+            id: uuid::Uuid::parse_str(id).unwrap_or(uuid::Uuid::new_v4()),
+            name: name.to_string(),
+            role: CharacterRole::Protagonist,
+            archetype: "Hero".to_string(),
+            description: "Desc".to_string(),
+            engine: Default::default(),
+            physical_features: "".to_string(),
+            traits: vec![],
+            arc: "".to_string(),
+            notes: "".to_string(),
+            aliases,
+        }
+    }
+
+    #[test]
+    fn test_scanner_with_aliases() {
+        let id1_str = "00000000-0000-0000-0000-000000000001";
+        let char1 = make_char(
+            id1_str,
+            "Robert",
+            vec!["Bob".to_string(), "Bobby".to_string()],
+        );
+
+        let scanner = CharacterScanner::try_new(&[char1]).expect("Failed to create scanner");
+
+        let text = "Robert met Bob and they called Bobby over.";
+        let mentions = scanner.scan(text);
+
+        // Should detect: Robert, Bob, Bobby
+        assert_eq!(mentions.len(), 3);
+
+        let found_ids: Vec<String> = mentions.iter().map(|(_, id)| id.clone()).collect();
+        assert_eq!(
+            found_ids,
+            vec![
+                id1_str.to_string(),
+                id1_str.to_string(),
+                id1_str.to_string()
+            ]
+        );
+
+        // Verify names/offsets
+        // "Robert" at 0
+        assert_eq!(mentions[0].0, 0);
+        // "Bob" at 11
+        assert_eq!(mentions[1].0, 11);
+        // "Bobby" at 31
+        assert_eq!(mentions[2].0, 31);
+    }
+
+    #[test]
+    fn test_scanner_alias_word_boundary() {
+        let id1_str = "00000000-0000-0000-0000-000000000001";
+        let char1 = make_char(id1_str, "Robert", vec!["Bob".to_string()]);
+
+        let scanner = CharacterScanner::try_new(&[char1]).expect("Failed to create scanner");
+
+        // "Bobby" contains "Bob", but should not match "Bob" because of boundary check
+        let text = "Bobby is not Bob";
+        let mentions = scanner.scan(text);
+
+        assert_eq!(mentions.len(), 1);
+        // Should only match the second "Bob"
+        assert_eq!(mentions[0].0, 13);
+    }
 }
