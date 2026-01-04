@@ -13,7 +13,7 @@ export function useCharacters() {
    * Set the full list of characters (e.g., after loading a project)
    */
   const setCharacters = (list: Character[]) => {
-    projectCharacters.value = list;
+    projectStore.setCharacters(list);
   };
 
   /**
@@ -22,8 +22,10 @@ export function useCharacters() {
   const saveCharacter = async (projectId: string, character: Character) => {
     try {
       const metadata = await charactersApi.save(projectId, character);
-      // The backend returns the updated metadata, including the full list of characters
-      projectCharacters.value = metadata.characters;
+      // The backend returns the updated metadata.
+      // Optimistically update or use backend source of truth?
+      // Backend returns full list in metadata.characters
+      projectStore.setCharacters(metadata.characters);
       return metadata;
     } catch (e) {
       notifyError('Failed to save character', e);
@@ -37,7 +39,7 @@ export function useCharacters() {
   const deleteCharacter = async (projectId: string, characterId: string) => {
     try {
       const metadata = await charactersApi.delete(projectId, characterId);
-      projectCharacters.value = metadata.characters;
+      projectStore.setCharacters(metadata.characters);
       return metadata;
     } catch (e) {
       notifyError('Failed to delete character', e);

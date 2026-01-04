@@ -173,6 +173,25 @@ export const useProjectStore = defineStore('project', () => {
     plotlines.value = newPlotlines;
   };
 
+  // Character Actions
+  const setCharacters = (list: Character[]) => {
+    characters.value = list;
+  };
+
+  const updateCharacter = (character: Character) => {
+    const index = characters.value.findIndex((c) => c.id === character.id);
+    if (index !== -1) {
+      characters.value[index] = character;
+    } else {
+      characters.value.push(character);
+    }
+    triggerRef(characters); // Ensure deep reactivity triggers if needed
+  };
+
+  const removeCharacter = (id: string) => {
+    characters.value = characters.value.filter((c) => c.id !== id);
+  };
+
   return {
     // State
     nodes,
@@ -201,5 +220,8 @@ export const useProjectStore = defineStore('project', () => {
     updateNodeMetadataAction,
     setSettings,
     setPlotlines,
+    setCharacters,
+    updateCharacter,
+    removeCharacter,
   };
 });
