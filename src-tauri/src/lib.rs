@@ -80,6 +80,7 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|e| {
+            log::error!("Fatal: Failed to start application: {}", e);
             eprintln!("Fatal: Failed to start application: {}", e);
             std::process::exit(1);
         });
