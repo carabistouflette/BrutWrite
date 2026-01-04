@@ -4,7 +4,7 @@ import type { FileNode, ProjectSettings, Character, Plotline } from '../types';
 
 export const useProjectStore = defineStore('project', () => {
   // State
-  const nodes = shallowRef<FileNode[]>([]);
+  const nodes = ref<FileNode[]>([]);
   const activeId = ref<string | undefined>(undefined);
   const projectId = ref<string | undefined>(undefined);
   const path = ref<string | undefined>(undefined);
@@ -19,9 +19,6 @@ export const useProjectStore = defineStore('project', () => {
   const nodeMap = shallowRef(new Map<string, FileNode>());
   const flatNodes = shallowRef<FileNode[]>([]);
 
-  // Tracking version to trigger reactive updates for non-structural changes if needed
-  // REMOVED: statsVersion hack. We now use reactive() on nodes.
-
   // Character map for O(1) access
   const characterMap = computed(() => {
     const map = new Map<string, Character>();
@@ -33,6 +30,8 @@ export const useProjectStore = defineStore('project', () => {
 
   const indexNodes = (fileNodes: FileNode[]) => {
     const map = new Map<string, FileNode>();
+    // Depth-first traversal
+    // Using simple recursion or stack.
     const stack: FileNode[] = [...fileNodes].reverse();
 
     while (stack.length > 0) {
@@ -50,8 +49,6 @@ export const useProjectStore = defineStore('project', () => {
 
   const updateDerived = (fileNodes: FileNode[]) => {
     // Rebuild flat list and total word count
-    // This is O(N) but valid for structure updates.
-    // Optimizing map creation is the bigger win as it involves hashing.
     const list: FileNode[] = [];
     const stack: FileNode[] = [...fileNodes].reverse();
     let totalWc = 0;
@@ -96,11 +93,10 @@ export const useProjectStore = defineStore('project', () => {
   ) {
     projectId.value = id;
     path.value = projectPath;
-    // Make nodes deep reactive
-    // OPTIMIZATION: Use plain objects with shallowRef + triggerRef to avoid overhead of 1000s of Proxies
+
+    // Deep reactive assignment
     nodes.value = fileNodes;
-    // Safe to use triggerRef because we just replaced the entire array.
-    triggerRef(nodes);
+
     rebuildAll(fileNodes); // Full rebuild on load
 
     settings.value = projectSettingsData;
@@ -113,13 +109,7 @@ export const useProjectStore = defineStore('project', () => {
 
   function updateStructure(newNodes: FileNode[]) {
     nodes.value = [...newNodes];
-    // Structure update (drag & drop) usually doesn't add/remove nodes,
-    // so map (id->node) might stay valid, but let's be safe and rebuild indexes
-    // if we suspect new nodes. For pure reorder, we could just updateDerived.
-    // But for now, let's assume updateStructure might include new nodes.
-    // If we knew it was just reorder, we'd call updateDerived(newNodes).
     rebuildAll(newNodes);
-    triggerRef(nodes);
   }
 
   function closeProject() {
@@ -136,7 +126,6 @@ export const useProjectStore = defineStore('project', () => {
 
     // Clear derived state
     rebuildAll([]);
-    triggerRef(nodes);
   }
 
   // Granular Mutations (Optimized)
