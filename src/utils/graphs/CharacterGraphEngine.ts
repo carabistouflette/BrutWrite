@@ -81,9 +81,15 @@ export class CharacterGraphEngine {
       } else {
         // New node: Deterministic initial position based on ID if possible
         // This prevents the graph from "jumping" randomly on every load
-        const hash = n.id
-          .split('')
-          .reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+        // Use a better hash (djb2) for distribution
+        let hash = 5381;
+        for (let i = 0; i < n.id.length; i++) {
+          hash = (hash * 33) ^ n.id.charCodeAt(i);
+        }
+
+        // Normalize to positive integer
+        hash = hash >>> 0;
+
         const newNode: D3Node = {
           ...n,
           x: this.width / 2 + ((hash % 100) - 50),
