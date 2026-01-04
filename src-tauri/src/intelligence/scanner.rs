@@ -1,7 +1,7 @@
 use crate::models::Character;
 use aho_corasick::{AhoCorasick, MatchKind};
 
-pub const MAX_NAME_LEN: usize = 64;
+pub const MAX_NAME_LEN: usize = 256;
 
 /// Pre-compiled search patterns for all characters.
 #[derive(Clone, Debug)]
