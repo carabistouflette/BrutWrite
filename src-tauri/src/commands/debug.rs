@@ -62,6 +62,7 @@ pub async fn seed_demo_project(
     let mut created_characters = Vec::new();
 
     for dc in demo_data.characters {
+        // Create full struct with safe defaults
         let char = Character {
             id: Uuid::new_v4(),
             name: dc.name,
@@ -86,8 +87,10 @@ pub async fn seed_demo_project(
     });
 
     for chapter in demo_data.chapters {
-        // Substitute placeholders
-        let content = re.replace_all(&chapter.content, |caps: &regex::Captures| {
+        // Safe substitution:
+        // We match identifying patterns in the demo text and strictly replace them with a valid HTML mention span.
+        // We use `encode_text` on the content to prevent XSS if the demo json itself was malicious (though it's embedded).
+        let result = re.replace_all(&chapter.content, |caps: &regex::Captures| {
             let index: usize = caps[1].parse().unwrap_or(0);
             let alias = caps.get(2).map(|m| m.as_str());
 
@@ -100,12 +103,12 @@ pub async fn seed_demo_project(
                     char.id, safe_text
                 )
             } else {
-                // Fallback if index invalid (shouldn't happen with correct JSON)
+                // Fallback for bad indices in demo data
                 "???".to_string()
             }
         });
 
-        // Create node
+        // 5. Create Node & Save Content
         let md = crate::commands::create_node(
             state.clone(),
             project_id_uuid,
@@ -114,7 +117,7 @@ pub async fn seed_demo_project(
         )
         .await?;
 
-        // Find the node ID
+        // Find the node ID from the returned manifest
         let node = md
             .manifest
             .chapters
@@ -132,7 +135,7 @@ pub async fn seed_demo_project(
             state.clone(),
             project_id_uuid,
             node.id.clone(),
-            content.to_string(),
+            result.to_string(), // Cow<str> -> String
         )
         .await?;
     }
