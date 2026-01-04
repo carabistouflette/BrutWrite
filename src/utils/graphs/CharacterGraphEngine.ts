@@ -1,4 +1,5 @@
 import * as d3 from 'd3';
+import { djb2Hash } from '../../utils/hashing';
 import type { GraphNode, GraphEdge } from '../../types/intelligence';
 
 // =============================================================================
@@ -82,13 +83,7 @@ export class CharacterGraphEngine {
         // New node: Deterministic initial position based on ID if possible
         // This prevents the graph from "jumping" randomly on every load
         // Use a better hash (djb2) for distribution
-        let hash = 5381;
-        for (let i = 0; i < n.id.length; i++) {
-          hash = (hash * 33) ^ n.id.charCodeAt(i);
-        }
-
-        // Normalize to positive integer
-        hash = hash >>> 0;
+        const hash = djb2Hash(n.id);
 
         const newNode: D3Node = {
           ...n,

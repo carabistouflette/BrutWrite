@@ -4,6 +4,7 @@ import { intelligenceApi } from '../../../api/intelligence';
 import type { CharacterGraphPayload, GraphNode, GraphAlert } from '../../../types/intelligence';
 import { useProjectStore } from '../../../stores/project';
 import { useSettingsStore } from '../../../stores/settings';
+import { getGraphAlerts } from '../../../utils/intelligence/graphAnalysis';
 
 interface CharacterGraphState {
   payload: CharacterGraphPayload | null;
@@ -43,45 +44,14 @@ export const useCharacterGraph = defineStore('character-graph', () => {
     if (!state.value.payload) return [];
 
     const { metrics, nodes } = state.value.payload;
-    const result: GraphAlert[] = [];
 
-    if (metrics.isolationRatio > 0.5) {
-      result.push({
-        code: 'SOLIPSISM',
-        primaryText: 'Low Connectivity',
-        tooltip: 'Over 50% of your cast has no meaningful interactions.',
-      });
-    }
-
-    if (metrics.connectedComponents > 1) {
-      result.push({
-        code: 'SATELLITE',
-        primaryText: 'Isolated Subplots',
-        tooltip: `There are ${metrics.connectedComponents} groups of characters that never interact with the main cast.`,
-      });
-    }
-
-    if (ghosts.value.length > 0) {
-      result.push({
-        code: 'GHOST',
-        primaryText: 'Unmapped Characters',
-        tooltip: `${ghosts.value.length} character(s) declared but never mentioned.`,
-      });
-    }
-
+    // Filter protagonists using the store data
     const protagonists = nodes.filter((n) => {
       const char = projectStore.characterById(n.id);
       return char?.role === 'protagonist';
     });
-    if (protagonists.length > 0 && protagonists.every((p) => p.mentionCount < 3)) {
-      result.push({
-        code: 'PROTAGONIST_ABSENT',
-        primaryText: 'Protagonist Fading',
-        tooltip: 'Your protagonist has very few mentions.',
-      });
-    }
 
-    return result;
+    return getGraphAlerts(metrics, ghosts.value, protagonists);
   });
 
   const isStale = computed<boolean>(() => {
