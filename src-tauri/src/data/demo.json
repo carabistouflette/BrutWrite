@@ -1,0 +1,71 @@
+{
+  "characters": [
+    {
+      "name": "Cipher",
+      "role": "Protagonist",
+      "description": "A rogue hacker with a neural shunt.",
+      "archetype": "The Outlaw",
+      "physical_features": "Cybernetic eye, leather jacket",
+      "traits": ["Paranoid", "Skilled"],
+      "arc": "Redemption"
+    },
+    {
+      "name": "The Architect",
+      "role": "Antagonist",
+      "description": "An AI construct controlling the city grid.",
+      "archetype": "The Ruler",
+      "physical_features": "Holographic projection",
+      "traits": ["Calculating", "Omnipresent"],
+      "arc": "Corruption"
+    },
+    {
+      "name": "Glitch",
+      "role": "Secondary",
+      "description": "Street urchin and informant.",
+      "archetype": "The Jester",
+      "physical_features": "Neon tattoos",
+      "traits": ["Fast talker"],
+      "arc": ""
+    },
+    {
+      "name": "Echo",
+      "role": "Secondary",
+      "description": "Memory broker.",
+      "archetype": "The Sage",
+      "physical_features": "Masked",
+      "traits": ["Wise"],
+      "arc": ""
+    },
+    {
+      "name": "Neon",
+      "role": "Extra",
+      "description": "Bartender at The Void.",
+      "archetype": "Everyman",
+      "physical_features": "Robot arm",
+      "traits": [],
+      "arc": ""
+    }
+  ],
+  "chapters": [
+    {
+      "title": "Chapter 1: The Wakeup",
+      "content": "<p>The neon rain fell hard on the pavement. {CHAR_0:The hacker} adjusted his collar. He was waiting for {CHAR_2:the kid}. 'Where is the data?' asked {CHAR_0}.</p><p>{CHAR_2} laughed. 'You think {CHAR_1:The Architect} lets anything slip?'</p>"
+    },
+    {
+      "title": "Chapter 2: The Grid",
+      "content": "<p>{CHAR_0} connected to the mainframe. The presence of {CHAR_1:the machine god} was overwhelming. 'I see you,' the voice boomed. {CHAR_0:Cipher} tried to disconnect, but {CHAR_1} held the line.</p>"
+    },
+    {
+      "title": "Chapter 3: Broken Memories",
+      "content": "<p>{CHAR_0} visited {CHAR_3:the memory broker}. 'I need to remember,' said {CHAR_0}. {CHAR_3} handed over a drive. 'This contains files on {CHAR_1}.'</p>"
+    },
+    {
+      "title": "Chapter 4: The Void Bar",
+      "content": "<p>{CHAR_4} was cleaning a glass. {CHAR_0:The exhausted runner} sat at the bar, looking defeated. 'Drink?' asked {CHAR_4}. 'Make it strong,' replied {CHAR_0}. {CHAR_2} slid a cred-chip across the counter.</p>"
+    },
+    {
+      "title": "Chapter 5: Confrontation",
+      "content": "<p>The final showdown. {CHAR_0} vs {CHAR_1}. {CHAR_2} watched from the shadows. {CHAR_0} unleashed the virus. {CHAR_1} screamed in binary.</p>"
+    }
+  ]
+}
