@@ -57,6 +57,23 @@ export const GRAPH_CONSTANTS = {
     /** Tab index for focusable nodes */
     TAB_INDEX: 0,
   },
+
+  /**
+   * Color theme tokens for graph elements
+   */
+  THEME: {
+    ROLE_COLORS: {
+      PROTAGONIST: 'var(--accent)', // Orange/Brand
+      ANTAGONIST: 'var(--color-antagonist)', // Red
+      SECONDARY: 'var(--ink)', // Default black/dark
+      EXTRA: 'var(--ink-muted)', // Muted gray
+      DEFAULT: 'var(--ink)',
+    },
+    NODE: {
+      STROKE: 'var(--paper)',
+      STROKE_HIGHLIGHT: 'var(--accent)',
+    },
+  },
 } as const;
 
 /**

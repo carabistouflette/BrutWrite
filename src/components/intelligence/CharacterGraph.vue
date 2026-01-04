@@ -58,21 +58,27 @@ const metrics = computed(() => payload.value?.metrics);
 
 // --- Helpers ---
 
+import { GRAPH_CONSTANTS } from '../../config/uiConstants';
+
+// ... (keep existing imports)
+
+// --- Helpers ---
+
 function getNodeColor(nodeId: string): string {
   const char = projectStore.characterById(nodeId);
-  if (!char) return 'var(--ink)';
+  if (!char) return GRAPH_CONSTANTS.THEME.ROLE_COLORS.DEFAULT;
 
   switch (char.role) {
     case 'protagonist':
-      return 'var(--accent)'; // Orange
+      return GRAPH_CONSTANTS.THEME.ROLE_COLORS.PROTAGONIST;
     case 'antagonist':
-      return 'var(--color-antagonist)'; // Red
+      return GRAPH_CONSTANTS.THEME.ROLE_COLORS.ANTAGONIST;
     case 'secondary':
-      return 'var(--ink)'; // Default black
+      return GRAPH_CONSTANTS.THEME.ROLE_COLORS.SECONDARY;
     case 'extra':
-      return 'var(--ink-muted)'; // Muted
+      return GRAPH_CONSTANTS.THEME.ROLE_COLORS.EXTRA;
     default:
-      return 'var(--ink)';
+      return GRAPH_CONSTANTS.THEME.ROLE_COLORS.DEFAULT;
   }
 }
 
