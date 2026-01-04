@@ -7,12 +7,13 @@ pub mod research;
 pub mod storage;
 
 pub mod integrations;
+pub mod intelligence;
 pub mod project;
 
 use crate::project::manager::ProjectManager;
 
 type IntelligenceCache = tokio::sync::Mutex<
-    std::collections::HashMap<uuid::Uuid, (u64, commands::intelligence::CharacterScanner)>,
+    std::collections::HashMap<uuid::Uuid, (u64, intelligence::scanner::CharacterScanner)>,
 >;
 
 type ChapterContentCache =
