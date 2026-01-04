@@ -99,6 +99,8 @@ export const useProjectStore = defineStore('project', () => {
     // Make nodes deep reactive
     // OPTIMIZATION: Use plain objects with shallowRef + triggerRef to avoid overhead of 1000s of Proxies
     nodes.value = fileNodes;
+    // Safe to use triggerRef because we just replaced the entire array.
+    triggerRef(nodes);
     rebuildAll(fileNodes); // Full rebuild on load
 
     settings.value = projectSettingsData;

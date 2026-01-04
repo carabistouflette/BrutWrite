@@ -5,21 +5,7 @@ import type { GraphNode, GraphEdge } from '../../types/intelligence';
 // Graph Simulation Constants
 // =============================================================================
 
-/** Configuration for D3 force simulation parameters */
-const GRAPH_CONFIG = {
-  /** Repulsion force between nodes (negative = repel) */
-  CHARGE_STRENGTH: -400,
-  /** Base distance for links before weight adjustment */
-  LINK_BASE_DISTANCE: 120,
-  /** Offset to prevent division by zero in link distance */
-  LINK_WEIGHT_OFFSET: 0.1,
-  /** Gravity strength toward center */
-  CENTER_STRENGTH: 0.05,
-  /** Simulation damping factor (0-1, higher = slower) */
-  VELOCITY_DECAY: 0.85,
-  /** Ticks for static layout in reduced-motion mode */
-  STATIC_TICKS: 300,
-} as const;
+import { GRAPH_CONFIG } from '../../config/graphConstants';
 
 // Extended types for D3
 export type D3Node = GraphNode & d3.SimulationNodeDatum;
