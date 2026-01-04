@@ -50,6 +50,33 @@ const updateEngineField = (field: string, value: string) => {
   };
   emit('update:modelValue', { ...localCharacter.value });
   emit('change');
+  emit('update:modelValue', { ...localCharacter.value });
+  emit('change');
+};
+
+// Alias Management
+const newAliasInput = ref('');
+
+const addAlias = () => {
+  const raw = newAliasInput.value.trim();
+  if (!raw) return;
+
+  const current = localCharacter.value.aliases || [];
+  if (!current.includes(raw)) {
+    const updated = [...current, raw];
+    localCharacter.value = { ...localCharacter.value, aliases: updated };
+    emit('update:modelValue', { ...localCharacter.value });
+    emit('change');
+  }
+  newAliasInput.value = '';
+};
+
+const removeAlias = (aliasToRemove: string) => {
+  const current = localCharacter.value.aliases || [];
+  const updated = current.filter((a) => a !== aliasToRemove);
+  localCharacter.value = { ...localCharacter.value, aliases: updated };
+  emit('update:modelValue', { ...localCharacter.value });
+  emit('change');
 };
 </script>
 
@@ -123,6 +150,50 @@ const updateEngineField = (field: string, value: string) => {
               @input="(e) => updateField('archetype', (e.target as HTMLInputElement).value)"
             />
           </div>
+        </section>
+
+        <!-- Aliases Section -->
+        <section class="space-y-4">
+          <label class="block text-xs uppercase tracking-widest text-ink/40 font-bold"
+            >Known Aliases</label
+          >
+          <div
+            class="w-full bg-ink/5 border border-ink/10 rounded-xl px-4 py-3 focus-within:ring-2 focus-within:ring-accent/20 transition-all"
+          >
+            <div class="flex flex-wrap gap-2 mb-2">
+              <span
+                v-for="alias in modelValue.aliases || []"
+                :key="alias"
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white text-ink shadow-sm border border-black/5"
+              >
+                {{ alias }}
+                <button
+                  class="ml-1.5 text-ink/40 hover:text-red-500 focus:outline-none"
+                  @click="removeAlias(alias)"
+                >
+                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </span>
+            </div>
+            <input
+              ref="aliasInputRef"
+              v-model="newAliasInput"
+              class="w-full bg-transparent border-none focus:ring-0 p-0 text-ink placeholder-ink/20 font-medium focus:outline-none"
+              placeholder="Add alias (press Enter)..."
+              @keydown.enter.prevent="addAlias"
+              @blur="addAlias"
+            />
+          </div>
+          <p class="text-xs text-ink/40">
+            These names are used to detect the character in the text.
+          </p>
         </section>
 
         <!-- The Engine -->

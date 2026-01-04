@@ -51,6 +51,7 @@ export interface Character {
   traits: string[];
   arc: string;
   notes: string;
+  aliases: string[];
 }
 
 export interface CharacterEngine {
