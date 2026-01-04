@@ -1,5 +1,5 @@
 import * as d3 from 'd3';
-import type { GraphNode, GraphEdge } from '../../../types/intelligence';
+import type { GraphNode, GraphEdge } from '../../types/intelligence';
 
 // =============================================================================
 // Graph Simulation Constants
@@ -49,6 +49,7 @@ export class CharacterGraphEngine {
   private height: number;
   private options: GraphEngineOptions;
   private radiusScale: d3.ScaleLinear<number, number> | null = null;
+  private nodeMap = new Map<string, D3Node>();
 
   // Elements
   private mainGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
@@ -75,34 +76,43 @@ export class CharacterGraphEngine {
    */
   public update(nodes: GraphNode[], edges: GraphEdge[]) {
     // 1. Prepare Data
-    const existingNodes = this.nodeSelection
-      ? new Map(this.nodeSelection.data().map((n) => [n.id, n]))
-      : new Map<string, D3Node>();
+    // Use a temporary map to track current nodes for removal later
+    const currentIds = new Set(nodes.map((n) => n.id));
 
-    const d3Nodes: D3Node[] = nodes.map((n) => {
-      const existing = existingNodes.get(n.id);
-      if (existing) {
-        // Carry over position and velocity
-        return { ...existing, ...n };
+    // Remove nodes that no longer exist
+    for (const id of this.nodeMap.keys()) {
+      if (!currentIds.has(id)) {
+        this.nodeMap.delete(id);
       }
+    }
 
-      // New node: Deterministic initial position based on ID if possible
-      // This prevents the graph from "jumping" randomly on every load
-      const hash = n.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      return {
-        ...n,
-        x: this.width / 2 + ((hash % 100) - 50),
-        y: this.height / 2 + ((hash % 70) - 35),
-      };
-    });
+    // Add or Update nodes
+    for (const n of nodes) {
+      const existing = this.nodeMap.get(n.id);
+      if (existing) {
+        // Update data properties but preserve simulation state (x, y, vx, vy)
+        Object.assign(existing, n);
+      } else {
+        // New node: Deterministic initial position based on ID if possible
+        // This prevents the graph from "jumping" randomly on every load
+        const hash = n.id
+          .split('')
+          .reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+        const newNode: D3Node = {
+          ...n,
+          x: this.width / 2 + ((hash % 100) - 50),
+          y: this.height / 2 + ((hash % 70) - 35),
+        };
+        this.nodeMap.set(n.id, newNode);
+      }
+    }
 
-    const nodeById = new Map(d3Nodes.map((n) => [n.id, n]));
-
+    const d3Nodes = Array.from(this.nodeMap.values());
     const d3Links: D3Link[] = edges
-      .filter((e) => nodeById.has(e.source) && nodeById.has(e.target))
+      .filter((e) => this.nodeMap.has(e.source) && this.nodeMap.has(e.target))
       .map((e) => ({
-        source: nodeById.get(e.source)!,
-        target: nodeById.get(e.target)!,
+        source: this.nodeMap.get(e.source)!,
+        target: this.nodeMap.get(e.target)!,
         weight: e.weight,
         interactionType: e.interactionType,
       }));
@@ -116,6 +126,7 @@ export class CharacterGraphEngine {
 
       const linkForce = this.simulation.force<d3.ForceLink<D3Node, D3Link>>('link');
       if (linkForce) {
+        // ForceLink modifies links array in-place, so we pass our fresh array
         linkForce.links(d3Links);
       }
 

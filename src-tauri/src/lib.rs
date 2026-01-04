@@ -75,6 +75,7 @@ pub fn run() {
             commands::restore_snapshot,
             commands::branch_snapshot,
             commands::analyze_character_graph,
+            #[cfg(debug_assertions)]
             commands::seed_demo_project
         ])
         .run(tauri::generate_context!())

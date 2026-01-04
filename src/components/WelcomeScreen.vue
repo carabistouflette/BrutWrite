@@ -163,8 +163,13 @@ const handleDemoProject = async () => {
       pendingAction.value = async () => {
         try {
           await createDemoProject(selected);
-        } catch (e) {
-          notifyError('Failed to create demo project', e);
+        } catch (e: unknown) {
+          const err = String(e);
+          if (err.includes('command not found') || err.includes('not allow')) {
+            notifyError('Demo project creation is disabled in this build.', err);
+          } else {
+            notifyError('Failed to create demo project', err);
+          }
         }
       };
       isVisible.value = false;
