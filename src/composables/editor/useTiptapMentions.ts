@@ -1,4 +1,4 @@
-import { Extension } from '@tiptap/core';
+import { Extension, Mark, mergeAttributes } from '@tiptap/core';
 import { PluginKey } from '@tiptap/pm/state';
 import Suggestion from '@tiptap/suggestion';
 import { VueRenderer } from '@tiptap/vue-3';
@@ -25,23 +25,48 @@ interface SuggestionProps {
   clientRect?: (() => DOMRect | null) | null;
 }
 
-// --- Custom Mark for Entity Links ---
-// This enables non-atomic, editable text references
-// that resolve to a specific ID for graph analysis
-// (Replacing previous declaration)
+// --- Custom Mark for Character Mentions ---
+// Explicitly defines the schema for mentions to prevent attribute stripping
+const CharacterMark = Mark.create({
+  name: 'characterMention',
 
-// Since Tiptap doesn't have a built-in "Generic Mark Extension" helper for this specific case easily accessible
-// without importing Mark, let's use the standard configuration pattern.
-// However, to save complexity, we can use the 'TextStyle' extension or 'Link' as a base.
-// Better: Just define `addMarks` in our composition function.
+  keepOnSplit: false,
+  excludes: '_', // Disallow other marks (like bold/italic) inside the mention? flexible.
+
+  addAttributes() {
+    return {
+      id: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-id'),
+        renderHTML: (attributes) => ({
+          'data-id': attributes.id,
+          'data-type': 'character-mention',
+          class: 'mention text-accent font-medium bg-accent/10 rounded px-1 decoration-clone', // Styled classes
+        }),
+      },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'span[data-type="character-mention"]',
+      },
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes), 0];
+  },
+});
 
 export function useTiptapMentions() {
   const { characters } = useCharacters();
   const researchStore = useResearchStore();
 
   /*
-   * 1. Character Suggestions (The "Ultrathink" Implementation)
-   * Instead of inserting an atomic mention node, we insert text + validation mark.
+   * 1. Character Suggestions
+   * Inserts text with the CharacterMention mark.
    */
   const CharacterSuggestion = Extension.create({
     name: 'characterSuggestion',
@@ -60,24 +85,19 @@ export function useTiptapMentions() {
             range: Range;
             props: MentionItem;
           }) => {
-            // "The Reference" - Ultrathink Logic
-            // We replace the @query with the Character Name (or keep existing if we were highlighting?)
-            // For now, standard behavior: Replace @text with Name, apply mark.
-
+            // Replace the @query with the Name and apply the semantic mark
             editor
               .chain()
               .focus()
               .insertContentAt(range, [
                 {
                   type: 'text',
-                  text: props.name, // Default to name. User can edit this later!
+                  text: props.name,
                   marks: [
                     {
-                      type: 'textStyle',
+                      type: 'characterMention',
                       attrs: {
-                        'data-id': props.id, // The UUID anchor
-                        'data-type': 'character-mention', // Semantic tag
-                        class: 'mention', // Visual styling
+                        id: props.id,
                       },
                     },
                   ],
@@ -224,7 +244,7 @@ export function useTiptapMentions() {
 
   return {
     mentionExtension: [
-      // We use the TextStyle extension to handle the data attributes on the span
+      CharacterMark,
       CharacterSuggestion.configure({ suggestion: suggestionOptions }),
       ResearchSuggestion.configure({ suggestion: researchSuggestionOptions }),
     ],
