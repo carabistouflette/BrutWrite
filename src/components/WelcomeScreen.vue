@@ -5,15 +5,7 @@
       class="flex-1 w-full flex flex-col items-center justify-center bg-paper text-ink selection:bg-accent/20 overflow-hidden relative"
     >
       <!-- Background Decorative Elements -->
-      <div class="absolute inset-0 z-0 pointer-events-none opacity-30">
-        <!-- Optimized: Using radial gradients instead of expensive CSS blurs -->
-        <div
-          class="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-[radial-gradient(circle,var(--accent)_0%,transparent_70%)] opacity-10 animate-pulse"
-        ></div>
-        <div
-          class="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-[radial-gradient(circle,var(--accent)_0%,transparent_70%)] opacity-15 animate-pulse stagger-1"
-        ></div>
-      </div>
+      <div class="absolute inset-0 z-0 pointer-events-none opacity-30 welcome-bg"></div>
 
       <div
         class="relative z-10 w-full max-w-6xl px-12 grid grid-cols-1 lg:grid-cols-2 gap-24 items-center"
@@ -200,5 +192,11 @@ loadRecentProjects();
     opacity: 0;
     transform: scale(0.95);
   }
+}
+
+.welcome-bg {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(var(--accent), 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(var(--accent), 0.1) 0%, transparent 50%);
 }
 </style>
