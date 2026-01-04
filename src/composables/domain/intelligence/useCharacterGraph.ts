@@ -136,8 +136,17 @@ export const useCharacterGraph = defineStore('character-graph', () => {
     lastAnalysisTime.value = 0;
   }
 
+  const payload = computed(() => state.value.payload);
+  const isLoading = computed(() => state.value.isLoading);
+  const lastAnalyzedAt = computed(() => state.value.lastAnalyzedAt);
+  const error = computed(() => state.value.error);
+
   return {
     state,
+    payload,
+    isLoading,
+    lastAnalyzedAt,
+    error,
     ghosts,
     mappedNodes,
     alerts,

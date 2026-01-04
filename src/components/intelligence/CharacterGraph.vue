@@ -210,10 +210,10 @@ watch(
 
 <template>
   <div class="relative w-full h-full min-h-[400px] bg-transparent overflow-hidden">
-    <!-- Loading State -->
+    <!-- Loading State (Overlay) -->
     <div
       v-if="isLoading"
-      class="absolute inset-0 flex flex-col items-center justify-center bg-white"
+      class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/50 backdrop-blur-sm"
     >
       <div class="flex flex-col items-center gap-3">
         <div
@@ -227,8 +227,8 @@ watch(
 
     <!-- Error State -->
     <div
-      v-else-if="error"
-      class="absolute inset-0 flex flex-col items-center justify-center bg-white"
+      v-if="error"
+      class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white"
     >
       <div class="text-center">
         <div
@@ -247,9 +247,8 @@ watch(
       </div>
     </div>
 
-    <!-- Graph SVG -->
+    <!-- Graph SVG (Always rendered if no error, or even with error but hidden behind) -->
     <svg
-      v-else
       ref="svgRef"
       :viewBox="`0 0 ${props.width} ${props.height}`"
       class="w-full h-full cursor-grab active:cursor-grabbing"
