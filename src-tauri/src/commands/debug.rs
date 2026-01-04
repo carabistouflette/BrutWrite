@@ -1,11 +1,15 @@
 use crate::models::{Character, CharacterEngine, CharacterRole};
 use crate::AppState;
+use html_escape::encode_text;
 use regex::Regex;
 use serde::Deserialize;
+use std::sync::OnceLock;
 use tauri::State;
 use uuid::Uuid;
 
 const DEMO_JSON: &str = include_str!("../data/demo.json");
+
+static CHAR_PLACEHOLDER_REGEX: OnceLock<Regex> = OnceLock::new();
 
 #[derive(Deserialize)]
 struct DemoData {
@@ -75,19 +79,21 @@ pub async fn seed_demo_project(
     }
 
     // 4. Create Chapters with Template Substitution
-    let re = Regex::new(r"\{CHAR_(\d+)(?::([^}]+))?\}").unwrap();
+    // Regex matches {CHAR_0} or {CHAR_0:Alias}
+    let re = CHAR_PLACEHOLDER_REGEX.get_or_init(|| {
+        Regex::new(r"\{CHAR_(\d+)(?::([^}]+))?\}").expect("Static regex compilation failed")
+    });
 
     for chapter in demo_data.chapters {
         // Substitute placeholders
-        // {CHAR_0} -> <span ...>Name</span>
-        // {CHAR_0:Alias} -> <span ...>Alias</span>
         let content = re.replace_all(&chapter.content, |caps: &regex::Captures| {
             let index: usize = caps[1].parse().unwrap_or(0);
             let alias = caps.get(2).map(|m| m.as_str());
 
             if let Some(char) = created_characters.get(index) {
                 let text = alias.unwrap_or(&char.name);
-                let safe_text = html_escape::encode_text(text);
+                // Security: Explicitly escape text before inserting into HTML attribute and body
+                let safe_text = encode_text(text);
                 format!(
                     r#"<span data-id="{}" data-type="character-mention" class="mention">{}</span>"#,
                     char.id, safe_text

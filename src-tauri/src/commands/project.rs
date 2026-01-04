@@ -37,6 +37,8 @@ pub async fn load_project(
     state: State<'_, AppState>,
     path: String,
 ) -> crate::errors::Result<ProjectMetadata> {
+    validation::validate_path(&path)?;
+
     let root_path = PathBuf::from(&path);
     let metadata = state.projects.load_project(root_path.clone()).await?;
 
