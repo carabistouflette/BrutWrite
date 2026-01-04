@@ -17,7 +17,7 @@ type IntelligenceCache = tokio::sync::Mutex<
 >;
 
 type ChapterContentCache =
-    tokio::sync::Mutex<std::collections::HashMap<String, (u64, Vec<(usize, String)>)>>;
+    tokio::sync::Mutex<std::collections::HashMap<String, (u64, u64, Vec<(usize, String)>)>>;
 
 pub struct AppState {
     pub projects: ProjectManager,

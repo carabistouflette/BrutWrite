@@ -74,6 +74,7 @@ pub async fn seed_demo_project(
             traits: dc.traits,
             arc: dc.arc,
             notes: String::new(),
+            aliases: vec![],
         };
 
         crate::commands::save_character(state.clone(), project_id_uuid, char.clone()).await?;

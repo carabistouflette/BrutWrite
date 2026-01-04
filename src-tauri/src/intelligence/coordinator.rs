@@ -17,7 +17,7 @@ use uuid::Uuid;
 /// Note: Hash is now storing 64 bits derived from SHA256 for efficient checking,
 /// but the calculation is deterministic.
 pub type IntelligenceCache = Mutex<HashMap<Uuid, (u64, CharacterScanner)>>;
-pub type ChapterContentCache = Mutex<HashMap<String, (u64, Vec<(usize, String)>)>>;
+pub type ChapterContentCache = Mutex<HashMap<String, (u64, u64, Vec<(usize, String)>)>>;
 
 pub struct IntelligenceCoordinator<'a> {
     scanner_cache: &'a IntelligenceCache,
@@ -55,11 +55,11 @@ impl<'a> IntelligenceCoordinator<'a> {
         }
 
         // 2. Initialize Scanner (Cached)
-        let scanner = self.get_or_create_scanner(project_id, metadata).await?;
+        let (scanner, scanner_hash) = self.get_or_create_scanner(project_id, metadata).await?;
 
         // 3. Process Chapters
         let (chapter_texts, chapter_mentions) = self
-            .process_chapters(root_path, metadata, &scanner, &options)
+            .process_chapters(root_path, metadata, &scanner, scanner_hash, &options)
             .await?;
 
         // 4. Build Graph
@@ -77,7 +77,7 @@ impl<'a> IntelligenceCoordinator<'a> {
         &self,
         project_id: Uuid,
         metadata: &ProjectMetadata,
-    ) -> crate::errors::Result<CharacterScanner> {
+    ) -> crate::errors::Result<(CharacterScanner, u64)> {
         // Calculate deterministic hash
         let mut hasher = Sha256::new();
         // Sort to ensure order independence if chars were reordered but not changed?
@@ -88,6 +88,9 @@ impl<'a> IntelligenceCoordinator<'a> {
         for c in &metadata.characters {
             hasher.update(c.id.as_bytes());
             hasher.update(c.name.as_bytes());
+            for alias in &c.aliases {
+                hasher.update(alias.as_bytes());
+            }
             // also hash role as it changes weighting? No, scanner only cares about names.
             // But if we rename a char, we need new scanner.
         }
@@ -99,7 +102,7 @@ impl<'a> IntelligenceCoordinator<'a> {
 
         if let Some((hash, scanner)) = cache.get(&project_id) {
             if *hash == current_hash {
-                return Ok(scanner.clone());
+                return Ok((scanner.clone(), *hash));
             }
         }
 
@@ -108,7 +111,7 @@ impl<'a> IntelligenceCoordinator<'a> {
             .map_err(crate::errors::Error::Intelligence)?;
 
         cache.insert(project_id, (current_hash, scanner.clone()));
-        Ok(scanner)
+        Ok((scanner, current_hash))
     }
 
     async fn process_chapters(
@@ -116,6 +119,7 @@ impl<'a> IntelligenceCoordinator<'a> {
         root_path: &std::path::Path,
         metadata: &ProjectMetadata,
         scanner: &CharacterScanner,
+        scanner_hash: u64,
         options: &AnalysisOptions,
     ) -> crate::errors::Result<(
         HashMap<String, String>,
@@ -169,7 +173,9 @@ impl<'a> IntelligenceCoordinator<'a> {
                             continue;
                         }
 
-                        let mentions = self.get_mentions_for_chapter(&cid, &content, scanner).await;
+                        let mentions = self
+                            .get_mentions_for_chapter(&cid, &content, scanner, scanner_hash)
+                            .await;
                         chapter_texts.insert(cid.clone(), content);
                         chapter_mentions.insert(cid, mentions);
                     }
@@ -186,6 +192,7 @@ impl<'a> IntelligenceCoordinator<'a> {
         cid: &str,
         content: &str,
         scanner: &CharacterScanner,
+        scanner_hash: u64,
     ) -> Vec<(usize, String)> {
         // Deterministic content hash
         let mut hasher = Sha256::new();
@@ -212,15 +219,18 @@ impl<'a> IntelligenceCoordinator<'a> {
 
         let mut cache = self.content_cache.lock().await;
 
-        if let Some((cached_hash, matches)) = cache.get(cid) {
-            if *cached_hash == content_hash {
+        if let Some((cached_content_hash, cached_scanner_hash, matches)) = cache.get(cid) {
+            if *cached_content_hash == content_hash && *cached_scanner_hash == scanner_hash {
                 return matches.clone();
             }
         }
 
         // Scan
         let matches = scanner.scan(content);
-        cache.insert(cid.to_string(), (content_hash, matches.clone()));
+        cache.insert(
+            cid.to_string(),
+            (content_hash, scanner_hash, matches.clone()),
+        );
         matches
     }
 }
