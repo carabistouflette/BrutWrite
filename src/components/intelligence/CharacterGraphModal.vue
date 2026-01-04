@@ -33,6 +33,13 @@ const graphStore = useCharacterGraph();
 const { analyze } = graphStore;
 const { isLoading } = storeToRefs(graphStore);
 
+// CSS styles to embed in the exported SVG to ensure it looks correct outside the app context
+const EXPORT_CSS_STYLES = `
+  .graph-node { fill: #1a1a1a; stroke: #f4f4f0; stroke-width: 2; }
+  .graph-link { stroke: rgba(26, 26, 26, 0.15); }
+  .graph-label { font-family: Georgia, serif; font-size: 12px; fill: #1a1a1a; }
+`;
+
 const handleRefresh = async () => {
   await analyze(selectedChapterIds.value.length > 0 ? selectedChapterIds.value : undefined);
 };
@@ -102,11 +109,8 @@ const exportPng = async () => {
 
   // Inline styles for export
   const styleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-  styleElement.textContent = `
-    .graph-node { fill: #1a1a1a; stroke: #f4f4f0; stroke-width: 2; }
-    .graph-link { stroke: rgba(26, 26, 26, 0.15); }
-    .graph-label { font-family: Georgia, serif; font-size: 12px; fill: #1a1a1a; }
-  `;
+  // Use a centralized constant if possible, or at least keep this string clean
+  styleElement.textContent = EXPORT_CSS_STYLES;
   clone.insertBefore(styleElement, clone.firstChild);
 
   // Add white background

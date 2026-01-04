@@ -68,18 +68,8 @@ function getNodeColor(nodeId: string): string {
   const char = projectStore.characterById(nodeId);
   if (!char) return GRAPH_CONSTANTS.THEME.ROLE_COLORS.DEFAULT;
 
-  switch (char.role) {
-    case 'protagonist':
-      return GRAPH_CONSTANTS.THEME.ROLE_COLORS.PROTAGONIST;
-    case 'antagonist':
-      return GRAPH_CONSTANTS.THEME.ROLE_COLORS.ANTAGONIST;
-    case 'secondary':
-      return GRAPH_CONSTANTS.THEME.ROLE_COLORS.SECONDARY;
-    case 'extra':
-      return GRAPH_CONSTANTS.THEME.ROLE_COLORS.EXTRA;
-    default:
-      return GRAPH_CONSTANTS.THEME.ROLE_COLORS.DEFAULT;
-  }
+  const roleKey = char.role.toUpperCase() as keyof typeof GRAPH_CONSTANTS.THEME.ROLE_COLORS;
+  return GRAPH_CONSTANTS.THEME.ROLE_COLORS[roleKey] || GRAPH_CONSTANTS.THEME.ROLE_COLORS.DEFAULT;
 }
 
 function getRoleName(nodeId: string): string {
