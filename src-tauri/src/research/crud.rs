@@ -131,31 +131,28 @@ pub async fn rename_artifact(
     let new_path = root.join(&new_filename);
 
     // 2. Perform FS Rename
-    // We try to rename directly. If destination exists, OS will return error (usually) or we can check.
-    // However, on some filesystems rename overwrites. To be safe against overwriting, we should use a link-then-unlink or checked.
-    // Since this is specific, we'll keep the check but acknowledge the small race.
-    // Ideally usage of `renameat2` with NOREPLACE on Linux, but standard lib abstraction is minimal.
-    // For this audit fix, we will keep the check but handle the error better if rename fails for other reasons.
-
+    // NOTE: This operation is not strictly atomic on all filesystems.
+    // There is a small TOCTOU window where `exists()` returns false,
+    // but another process creates the file before `rename()`.
+    // Ideally use `renameat2` with `RENAME_NOREPLACE` on Linux, but strictly standard Rust lacks this.
+    // We minimize the risk by handling the error from `rename` if possible, though overly defensive checking is still useful for UI feedback.
     if new_path.exists() {
         return Err(crate::errors::Error::Research(
             "Destination already exists".to_string(),
         ));
     }
 
+    // Try rename. If it fails, we abort before touching state.
     tokio::fs::rename(&old_path, &new_path).await.map_err(|e| {
-        // If we failed, it might be because it exists now
-        crate::errors::Error::Io(e)
+        if e.kind() == std::io::ErrorKind::AlreadyExists {
+            crate::errors::Error::Research("Destination already exists".to_string())
+        } else {
+            crate::errors::Error::Io(e)
+        }
     })?;
 
     // 3. Update State (Critical Section)
     // If this fails (e.g. lock poison/panic), we have a desync.
-    // However, since we renamed on disk, the next app load would just see the new file as "untracked"
-    // or we'd have a broken link in the old state.
-    // To be truly robust we'd need a wal or extensive rollback logic, but for a local desktop app,
-    // ensuring we don't hold the lock during IO is the main improvement for responsiveness,
-    // AND validating the name prevents FS errors.
-
     let update_result = state
         .mutate_and_persist(|inner| {
             if let Some(artifact_arc) = inner.artifacts.get_mut(&id) {
@@ -179,9 +176,22 @@ pub async fn rename_artifact(
         Ok(_) => Ok(()),
         Err(e) => {
             // Rollback FS
-            log::error!("State update failed after rename, rolling back FS: {}", e);
+            log::error!(
+                "State update failed after rename, attempting FS rollback: {}",
+                e
+            );
+
+            // Attempt to move file back
             if let Err(rollback_err) = tokio::fs::rename(&new_path, &old_path).await {
-                log::error!("CRITICAL: FS Rollback failed: {}", rollback_err);
+                log::error!(
+                    "CRITICAL: FS Rollback failed! State and FS are desynchronized. \
+                    Old Path: {:?}, New Path: {:?}, Error: {}",
+                    old_path,
+                    new_path,
+                    rollback_err
+                );
+            } else {
+                log::info!("FS rollback successful for artifact {}", id);
             }
             Err(e)
         }
