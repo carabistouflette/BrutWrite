@@ -3,10 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCharacterGraph } from '../../composables/domain/intelligence/useCharacterGraph';
 import { useProjectStore } from '../../stores/project';
-import {
-  CharacterGraphEngine,
-  type D3Node,
-} from '../../composables/domain/intelligence/CharacterGraphEngine';
+import { CharacterGraphEngine, type D3Node } from '../../utils/graphs/CharacterGraphEngine';
 import type { GraphNode } from '../../types/intelligence';
 
 // Sub-components
@@ -180,6 +177,7 @@ async function copyCharacterTag(node: D3Node) {
 
 onMounted(async () => {
   await analyze();
+  // Ensure DOM is ready for D3
   await nextTick();
   initEngine();
 });
@@ -189,9 +187,19 @@ onUnmounted(() => {
   engine = null;
 });
 
-watch(payload, () => {
-  nextTick(() => initEngine());
-});
+// efficiently watch for new graph data
+watch(
+  () => payload.value,
+  (newData) => {
+    if (newData && engine) {
+      engine.update(newData.nodes, newData.edges);
+    } else if (newData && !engine) {
+      // Lazy init if not ready yet
+      nextTick(() => initEngine());
+    }
+  },
+  { deep: false } // Disable deep watch to improve performance
+);
 </script>
 
 <template>

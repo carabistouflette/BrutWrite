@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { D3Node } from '../../../composables/domain/intelligence/CharacterGraphEngine';
+import type { D3Node } from '../../../utils/graphs/CharacterGraphEngine';
 
 interface Props {
   ghosts: D3Node[];
