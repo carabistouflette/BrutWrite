@@ -6,33 +6,55 @@ use super::models::{
     CharacterGraphPayload, GraphEdge, GraphMetrics, GraphNode, InteractionType, MentionLocation,
 };
 
-// Role weights for valence calculation
-const WEIGHT_PROTAGONIST: f32 = 2.0;
-const WEIGHT_ANTAGONIST: f32 = 1.8;
-const WEIGHT_SECONDARY: f32 = 1.5;
-const WEIGHT_EXTRA: f32 = 1.0;
+// =============================================================================
+// Configuration
+// =============================================================================
+
+#[derive(Debug, Clone, Copy)]
+pub struct GraphWeights {
+    pub protagonist: f32,
+    pub antagonist: f32,
+    pub secondary: f32,
+    pub extra: f32,
+    pub base_proximity_bonus: f32,
+}
+
+impl Default for GraphWeights {
+    fn default() -> Self {
+        Self {
+            protagonist: 2.0,
+            antagonist: 1.8,
+            secondary: 1.5,
+            extra: 1.0,
+            base_proximity_bonus: 0.1,
+        }
+    }
+}
+
+// =============================================================================
+// Logic
+// =============================================================================
 
 /// Get the role weight for valence calculation.
-/// Uses a flattened curve to avoid over-biasing based on purely static roles.
-fn role_weight(role: &CharacterRole) -> f32 {
+fn role_weight(role: &CharacterRole, weights: &GraphWeights) -> f32 {
     match role {
-        CharacterRole::Protagonist => WEIGHT_PROTAGONIST,
-        CharacterRole::Antagonist => WEIGHT_ANTAGONIST,
-        CharacterRole::Secondary => WEIGHT_SECONDARY,
-        CharacterRole::Extra => WEIGHT_EXTRA,
+        CharacterRole::Protagonist => weights.protagonist,
+        CharacterRole::Antagonist => weights.antagonist,
+        CharacterRole::Secondary => weights.secondary,
+        CharacterRole::Extra => weights.extra,
     }
 }
 
 /// Calculate proximity bonus between two mention positions.
-fn proximity_bonus(word_distance: usize, proximity_window: usize) -> f32 {
+fn proximity_bonus(word_distance: usize, proximity_window: usize, base_bonus: f32) -> f32 {
     if word_distance == 0 || word_distance > proximity_window {
         0.0
     } else {
-        0.1 * (proximity_window as f32 / word_distance as f32)
+        base_bonus * (proximity_window as f32 / word_distance as f32)
     }
 }
 
-/// Optimized builder that uses pre-scanned mentions
+/// Optimized builder that uses pre-scanned mentions and integer-based indexing
 pub fn build_character_graph_cached(
     metadata: &ProjectMetadata,
     chapter_contents: &HashMap<String, String>,
@@ -41,8 +63,9 @@ pub fn build_character_graph_cached(
     prune_threshold: f32,
 ) -> crate::errors::Result<CharacterGraphPayload> {
     let characters = &metadata.characters;
+    let n_chars = characters.len();
 
-    if characters.is_empty() {
+    if n_chars == 0 {
         return Ok(CharacterGraphPayload {
             nodes: vec![],
             edges: vec![],
@@ -55,13 +78,31 @@ pub fn build_character_graph_cached(
         });
     }
 
-    let mut mention_counts: HashMap<String, u32> = HashMap::new();
-    let mut first_mentions: HashMap<String, MentionLocation> = HashMap::new();
-    let mut interaction_weights: HashMap<(String, String), f32> = HashMap::new();
-    let mut interaction_types: HashMap<(String, String), InteractionType> = HashMap::new();
+    let weights = GraphWeights::default();
 
+    // 1. Map Character IDs to Integers for O(1) array access and cheap copying
+    let char_id_to_idx: HashMap<String, usize> = characters
+        .iter()
+        .enumerate()
+        .map(|(i, c)| (c.id.to_string(), i))
+        .collect();
+
+    let mut mention_counts: Vec<u32> = vec![0; n_chars];
+    let mut first_mentions: Vec<Option<MentionLocation>> = vec![None; n_chars];
+
+    // Use an adjacency matrix (flattened or nested vec) for interaction accumulation
+    // weight_matrix[i][j] where i < j
+    let mut weight_matrix: HashMap<(usize, usize), f32> =
+        HashMap::with_capacity(n_chars * n_chars / 2);
+    let mut type_matrix: HashMap<(usize, usize), InteractionType> =
+        HashMap::with_capacity(n_chars * n_chars / 2);
+
+    // 2. Process Chapters
     for (chapter_id, mentions) in chapter_mentions {
-        // We need content only for word indexer
+        if mentions.is_empty() {
+            continue;
+        }
+
         let content = chapter_contents.get(chapter_id).ok_or_else(|| {
             crate::errors::Error::Intelligence(format!(
                 "Content missing for analyzed chapter: {}",
@@ -71,120 +112,113 @@ pub fn build_character_graph_cached(
 
         let word_indexer = WordIndexer::new(content);
 
-        let mut current_chapter_formatted: Vec<(usize, usize, String)> =
-            Vec::with_capacity(mentions.len());
-        let mut present_in_chapter: HashSet<String> = HashSet::new();
+        // Transform mentions to (word_index, char_index)
+        // This avoids string cloning in the loop
+        let mut linear_mentions: Vec<(usize, usize, usize)> = Vec::with_capacity(mentions.len());
 
-        for (pos, char_id) in mentions {
-            *mention_counts.entry(char_id.clone()).or_default() += 1;
-            present_in_chapter.insert(char_id.clone());
+        for (char_offset, char_uuid) in mentions {
+            if let Some(&idx) = char_id_to_idx.get(char_uuid) {
+                mention_counts[idx] += 1;
 
-            if !first_mentions.contains_key(char_id) {
-                first_mentions.insert(
-                    char_id.clone(),
-                    MentionLocation {
+                if first_mentions[idx].is_none() {
+                    first_mentions[idx] = Some(MentionLocation {
                         chapter_id: chapter_id.clone(),
-                        char_offset: *pos,
-                    },
-                );
-            }
+                        char_offset: *char_offset,
+                    });
+                }
 
-            let word_idx = word_indexer.get_word_index(*pos);
-            current_chapter_formatted.push((*pos, word_idx, char_id.clone()));
-        }
-
-        // Co-Presence
-        let present_list: Vec<String> = present_in_chapter.into_iter().collect();
-        for i in 0..present_list.len() {
-            for j in (i + 1)..present_list.len() {
-                let (a, b) = if present_list[i] < present_list[j] {
-                    (present_list[i].clone(), present_list[j].clone())
-                } else {
-                    (present_list[j].clone(), present_list[i].clone())
-                };
-
-                *interaction_weights
-                    .entry((a.clone(), b.clone()))
-                    .or_default() += 1.0;
-                interaction_types
-                    .entry((a, b))
-                    .or_insert(InteractionType::CoPresence);
+                let word_idx = word_indexer.get_word_index(*char_offset);
+                linear_mentions.push((*char_offset, word_idx, idx));
             }
         }
 
-        // Proximity
-        current_chapter_formatted.sort_by_key(|k| k.1);
-        for i in 0..current_chapter_formatted.len() {
-            let (_, word_idx_a, ref id_a) = current_chapter_formatted[i];
-            for (_, word_idx_b, ref id_b) in current_chapter_formatted.iter().skip(i + 1) {
+        // Sort by word index to enable sliding window
+        linear_mentions.sort_by_key(|k| k.1);
+
+        // 3. Sliding Window Co-Presence Algorithm (O(M * Window)) instead of O(M^2)
+        // For each mention, look ahead only within proximity_window
+
+        let len = linear_mentions.len();
+        for i in 0..len {
+            let (_, word_idx_a, idx_a) = linear_mentions[i];
+
+            // Look ahead
+            for (_, word_idx_b, idx_b) in linear_mentions.iter().skip(i + 1) {
+                let word_idx_b = *word_idx_b;
+                let idx_b = *idx_b;
+
                 let dist = word_idx_b.saturating_sub(word_idx_a);
                 if dist > proximity_window {
-                    break;
+                    break; // Left window bound exceeded
                 }
-                if id_a != id_b {
-                    let (a, b) = if id_a < id_b {
-                        (id_a.clone(), id_b.clone())
+
+                if idx_a != idx_b {
+                    let (min, max) = if idx_a < idx_b {
+                        (idx_a, idx_b)
                     } else {
-                        (id_b.clone(), id_a.clone())
+                        (idx_b, idx_a)
                     };
-                    let bonus = proximity_bonus(dist, proximity_window);
-                    if bonus > 0.0 {
-                        *interaction_weights.entry((a, b)).or_default() += bonus;
-                    }
+
+                    let bonus =
+                        proximity_bonus(dist, proximity_window, weights.base_proximity_bonus);
+                    *weight_matrix.entry((min, max)).or_default() += bonus;
+                    // Mark as Proxy if they are close (we can refine interaction types later if needed)
+                    type_matrix
+                        .entry((min, max))
+                        .or_insert(InteractionType::CoPresence);
                 }
             }
         }
     }
 
-    // Build Nodes
+    // 4. Build Nodes
     let nodes: Vec<GraphNode> = characters
         .iter()
-        .map(|c| {
-            let char_id = c.id.to_string();
-            let count = *mention_counts.get(&char_id).unwrap_or(&0);
-            let valence = (1.0 + count as f32).ln() * role_weight(&c.role);
+        .enumerate()
+        .map(|(i, c)| {
+            let count = mention_counts[i];
+            let valence = (1.0 + count as f32).ln() * role_weight(&c.role, &weights);
             GraphNode {
-                id: char_id.clone(),
+                id: c.id.to_string(),
                 label: c.name.clone(),
                 valence,
                 mention_count: count,
                 is_mapped: count > 0,
-                first_mention: first_mentions.get(&char_id).cloned(),
+                first_mention: first_mentions[i].clone(),
             }
         })
         .collect();
 
-    // Build Edges
-    let edges: Vec<GraphEdge> = interaction_weights
+    // 5. Build Edges
+    let edges: Vec<GraphEdge> = weight_matrix
         .into_iter()
         .filter(|(_, weight)| *weight >= prune_threshold)
-        .map(|((source, target), weight)| {
-            let interaction_type = interaction_types
-                .get(&(source.clone(), target.clone()))
+        .map(|((idx_a, idx_b), weight)| {
+            // Get IDs back from original list
+            // Safe unwrap because indices come from range 0..n_chars
+            let id_a = characters[idx_a].id.to_string();
+            let id_b = characters[idx_b].id.to_string();
+
+            let interaction_type = type_matrix
+                .get(&(idx_a, idx_b))
                 .cloned()
                 .unwrap_or(InteractionType::Reference);
+
             GraphEdge {
-                source,
-                target,
+                source: id_a,
+                target: id_b,
                 weight,
                 interaction_type,
             }
         })
         .collect();
 
-    // Metrics (UnionFind logic copied)
-    let n = characters.len();
-    let char_id_to_index: HashMap<String, usize> = characters
-        .iter()
-        .enumerate()
-        .map(|(i, c)| (c.id.to_string(), i))
-        .collect();
-
-    let mut uf = UnionFind::new(n);
+    // 6. Metrics
+    let mut uf = UnionFind::new(n_chars);
     for edge in &edges {
         if let (Some(&i), Some(&j)) = (
-            char_id_to_index.get(&edge.source),
-            char_id_to_index.get(&edge.target),
+            char_id_to_idx.get(&edge.source),
+            char_id_to_idx.get(&edge.target),
         ) {
             uf.union(i, j);
         }
@@ -200,13 +234,18 @@ pub fn build_character_graph_cached(
         .iter()
         .filter(|c| !connected_chars.contains(&c.id.to_string()))
         .count();
-    let isolation_ratio = if n > 0 {
-        isolated_count as f32 / n as f32
+
+    let isolation_ratio = if n_chars > 0 {
+        isolated_count as f32 / n_chars as f32
     } else {
         0.0
     };
 
-    let max_edges = if n > 1 { n * (n - 1) / 2 } else { 1 };
+    let max_edges = if n_chars > 1 {
+        n_chars * (n_chars - 1) / 2
+    } else {
+        1
+    };
     let network_density = edges.len() as f32 / max_edges as f32;
 
     Ok(CharacterGraphPayload {
