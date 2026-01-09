@@ -26,7 +26,12 @@ pub async fn analyze_character_graph(
     chapter_ids: Option<Vec<String>>,
 ) -> crate::errors::Result<CharacterGraphPayload> {
     let (root_path, metadata_arc) = state.projects.get_context(project_id).await?;
-    let metadata = metadata_arc.lock().await;
+
+    // Critical: Clone metadata and release DB lock immediately to avoid blocking UI
+    let metadata = {
+        let guard = metadata_arc.lock().await;
+        guard.clone()
+    };
 
     // Default configuration constants
     const DEFAULT_PROXIMITY_WINDOW: usize = 50;
@@ -71,7 +76,6 @@ mod tests {
         scanner: Option<&CharacterScanner>,
     ) -> CharacterGraphPayload {
         let mut chapter_mentions = HashMap::new();
-        let mut chapter_texts = HashMap::new();
 
         if let Some(s) = scanner {
             for (id, content) in chapters {
@@ -84,19 +88,11 @@ mod tests {
                     .collect();
 
                 chapter_mentions.insert(id.clone(), mentions);
-                chapter_texts.insert(id.clone(), content.clone());
             }
         }
 
-        build_character_graph_cached(
-            metadata,
-            &chapter_texts,
-            &chapter_mentions,
-            proximity,
-            prune,
-            None,
-        )
-        .expect("Graph build failed in test")
+        build_character_graph_cached(metadata, &chapter_mentions, proximity, prune, None)
+            .expect("Graph build failed in test")
     }
 
     fn make_test_character(id: &str, name: &str, role: CharacterRole) -> Character {

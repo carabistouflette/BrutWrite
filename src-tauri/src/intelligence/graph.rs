@@ -57,7 +57,6 @@ fn proximity_bonus(word_distance: usize, proximity_window: usize, base_bonus: f3
 /// Optimized builder that uses pre-scanned mentions and integer-based indexing
 pub fn build_character_graph_cached(
     metadata: &ProjectMetadata,
-    _chapter_contents: &HashMap<String, String>, // Unused now
     chapter_mentions: &HashMap<String, Vec<(usize, usize, uuid::Uuid)>>,
     proximity_window: usize,
     prune_threshold: f32,

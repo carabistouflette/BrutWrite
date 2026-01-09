@@ -49,7 +49,6 @@ impl IntelligenceCoordinator {
             return build_character_graph_cached(
                 metadata,
                 &HashMap::new(),
-                &HashMap::new(),
                 options.proximity_window,
                 options.prune_threshold,
                 None,
@@ -60,14 +59,13 @@ impl IntelligenceCoordinator {
         let (scanner_arc, scanner_hash) = self.get_or_create_scanner(project_id, metadata).await?;
 
         // 3. Process Chapters
-        let (chapter_texts, chapter_mentions) = self
+        let chapter_mentions = self
             .process_chapters(root_path, metadata, scanner_arc, scanner_hash, &options)
             .await?;
 
         // 4. Build Graph
         build_character_graph_cached(
             metadata,
-            &chapter_texts,
             &chapter_mentions,
             options.proximity_window,
             options.prune_threshold,
@@ -132,10 +130,7 @@ impl IntelligenceCoordinator {
         scanner: Arc<CharacterScanner>,
         scanner_hash: u64,
         options: &AnalysisOptions,
-    ) -> crate::errors::Result<(
-        HashMap<String, String>,
-        HashMap<String, Vec<(usize, usize, Uuid)>>,
-    )> {
+    ) -> crate::errors::Result<HashMap<String, Vec<(usize, usize, Uuid)>>> {
         let repo = LocalFileRepository;
         let mut tasks = Vec::new();
 
@@ -171,7 +166,7 @@ impl IntelligenceCoordinator {
                     Ok(m) => m,
                     Err(e) => {
                         log::error!("Failed to get metadata for chapter {}: {}", cid_clone, e);
-                        return (cid_clone, None);
+                        return (cid_clone, Vec::new());
                     }
                 };
 
@@ -198,7 +193,7 @@ impl IntelligenceCoordinator {
                             // Or just empty string if not needed?
                             // For safety, let's look at `analyze_project`. It calls `build_character_graph_cached`.
                             // If `graph.rs` logic is pure math on indices, we can pass empty strings.
-                            return (cid_clone, Some((None, mentions.clone())));
+                            return (cid_clone, mentions.clone());
                         }
                     }
                 }
@@ -208,12 +203,12 @@ impl IntelligenceCoordinator {
                     Ok(c) => c,
                     Err(e) => {
                         log::error!("Failed to read chapter {}: {}", cid_clone, e);
-                        return (cid_clone, None);
+                        return (cid_clone, Vec::new());
                     }
                 };
 
                 if content.is_empty() {
-                    return (cid_clone, Some((Some(content), vec![])));
+                    return (cid_clone, vec![]);
                 }
 
                 let mentions = Self::scan_and_cache(
@@ -226,36 +221,25 @@ impl IntelligenceCoordinator {
                 )
                 .await;
 
-                (cid_clone, Some((Some(content), mentions)))
+                (cid_clone, mentions)
             });
         }
 
-        let mut chapter_texts = HashMap::new();
         let mut chapter_mentions = HashMap::new();
 
         // 3. Process Results
         while let Some(res) = join_set.join_next().await {
             match res {
-                Ok((cid, data_opt)) => {
-                    if let Some((content_opt, mentions)) = data_opt {
-                        chapter_mentions.insert(cid.clone(), mentions);
-                        // We only insert content if we actully read it?
-                        // If we returned `None` content (Cache Hit), we put ""?
-                        // `graph.rs` signature still takes `chapter_contents`. We will fix that next.
-                        if let Some(c) = content_opt {
-                            chapter_texts.insert(cid, c);
-                        } else {
-                            // If cache hit, we didn't read file.
-                            // We can simulate it or just omit it.
-                            // Omitting is safer if we change graph.rs to not require it.
-                        }
+                Ok((cid, mentions)) => {
+                    if !mentions.is_empty() {
+                        chapter_mentions.insert(cid, mentions);
                     }
                 }
                 Err(e) => log::error!("Task join error: {}", e),
             }
         }
 
-        Ok((chapter_texts, chapter_mentions))
+        Ok(chapter_mentions)
     }
 
     async fn scan_and_cache(
