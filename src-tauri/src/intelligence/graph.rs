@@ -91,12 +91,10 @@ pub fn build_character_graph_cached(
     let mut mention_counts: Vec<u32> = vec![0; n_chars];
     let mut first_mentions: Vec<Option<MentionLocation>> = vec![None; n_chars];
 
-    // Use an adjacency matrix (flattened or nested vec) for interaction accumulation
-    // weight_matrix[i][j] where i < j
-    let mut weight_matrix: HashMap<(usize, usize), f32> =
-        HashMap::with_capacity(n_chars * n_chars / 2);
-    let mut type_matrix: HashMap<(usize, usize), InteractionType> =
-        HashMap::with_capacity(n_chars * n_chars / 2);
+    // Use an adjacency matrix (flattened vec) for interaction accumulation
+    // weight_matrix[i * n_chars + j] where i < j
+    let mut weight_matrix: Vec<f32> = vec![0.0; n_chars * n_chars];
+    let mut type_matrix: Vec<Option<InteractionType>> = vec![None; n_chars * n_chars];
 
     // 2. Process Chapters
     for (chapter_id, mentions) in chapter_mentions {
@@ -161,11 +159,13 @@ pub fn build_character_graph_cached(
 
                     let bonus =
                         proximity_bonus(dist, proximity_window, weights.base_proximity_bonus);
-                    *weight_matrix.entry((min, max)).or_default() += bonus;
+
+                    let idx = min * n_chars + max;
+                    weight_matrix[idx] += bonus;
                     // Mark as Proxy if they are close (we can refine interaction types later if needed)
-                    type_matrix
-                        .entry((min, max))
-                        .or_insert(InteractionType::CoPresence);
+                    if type_matrix[idx].is_none() {
+                        type_matrix[idx] = Some(InteractionType::CoPresence);
+                    }
                 }
             }
         }
@@ -191,33 +191,38 @@ pub fn build_character_graph_cached(
 
     // 5. Build Edges & Calculate Metrics Data
     let mut uf = UnionFind::new(n_chars);
-    let mut edges: Vec<GraphEdge> = Vec::with_capacity(weight_matrix.len());
+    // Rough estimate for edges, though it could be up to N*(N-1)/2
+    let mut edges: Vec<GraphEdge> = Vec::with_capacity(n_chars * 2);
     let mut connected_indices = HashSet::new();
 
-    for ((idx_a, idx_b), weight) in weight_matrix {
-        if weight < prune_threshold {
-            continue;
+    for i in 0..n_chars {
+        for j in (i + 1)..n_chars {
+            let idx = i * n_chars + j;
+            let weight = weight_matrix[idx];
+
+            if weight < prune_threshold {
+                continue;
+            }
+
+            uf.union(i, j);
+            connected_indices.insert(i);
+            connected_indices.insert(j);
+
+            // Safe unwrap because indices come from range 0..n_chars
+            let id_a = characters[i].id.to_string();
+            let id_b = characters[j].id.to_string();
+
+            let interaction_type = type_matrix[idx]
+                .clone()
+                .unwrap_or(InteractionType::Reference);
+
+            edges.push(GraphEdge {
+                source: id_a,
+                target: id_b,
+                weight,
+                interaction_type,
+            });
         }
-
-        uf.union(idx_a, idx_b);
-        connected_indices.insert(idx_a);
-        connected_indices.insert(idx_b);
-
-        // Safe unwrap because indices come from range 0..n_chars
-        let id_a = characters[idx_a].id.to_string();
-        let id_b = characters[idx_b].id.to_string();
-
-        let interaction_type = type_matrix
-            .get(&(idx_a, idx_b))
-            .cloned()
-            .unwrap_or(InteractionType::Reference);
-
-        edges.push(GraphEdge {
-            source: id_a,
-            target: id_b,
-            weight,
-            interaction_type,
-        });
     }
 
     // 6. Metrics
