@@ -42,7 +42,10 @@ pub struct WordIndexer {
 
 impl WordIndexer {
     pub fn new(text: &str) -> Self {
-        let mut word_starts = Vec::new();
+        // Heuristic: Average word length in English is ~5 chars + 1 space = 6.
+        let capacity = text.len() / 6;
+        let mut word_starts = Vec::with_capacity(capacity);
+
         // Use standard whitespace splitting logic consistent with split_whitespace()
         // We track the start of each word token.
         let mut in_word = false;

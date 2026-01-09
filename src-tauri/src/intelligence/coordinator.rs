@@ -4,11 +4,12 @@ use crate::intelligence::scanner::CharacterScanner;
 use crate::models::utils::WordIndexer;
 use crate::models::ProjectMetadata;
 use crate::storage::traits::{FileMetadata, FileRepository};
+
 use crate::storage::{resolve_chapter_path, LocalFileRepository};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, Semaphore};
 use uuid::Uuid;
 
 // Cache Types
@@ -21,9 +22,12 @@ use uuid::Uuid;
 pub type IntelligenceCache = RwLock<HashMap<Uuid, (u64, Arc<CharacterScanner>)>>;
 pub type ChapterContentCache = RwLock<HashMap<String, (u64, u64, u64, Vec<(usize, usize, Uuid)>)>>;
 
+const MAX_CONCURRENT_TASKS: usize = 4;
+
 pub struct IntelligenceCoordinator {
     scanner_cache: Arc<IntelligenceCache>,
     content_cache: Arc<ChapterContentCache>,
+    semaphore: Arc<Semaphore>,
 }
 
 impl IntelligenceCoordinator {
@@ -34,6 +38,7 @@ impl IntelligenceCoordinator {
         Self {
             scanner_cache,
             content_cache,
+            semaphore: Arc::new(Semaphore::new(MAX_CONCURRENT_TASKS)),
         }
     }
 
@@ -159,8 +164,11 @@ impl IntelligenceCoordinator {
             let content_cache = self.content_cache.clone();
             let scanner = scanner.clone(); // Arc clone
             let cid_clone = cid.clone();
+            let semaphore = self.semaphore.clone();
 
             join_set.spawn(async move {
+                // Acquire permit before doing heavy lifting
+                let _permit = semaphore.acquire().await.expect("Semaphore closed");
                 // A. Check Metadata
                 let file_meta = match repo.get_metadata(&path).await {
                     Ok(m) => m,
