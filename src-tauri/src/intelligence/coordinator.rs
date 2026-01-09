@@ -6,7 +6,8 @@ use crate::storage::traits::FileRepository;
 use crate::storage::{resolve_chapter_path, LocalFileRepository};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
-use tokio::sync::Mutex;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 /// Cache Types
@@ -16,18 +17,18 @@ use uuid::Uuid;
 ///
 /// Note: Hash is now storing 64 bits derived from SHA256 for efficient checking,
 /// but the calculation is deterministic.
-pub type IntelligenceCache = Mutex<HashMap<Uuid, (u64, CharacterScanner)>>;
-pub type ChapterContentCache = Mutex<HashMap<String, (u64, u64, Vec<(usize, String)>)>>;
+pub type IntelligenceCache = RwLock<HashMap<Uuid, (u64, CharacterScanner)>>;
+pub type ChapterContentCache = RwLock<HashMap<String, (u64, u64, Vec<(usize, String)>)>>;
 
-pub struct IntelligenceCoordinator<'a> {
-    scanner_cache: &'a IntelligenceCache,
-    content_cache: &'a ChapterContentCache,
+pub struct IntelligenceCoordinator {
+    scanner_cache: Arc<IntelligenceCache>,
+    content_cache: Arc<ChapterContentCache>,
 }
 
-impl<'a> IntelligenceCoordinator<'a> {
+impl IntelligenceCoordinator {
     pub fn new(
-        scanner_cache: &'a IntelligenceCache,
-        content_cache: &'a ChapterContentCache,
+        scanner_cache: Arc<IntelligenceCache>,
+        content_cache: Arc<ChapterContentCache>,
     ) -> Self {
         Self {
             scanner_cache,
@@ -102,18 +103,22 @@ impl<'a> IntelligenceCoordinator<'a> {
                 .expect("Sha256 output is 32 bytes, slice is 8 bytes"),
         );
 
-        let mut cache = self.scanner_cache.lock().await;
-
-        if let Some((hash, scanner)) = cache.get(&project_id) {
-            if *hash == current_hash {
-                return Ok((scanner.clone(), *hash));
+        // Optimistic Read
+        {
+            let cache = self.scanner_cache.read().await;
+            if let Some((hash, scanner)) = cache.get(&project_id) {
+                if *hash == current_hash {
+                    return Ok((scanner.clone(), *hash));
+                }
             }
         }
 
-        // Rebuild
+        // Rebuild (Internal logic only, no lock needed yet)
         let scanner = CharacterScanner::try_new(&metadata.characters)
             .map_err(crate::errors::Error::Intelligence)?;
 
+        // Write to cache
+        let mut cache = self.scanner_cache.write().await;
         cache.insert(project_id, (current_hash, scanner.clone()));
         Ok((scanner, current_hash))
     }
@@ -150,18 +155,37 @@ impl<'a> IntelligenceCoordinator<'a> {
             }
         }
 
-        // 2. Parallel Read
+        // 2. Parallel Processing (Read + Scan)
         let mut join_set = tokio::task::JoinSet::new();
         for (cid, path) in tasks {
             let repo = repo.clone();
+            let content_cache = self.content_cache.clone();
+            let scanner = scanner.clone();
+            let cid_clone = cid.clone();
+
             join_set.spawn(async move {
-                match repo.read_file(&path).await {
-                    Ok(content) => (cid, Some(content)),
+                let content = match repo.read_file(&path).await {
+                    Ok(c) => c,
                     Err(e) => {
-                        log::error!("Failed to read chapter {}: {}", cid, e);
-                        (cid, None)
+                        log::error!("Failed to read chapter {}: {}", cid_clone, e);
+                        return (cid_clone, None);
                     }
+                };
+
+                if content.is_empty() {
+                    return (cid_clone, Some((content, vec![])));
                 }
+
+                let mentions = Self::get_mentions_static(
+                    &content_cache,
+                    &cid_clone,
+                    &content,
+                    &scanner,
+                    scanner_hash,
+                )
+                .await;
+
+                (cid_clone, Some((content, mentions)))
             });
         }
 
@@ -171,17 +195,12 @@ impl<'a> IntelligenceCoordinator<'a> {
         // 3. Process Results
         while let Some(res) = join_set.join_next().await {
             match res {
-                Ok((cid, content_opt)) => {
-                    if let Some(content) = content_opt {
-                        if content.is_empty() {
-                            continue;
+                Ok((cid, data_opt)) => {
+                    if let Some((content, mentions)) = data_opt {
+                        if !content.is_empty() {
+                            chapter_texts.insert(cid.clone(), content);
+                            chapter_mentions.insert(cid, mentions);
                         }
-
-                        let mentions = self
-                            .get_mentions_for_chapter(&cid, &content, scanner, scanner_hash)
-                            .await;
-                        chapter_texts.insert(cid.clone(), content);
-                        chapter_mentions.insert(cid, mentions);
                     }
                 }
                 Err(e) => log::error!("Task join error: {}", e),
@@ -191,7 +210,49 @@ impl<'a> IntelligenceCoordinator<'a> {
         Ok((chapter_texts, chapter_mentions))
     }
 
-    async fn get_mentions_for_chapter(
+    async fn get_mentions_static(
+        cache_arc: &Arc<ChapterContentCache>,
+        cid: &str,
+        content: &str,
+        scanner: &CharacterScanner,
+        scanner_hash: u64,
+    ) -> Vec<(usize, String)> {
+        // Deterministic content hash
+        let mut hasher = Sha256::new();
+        hasher.update(content.as_bytes());
+        let hash_result = hasher.finalize();
+        let content_hash = u64::from_le_bytes(
+            hash_result[0..8]
+                .try_into()
+                .expect("Sha256 output is 32 bytes, slice is 8 bytes"),
+        );
+
+        // Optimistic Read
+        {
+            let cache = cache_arc.read().await;
+            if let Some((cached_content_hash, cached_scanner_hash, matches)) = cache.get(cid) {
+                if *cached_content_hash == content_hash && *cached_scanner_hash == scanner_hash {
+                    return matches.clone();
+                }
+            }
+        }
+
+        // Scan (CPU intensive, done without lock)
+        let matches = scanner.scan(content);
+
+        // Write Cache
+        let mut cache = cache_arc.write().await;
+        cache.insert(
+            cid.to_string(),
+            (content_hash, scanner_hash, matches.clone()),
+        );
+        matches
+    }
+
+    // Deprecated / Unused instance method (kept but privatized/renamed if needed, or deleted)
+    // We replaced it with get_mentions_static
+    #[allow(dead_code)]
+    async fn get_mentions_for_chapter_legacy(
         &self,
         cid: &str,
         content: &str,
@@ -225,16 +286,21 @@ impl<'a> IntelligenceCoordinator<'a> {
         // For this audit fix, I will assume the caller manages cache invalidation or that collision is rare enough.
         // Ideally we'd store (content_hash, scanner_hash, mentions).
 
-        let mut cache = self.content_cache.lock().await;
-
-        if let Some((cached_content_hash, cached_scanner_hash, matches)) = cache.get(cid) {
-            if *cached_content_hash == content_hash && *cached_scanner_hash == scanner_hash {
-                return matches.clone();
+        // Optimistic Read
+        {
+            let cache = self.content_cache.read().await;
+            if let Some((cached_content_hash, cached_scanner_hash, matches)) = cache.get(cid) {
+                if *cached_content_hash == content_hash && *cached_scanner_hash == scanner_hash {
+                    return matches.clone();
+                }
             }
         }
 
-        // Scan
+        // Scan (CPU intensive, done without lock)
         let matches = scanner.scan(content);
+
+        // Write Cache
+        let mut cache = self.content_cache.write().await;
         cache.insert(
             cid.to_string(),
             (content_hash, scanner_hash, matches.clone()),

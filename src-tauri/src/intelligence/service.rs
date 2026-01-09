@@ -3,22 +3,23 @@ use crate::intelligence::models::CharacterGraphPayload;
 use crate::intelligence::scanner::CharacterScanner;
 use crate::models::ProjectMetadata;
 use std::collections::HashMap;
-use tokio::sync::Mutex;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
-pub type IntelligenceCache = Mutex<HashMap<Uuid, (u64, CharacterScanner)>>;
-pub type ChapterContentCache = Mutex<HashMap<String, (u64, u64, Vec<(usize, String)>)>>;
+pub type IntelligenceCache = RwLock<HashMap<Uuid, (u64, CharacterScanner)>>;
+pub type ChapterContentCache = RwLock<HashMap<String, (u64, u64, Vec<(usize, String)>)>>;
 
 pub struct IntelligenceService {
-    intelligence_cache: IntelligenceCache,
-    chapter_content_cache: ChapterContentCache,
+    intelligence_cache: Arc<IntelligenceCache>,
+    chapter_content_cache: Arc<ChapterContentCache>,
 }
 
 impl IntelligenceService {
     pub fn new() -> Self {
         Self {
-            intelligence_cache: Mutex::new(HashMap::new()),
-            chapter_content_cache: Mutex::new(HashMap::new()),
+            intelligence_cache: Arc::new(RwLock::new(HashMap::new())),
+            chapter_content_cache: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -29,8 +30,10 @@ impl IntelligenceService {
         metadata: &ProjectMetadata,
         options: crate::intelligence::coordinator::AnalysisOptions,
     ) -> crate::errors::Result<CharacterGraphPayload> {
-        let coordinator =
-            IntelligenceCoordinator::new(&self.intelligence_cache, &self.chapter_content_cache);
+        let coordinator = IntelligenceCoordinator::new(
+            self.intelligence_cache.clone(),
+            self.chapter_content_cache.clone(),
+        );
 
         coordinator
             .analyze_project(project_id, root_path, metadata, options)
