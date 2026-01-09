@@ -37,9 +37,9 @@ const CharacterMark = Mark.create({
     return {
       id: {
         default: null,
-        parseHTML: (element) => element.getAttribute('data-id'),
-        renderHTML: (attributes) => ({
-          'data-id': attributes.id,
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-id'),
+        renderHTML: (attributes: Record<string, unknown>) => ({
+          'data-id': attributes.id as string | undefined,
           'data-type': 'character-mention',
           class: 'mention text-accent font-medium bg-accent/10 rounded px-1 decoration-clone', // Styled classes
         }),
@@ -55,7 +55,7 @@ const CharacterMark = Mark.create({
     ];
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, unknown> }) {
     return ['span', mergeAttributes(HTMLAttributes), 0];
   },
 });

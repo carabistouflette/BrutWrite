@@ -19,6 +19,7 @@
     "@tauri-apps/plugin-dialog": "^2.0.0",
     "@tauri-apps/plugin-fs": "^2.4.4",
     "@tauri-apps/plugin-opener": "^2.0.0",
+    "@tiptap/core": "^3.15.3",
     "@tiptap/extension-focus": "^3.14.0",
     "@tiptap/extension-link": "^3.14.0",
     "@tiptap/extension-mention": "^3.14.0",
