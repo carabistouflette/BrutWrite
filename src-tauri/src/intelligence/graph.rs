@@ -119,9 +119,6 @@ pub fn build_character_graph_cached(
             }
         }
 
-        // Sort by word index to enable sliding window
-        linear_mentions.sort_by_key(|k| k.1);
-
         // 3. Sliding Window Co-Presence Algorithm (O(M * Window)) instead of O(M^2)
         // For each mention, look ahead only within proximity_window
 

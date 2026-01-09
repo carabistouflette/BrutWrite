@@ -3,9 +3,10 @@ use crate::intelligence::models::CharacterGraphPayload;
 use crate::intelligence::scanner::CharacterScanner;
 use crate::models::utils::WordIndexer;
 use crate::models::ProjectMetadata;
+use crate::storage::resolve_chapter_path_from_filename;
 use crate::storage::traits::{FileMetadata, FileRepository};
 
-use crate::storage::{resolve_chapter_path, LocalFileRepository};
+use crate::storage::LocalFileRepository;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -147,7 +148,7 @@ impl IntelligenceCoordinator {
                 }
             }
 
-            match resolve_chapter_path(root_path, metadata, &chapter.id) {
+            match resolve_chapter_path_from_filename(root_path, &chapter.filename) {
                 Ok(path) => tasks.push((chapter.id.clone(), path)),
                 Err(e) => log::warn!(
                     "Skipping chapter {}: path resolution failed ({})",
