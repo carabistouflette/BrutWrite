@@ -17,7 +17,7 @@ use uuid::Uuid;
 ///
 /// Note: Hash is now storing 64 bits derived from SHA256 for efficient checking,
 /// but the calculation is deterministic.
-pub type IntelligenceCache = RwLock<HashMap<Uuid, (u64, CharacterScanner)>>;
+pub type IntelligenceCache = RwLock<HashMap<Uuid, (u64, Arc<CharacterScanner>)>>;
 pub type ChapterContentCache = RwLock<HashMap<String, (u64, u64, Vec<(usize, Uuid)>)>>;
 
 pub struct IntelligenceCoordinator {
@@ -56,10 +56,7 @@ impl IntelligenceCoordinator {
         }
 
         // 2. Initialize Scanner (Cached)
-        let (scanner, scanner_hash) = self.get_or_create_scanner(project_id, metadata).await?;
-
-        // Wrap scanner in Arc for cheap cloning across threads
-        let scanner_arc = Arc::new(scanner);
+        let (scanner_arc, scanner_hash) = self.get_or_create_scanner(project_id, metadata).await?;
 
         // 3. Process Chapters
         let (chapter_texts, chapter_mentions) = self
@@ -81,7 +78,7 @@ impl IntelligenceCoordinator {
         &self,
         project_id: Uuid,
         metadata: &ProjectMetadata,
-    ) -> crate::errors::Result<(CharacterScanner, u64)> {
+    ) -> crate::errors::Result<(Arc<CharacterScanner>, u64)> {
         // Calculate deterministic hash
         let mut hasher = Sha256::new();
         // Sort to ensure order independence if chars were reordered but not changed?
@@ -119,11 +116,12 @@ impl IntelligenceCoordinator {
         // Rebuild (Internal logic only, no lock needed yet)
         let scanner = CharacterScanner::try_new(&metadata.characters)
             .map_err(crate::errors::Error::Intelligence)?;
+        let scanner_arc = Arc::new(scanner);
 
         // Write to cache
         let mut cache = self.scanner_cache.write().await;
-        cache.insert(project_id, (current_hash, scanner.clone()));
-        Ok((scanner, current_hash))
+        cache.insert(project_id, (current_hash, scanner_arc.clone()));
+        Ok((scanner_arc, current_hash))
     }
 
     async fn process_chapters(

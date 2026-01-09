@@ -37,7 +37,7 @@ mod tests {
         // Should detect: Robert, Bob, Bobby
         assert_eq!(mentions.len(), 3);
 
-        let found_ids: Vec<String> = mentions.iter().map(|(_, id)| id.clone()).collect();
+        let found_ids: Vec<String> = mentions.iter().map(|(_, id)| id.to_string()).collect();
         assert_eq!(found_ids, vec![id1.clone(), id1.clone(), id1.clone()]);
 
         // Verify names/offsets

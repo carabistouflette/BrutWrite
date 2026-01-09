@@ -189,60 +189,47 @@ pub fn build_character_graph_cached(
         })
         .collect();
 
-    // 5. Build Edges
-    let edges: Vec<GraphEdge> = weight_matrix
-        .into_iter()
-        .filter(|(_, weight)| *weight >= prune_threshold)
-        .map(|((idx_a, idx_b), weight)| {
-            // Get IDs back from original list
-            // Safe unwrap because indices come from range 0..n_chars
-            let id_a = characters[idx_a].id.to_string();
-            let id_b = characters[idx_b].id.to_string();
-
-            let interaction_type = type_matrix
-                .get(&(idx_a, idx_b))
-                .cloned()
-                .unwrap_or(InteractionType::Reference);
-
-            GraphEdge {
-                source: id_a,
-                target: id_b,
-                weight,
-                interaction_type,
-            }
-        })
-        .collect();
-
-    // 6. Metrics
+    // 5. Build Edges & Calculate Metrics Data
     let mut uf = UnionFind::new(n_chars);
-    for edge in &edges {
-        // Here we're using String IDs from edges to lookup index in char_id_to_idx (which is now Uuid based).
-        // This is a disconnect. Graph building logic (UF) relies on indices anyway.
-        // We already know indices idx_a and idx_b when creating edges.
-        // But the loop iterates edges.
-        // Let's re-parse or easier:
-        // Use the indices we know? No, edges struct doesn't have them.
+    let mut edges: Vec<GraphEdge> = Vec::with_capacity(weight_matrix.len());
+    let mut connected_indices = HashSet::new();
 
-        let uuid_a = uuid::Uuid::parse_str(&edge.source).unwrap_or_default();
-        let uuid_b = uuid::Uuid::parse_str(&edge.target).unwrap_or_default();
-
-        if let (Some(&i), Some(&j)) = (char_id_to_idx.get(&uuid_a), char_id_to_idx.get(&uuid_b)) {
-            uf.union(i, j);
+    for ((idx_a, idx_b), weight) in weight_matrix {
+        if weight < prune_threshold {
+            continue;
         }
+
+        uf.union(idx_a, idx_b);
+        connected_indices.insert(idx_a);
+        connected_indices.insert(idx_b);
+
+        // Safe unwrap because indices come from range 0..n_chars
+        let id_a = characters[idx_a].id.to_string();
+        let id_b = characters[idx_b].id.to_string();
+
+        let interaction_type = type_matrix
+            .get(&(idx_a, idx_b))
+            .cloned()
+            .unwrap_or(InteractionType::Reference);
+
+        edges.push(GraphEdge {
+            source: id_a,
+            target: id_b,
+            weight,
+            interaction_type,
+        });
     }
 
+    // 6. Metrics
     let component_sizes = uf.component_sizes();
     let connected_components = component_sizes.len() as u32;
     let largest_component_size = component_sizes.iter().copied().max().unwrap_or(0);
 
-    let connected_chars: HashSet<String> = edges
-        .iter()
-        .flat_map(|e| [e.source.clone(), e.target.clone()])
-        .collect();
-    let isolated_count = characters
-        .iter()
-        .filter(|c| !connected_chars.contains(&c.id.to_string()))
-        .count();
+    let isolated_count = if n_chars > 0 {
+        n_chars - connected_indices.len()
+    } else {
+        0
+    };
 
     let isolation_ratio = if n_chars > 0 {
         isolated_count as f32 / n_chars as f32

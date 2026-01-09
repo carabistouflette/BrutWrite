@@ -1,14 +1,12 @@
-use crate::intelligence::coordinator::IntelligenceCoordinator;
+use crate::intelligence::coordinator::{
+    ChapterContentCache, IntelligenceCache, IntelligenceCoordinator,
+};
 use crate::intelligence::models::CharacterGraphPayload;
-use crate::intelligence::scanner::CharacterScanner;
 use crate::models::ProjectMetadata;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
-
-pub type IntelligenceCache = RwLock<HashMap<Uuid, (u64, CharacterScanner)>>;
-pub type ChapterContentCache = RwLock<HashMap<String, (u64, u64, Vec<(usize, Uuid)>)>>;
 
 pub struct IntelligenceService {
     intelligence_cache: Arc<IntelligenceCache>,
