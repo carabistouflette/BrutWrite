@@ -1,4 +1,4 @@
-use crate::models::utils::{UnionFind, WordIndexer};
+use crate::models::utils::UnionFind;
 use crate::models::{CharacterRole, ProjectMetadata};
 use std::collections::{HashMap, HashSet};
 
@@ -57,8 +57,8 @@ fn proximity_bonus(word_distance: usize, proximity_window: usize, base_bonus: f3
 /// Optimized builder that uses pre-scanned mentions and integer-based indexing
 pub fn build_character_graph_cached(
     metadata: &ProjectMetadata,
-    chapter_contents: &HashMap<String, String>,
-    chapter_mentions: &HashMap<String, Vec<(usize, uuid::Uuid)>>,
+    _chapter_contents: &HashMap<String, String>, // Unused now
+    chapter_mentions: &HashMap<String, Vec<(usize, usize, uuid::Uuid)>>,
     proximity_window: usize,
     prune_threshold: f32,
     custom_weights: Option<GraphWeights>,
@@ -102,19 +102,10 @@ pub fn build_character_graph_cached(
             continue;
         }
 
-        let content = chapter_contents.get(chapter_id).ok_or_else(|| {
-            crate::errors::Error::Intelligence(format!(
-                "Content missing for analyzed chapter: {}",
-                chapter_id
-            ))
-        })?;
-
-        let word_indexer = WordIndexer::new(content);
-
         // Transform mentions to (word_index, char_index)
         let mut linear_mentions: Vec<(usize, usize, usize)> = Vec::with_capacity(mentions.len());
 
-        for (char_offset, char_uuid) in mentions {
+        for (char_offset, word_idx, char_uuid) in mentions {
             if let Some(&idx) = char_id_to_idx.get(char_uuid) {
                 mention_counts[idx] += 1;
 
@@ -125,8 +116,7 @@ pub fn build_character_graph_cached(
                     });
                 }
 
-                let word_idx = word_indexer.get_word_index(*char_offset);
-                linear_mentions.push((*char_offset, word_idx, idx));
+                linear_mentions.push((*char_offset, *word_idx, idx));
             }
         }
 

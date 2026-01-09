@@ -60,6 +60,8 @@ mod tests {
     use crate::models::{Character, CharacterRole, Manifest, ProjectMetadata};
     use std::collections::HashMap;
 
+    use crate::models::utils::WordIndexer;
+
     /// Helper to bridge old test format to new cached format
     async fn helper_build_graph(
         metadata: &ProjectMetadata,
@@ -73,7 +75,14 @@ mod tests {
 
         if let Some(s) = scanner {
             for (id, content) in chapters {
-                let mentions = s.scan(content);
+                let raw_mentions = s.scan(content);
+                let indexer = WordIndexer::new(content);
+
+                let mentions: Vec<(usize, usize, uuid::Uuid)> = raw_mentions
+                    .into_iter()
+                    .map(|(char_idx, uuid)| (char_idx, indexer.get_word_index(char_idx), uuid))
+                    .collect();
+
                 chapter_mentions.insert(id.clone(), mentions);
                 chapter_texts.insert(id.clone(), content.clone());
             }

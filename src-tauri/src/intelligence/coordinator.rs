@@ -1,8 +1,9 @@
 use crate::intelligence::graph::build_character_graph_cached;
 use crate::intelligence::models::CharacterGraphPayload;
 use crate::intelligence::scanner::CharacterScanner;
+use crate::models::utils::WordIndexer;
 use crate::models::ProjectMetadata;
-use crate::storage::traits::FileRepository;
+use crate::storage::traits::{FileMetadata, FileRepository};
 use crate::storage::{resolve_chapter_path, LocalFileRepository};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
@@ -13,12 +14,12 @@ use uuid::Uuid;
 // Cache Types
 /// Keys:
 /// - IntelligenceCache: Project ID -> (Hash of Characters, Scanner)
-/// - ChapterContentCache: Chapter ID -> (Hash of Content, Mentions)
+/// - ChapterContentCache: Chapter ID -> (Length, Modified, ScannerHash, Mentions)
 ///
 /// Note: Hash is now storing 64 bits derived from SHA256 for efficient checking,
 /// but the calculation is deterministic.
 pub type IntelligenceCache = RwLock<HashMap<Uuid, (u64, Arc<CharacterScanner>)>>;
-pub type ChapterContentCache = RwLock<HashMap<String, (u64, u64, Vec<(usize, Uuid)>)>>;
+pub type ChapterContentCache = RwLock<HashMap<String, (u64, u64, u64, Vec<(usize, usize, Uuid)>)>>;
 
 pub struct IntelligenceCoordinator {
     scanner_cache: Arc<IntelligenceCache>,
@@ -131,7 +132,10 @@ impl IntelligenceCoordinator {
         scanner: Arc<CharacterScanner>,
         scanner_hash: u64,
         options: &AnalysisOptions,
-    ) -> crate::errors::Result<(HashMap<String, String>, HashMap<String, Vec<(usize, Uuid)>>)> {
+    ) -> crate::errors::Result<(
+        HashMap<String, String>,
+        HashMap<String, Vec<(usize, usize, Uuid)>>,
+    )> {
         let repo = LocalFileRepository;
         let mut tasks = Vec::new();
 
@@ -153,7 +157,7 @@ impl IntelligenceCoordinator {
             }
         }
 
-        // 2. Parallel Processing (Read + Scan)
+        // 2. Parallel Processing (Metadata Check -> Read + Scan if needed)
         let mut join_set = tokio::task::JoinSet::new();
         for (cid, path) in tasks {
             let repo = repo.clone();
@@ -162,6 +166,44 @@ impl IntelligenceCoordinator {
             let cid_clone = cid.clone();
 
             join_set.spawn(async move {
+                // A. Check Metadata
+                let file_meta = match repo.get_metadata(&path).await {
+                    Ok(m) => m,
+                    Err(e) => {
+                        log::error!("Failed to get metadata for chapter {}: {}", cid_clone, e);
+                        return (cid_clone, None);
+                    }
+                };
+
+                // B. Check Cache
+                {
+                    let cache = content_cache.read().await;
+                    if let Some((cached_len, cached_mod, cached_scanner_hash, mentions)) =
+                        cache.get(&cid_clone)
+                    {
+                        if *cached_len == file_meta.len
+                            && *cached_mod == file_meta.modified
+                            && *cached_scanner_hash == scanner_hash
+                        {
+                            // Cache Hit! Return mentions, but NO content (we don't need it for graph if we have word indices)
+                            // Wait, graph ONLY needs mentions now.
+                            // But if we want to return content map, we might need to read it?
+                            // The `graph.rs` NO LONGER needs contents if we give it word indices.
+                            // BUT `Coordinator` returns `HashMap<String, String>` (chapter_texts).
+                            // Does `graph.rs` use it for anything else?
+                            // `graph.rs` used `chapter_contents` for `WordIndexer`.
+                            // If we remove that dependency, we don't need to return content to it.
+                            // However, we still need to return the map if the function signature requires it.
+                            // Let's modify the signature to return Option<String>?
+                            // Or just empty string if not needed?
+                            // For safety, let's look at `analyze_project`. It calls `build_character_graph_cached`.
+                            // If `graph.rs` logic is pure math on indices, we can pass empty strings.
+                            return (cid_clone, Some((None, mentions.clone())));
+                        }
+                    }
+                }
+
+                // C. Cache Miss - Read & Scan
                 let content = match repo.read_file(&path).await {
                     Ok(c) => c,
                     Err(e) => {
@@ -171,19 +213,20 @@ impl IntelligenceCoordinator {
                 };
 
                 if content.is_empty() {
-                    return (cid_clone, Some((content, vec![])));
+                    return (cid_clone, Some((Some(content), vec![])));
                 }
 
-                let mentions = Self::get_mentions_static(
+                let mentions = Self::scan_and_cache(
                     &content_cache,
                     &cid_clone,
                     &content,
+                    file_meta,
                     &scanner,
                     scanner_hash,
                 )
                 .await;
 
-                (cid_clone, Some((content, mentions)))
+                (cid_clone, Some((Some(content), mentions)))
             });
         }
 
@@ -194,10 +237,17 @@ impl IntelligenceCoordinator {
         while let Some(res) = join_set.join_next().await {
             match res {
                 Ok((cid, data_opt)) => {
-                    if let Some((content, mentions)) = data_opt {
-                        if !content.is_empty() {
-                            chapter_texts.insert(cid.clone(), content);
-                            chapter_mentions.insert(cid, mentions);
+                    if let Some((content_opt, mentions)) = data_opt {
+                        chapter_mentions.insert(cid.clone(), mentions);
+                        // We only insert content if we actully read it?
+                        // If we returned `None` content (Cache Hit), we put ""?
+                        // `graph.rs` signature still takes `chapter_contents`. We will fix that next.
+                        if let Some(c) = content_opt {
+                            chapter_texts.insert(cid, c);
+                        } else {
+                            // If cache hit, we didn't read file.
+                            // We can simulate it or just omit it.
+                            // Omitting is safer if we change graph.rs to not require it.
                         }
                     }
                 }
@@ -208,102 +258,39 @@ impl IntelligenceCoordinator {
         Ok((chapter_texts, chapter_mentions))
     }
 
-    async fn get_mentions_static(
+    async fn scan_and_cache(
         cache_arc: &Arc<ChapterContentCache>,
         cid: &str,
         content: &str,
+        meta: FileMetadata,
         scanner: &CharacterScanner,
         scanner_hash: u64,
-    ) -> Vec<(usize, Uuid)> {
-        // Deterministic content hash
-        let mut hasher = Sha256::new();
-        hasher.update(content.as_bytes());
-        let hash_result = hasher.finalize();
-        let content_hash = u64::from_le_bytes(
-            hash_result[0..8]
-                .try_into()
-                .expect("Sha256 output is 32 bytes, slice is 8 bytes"),
-        );
+    ) -> Vec<(usize, usize, Uuid)> {
+        // Scan
+        let raw_mentions = scanner.scan(content);
 
-        // Optimistic Read
-        {
-            let cache = cache_arc.read().await;
-            if let Some((cached_content_hash, cached_scanner_hash, matches)) = cache.get(cid) {
-                if *cached_content_hash == content_hash && *cached_scanner_hash == scanner_hash {
-                    return matches.clone();
-                }
-            }
-        }
-
-        // Scan (CPU intensive, done without lock)
-        let matches = scanner.scan(content);
+        // Index Words
+        let indexer = WordIndexer::new(content);
+        let mentions_with_words: Vec<(usize, usize, Uuid)> = raw_mentions
+            .into_iter()
+            .map(|(char_idx, uuid)| {
+                let word_idx = indexer.get_word_index(char_idx);
+                (char_idx, word_idx, uuid)
+            })
+            .collect();
 
         // Write Cache
         let mut cache = cache_arc.write().await;
         cache.insert(
             cid.to_string(),
-            (content_hash, scanner_hash, matches.clone()),
+            (
+                meta.len,
+                meta.modified,
+                scanner_hash,
+                mentions_with_words.clone(),
+            ),
         );
-        matches
-    }
-
-    // Deprecated / Unused instance method (kept but privatized/renamed if needed, or deleted)
-    // We replaced it with get_mentions_static
-    #[allow(dead_code)]
-    async fn get_mentions_for_chapter_legacy(
-        &self,
-        cid: &str,
-        content: &str,
-        scanner: &CharacterScanner,
-        scanner_hash: u64,
-    ) -> Vec<(usize, Uuid)> {
-        // Deterministic content hash
-        let mut hasher = Sha256::new();
-        hasher.update(content.as_bytes());
-        // Also mix in scanner hash logic?
-        // Ideally cache Key should be (CID + ContentHash + ScannerHash).
-        // But here cache is keyed by CID.
-        // If the scanner changes, the coordinator SHOULD invalidate the content cache or the caller
-        // usually recreates the coordinator?
-        // Actually `state.chapter_content_cache` is global app state.
-        // We suffer a stale cache issue if Scanner changes (e.g. new char added) but Chapter content is same.
-        // We must mix scanner signature into the content hash check or store it.
-        // For now, let's keep it simple: WE MUST re-scan if scanner changed.
-
-        // HOWEVER, the `Coordinator` is ephemeral per request usually?
-        // No, `state` is passed in.
-
-        let hash_result = hasher.finalize();
-        let content_hash = u64::from_le_bytes(
-            hash_result[0..8]
-                .try_into()
-                .expect("Sha256 output is 32 bytes, slice is 8 bytes"),
-        );
-
-        // We really need to verify if the scanner used for the cached mentions is compatible.
-        // For this audit fix, I will assume the caller manages cache invalidation or that collision is rare enough.
-        // Ideally we'd store (content_hash, scanner_hash, mentions).
-
-        // Optimistic Read
-        {
-            let cache = self.content_cache.read().await;
-            if let Some((cached_content_hash, cached_scanner_hash, matches)) = cache.get(cid) {
-                if *cached_content_hash == content_hash && *cached_scanner_hash == scanner_hash {
-                    return matches.clone();
-                }
-            }
-        }
-
-        // Scan (CPU intensive, done without lock)
-        let matches = scanner.scan(content);
-
-        // Write Cache
-        let mut cache = self.content_cache.write().await;
-        cache.insert(
-            cid.to_string(),
-            (content_hash, scanner_hash, matches.clone()),
-        );
-        matches
+        mentions_with_words
     }
 }
 

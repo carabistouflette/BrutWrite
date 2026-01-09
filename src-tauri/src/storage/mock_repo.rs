@@ -1,4 +1,4 @@
-use super::traits::FileRepository;
+use super::traits::{FileMetadata, FileRepository};
 use crate::errors::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -96,5 +96,23 @@ impl FileRepository for MockFileRepository {
             .cloned()
             .collect();
         Ok(paths)
+    }
+
+    async fn get_metadata(&self, path: &Path) -> Result<FileMetadata> {
+        // Ensure file exists first
+        if !self.exists(path).await? {
+            return Err(crate::errors::Error::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "File not found in mock",
+            )));
+        }
+
+        // Return dummy metadata since our mock doesn't track modification time/size strictly
+        // or we could calculate size from content.
+        let len = self.get_content(path).map(|c| c.len() as u64).unwrap_or(0);
+        Ok(FileMetadata {
+            len,
+            modified: 1000,
+        })
     }
 }
