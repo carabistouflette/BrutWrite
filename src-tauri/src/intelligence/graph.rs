@@ -10,6 +10,8 @@ use super::models::{
 // Configuration
 // =============================================================================
 
+pub type CachedMentions = std::sync::Arc<Vec<(usize, usize, uuid::Uuid)>>;
+
 #[derive(Debug, Clone, Copy)]
 pub struct GraphWeights {
     pub protagonist: f32,
@@ -57,7 +59,7 @@ fn proximity_bonus(word_distance: usize, proximity_window: usize, base_bonus: f3
 /// Optimized builder that uses pre-scanned mentions and integer-based indexing
 pub fn build_character_graph_cached(
     metadata: &ProjectMetadata,
-    chapter_mentions: &HashMap<String, Vec<(usize, usize, uuid::Uuid)>>,
+    chapter_mentions: &HashMap<String, CachedMentions>,
     proximity_window: usize,
     prune_threshold: f32,
     custom_weights: Option<GraphWeights>,
@@ -80,12 +82,15 @@ pub fn build_character_graph_cached(
 
     let weights = custom_weights.unwrap_or_default();
 
-    // 1. Map Character IDs to Integers for O(1) array access and cheap copying
+    // 1. Map Character IDs to Integers for O(1) array access
     let char_id_to_idx: HashMap<uuid::Uuid, usize> = characters
         .iter()
         .enumerate()
         .map(|(i, c)| (c.id, i))
         .collect();
+
+    // Pre-allocate String IDs for O(1) access during edge creation
+    let char_id_strings: Vec<String> = characters.iter().map(|c| c.id.to_string()).collect();
 
     let mut mention_counts: Vec<u32> = vec![0; n_chars];
     let mut first_mentions: Vec<Option<MentionLocation>> = vec![None; n_chars];
@@ -104,7 +109,7 @@ pub fn build_character_graph_cached(
         // Transform mentions to (word_index, char_index)
         let mut linear_mentions: Vec<(usize, usize, usize)> = Vec::with_capacity(mentions.len());
 
-        for (char_offset, word_idx, char_uuid) in mentions {
+        for (char_offset, word_idx, char_uuid) in mentions.iter() {
             if let Some(&idx) = char_id_to_idx.get(char_uuid) {
                 mention_counts[idx] += 1;
 
@@ -165,7 +170,7 @@ pub fn build_character_graph_cached(
             let count = mention_counts[i];
             let valence = (1.0 + count as f32).ln() * role_weight(&c.role, &weights);
             GraphNode {
-                id: c.id.to_string(),
+                id: c.id.to_string(), // Keep original logic here, executed N times (cheap)
                 label: c.name.clone(),
                 valence,
                 mention_count: count,
@@ -194,9 +199,9 @@ pub fn build_character_graph_cached(
             connected_indices.insert(i);
             connected_indices.insert(j);
 
-            // Safe unwrap because indices come from range 0..n_chars
-            let id_a = characters[i].id.to_string();
-            let id_b = characters[j].id.to_string();
+            // Use pre-allocated strings
+            let id_a = char_id_strings[i].clone();
+            let id_b = char_id_strings[j].clone();
 
             let interaction_type = type_matrix[idx]
                 .clone()

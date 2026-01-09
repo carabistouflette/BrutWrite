@@ -75,7 +75,8 @@ mod tests {
         prune: f32,
         scanner: Option<&CharacterScanner>,
     ) -> CharacterGraphPayload {
-        let mut chapter_mentions = HashMap::new();
+        let mut chapter_mentions: HashMap<String, std::sync::Arc<Vec<(usize, usize, uuid::Uuid)>>> =
+            HashMap::new();
 
         if let Some(s) = scanner {
             for (id, content) in chapters {
@@ -87,7 +88,7 @@ mod tests {
                     .map(|(char_idx, uuid)| (char_idx, indexer.get_word_index(char_idx), uuid))
                     .collect();
 
-                chapter_mentions.insert(id.clone(), mentions);
+                chapter_mentions.insert(id.clone(), std::sync::Arc::new(mentions));
             }
         }
 

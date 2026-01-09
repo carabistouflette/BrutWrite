@@ -20,7 +20,8 @@ use uuid::Uuid;
 /// Note: Hash is now storing 64 bits derived from SHA256 for efficient checking,
 /// but the calculation is deterministic.
 pub type IntelligenceCache = RwLock<HashMap<Uuid, (u64, Arc<CharacterScanner>)>>;
-pub type ChapterContentCache = RwLock<HashMap<String, (u64, u64, u64, Vec<(usize, usize, Uuid)>)>>;
+pub type ChapterContentCache =
+    RwLock<HashMap<String, (u64, u64, u64, Arc<Vec<(usize, usize, Uuid)>>)>>;
 
 const MAX_CONCURRENT_TASKS: usize = 4;
 
@@ -135,7 +136,7 @@ impl IntelligenceCoordinator {
         scanner: Arc<CharacterScanner>,
         scanner_hash: u64,
         options: &AnalysisOptions,
-    ) -> crate::errors::Result<HashMap<String, Vec<(usize, usize, Uuid)>>> {
+    ) -> crate::errors::Result<HashMap<String, Arc<Vec<(usize, usize, Uuid)>>>> {
         let repo = LocalFileRepository;
         let mut tasks = Vec::new();
 
@@ -174,7 +175,7 @@ impl IntelligenceCoordinator {
                     Ok(m) => m,
                     Err(e) => {
                         log::error!("Failed to get metadata for chapter {}: {}", cid_clone, e);
-                        return (cid_clone, Vec::new());
+                        return (cid_clone, Arc::new(Vec::new()));
                     }
                 };
 
@@ -211,12 +212,12 @@ impl IntelligenceCoordinator {
                     Ok(c) => c,
                     Err(e) => {
                         log::error!("Failed to read chapter {}: {}", cid_clone, e);
-                        return (cid_clone, Vec::new());
+                        return (cid_clone, Arc::new(Vec::new()));
                     }
                 };
 
                 if content.is_empty() {
-                    return (cid_clone, vec![]);
+                    return (cid_clone, Arc::new(vec![]));
                 }
 
                 let mentions = Self::scan_and_cache(
@@ -257,7 +258,7 @@ impl IntelligenceCoordinator {
         meta: FileMetadata,
         scanner: &CharacterScanner,
         scanner_hash: u64,
-    ) -> Vec<(usize, usize, Uuid)> {
+    ) -> Arc<Vec<(usize, usize, Uuid)>> {
         // Scan
         let raw_mentions = scanner.scan(content);
 
@@ -273,16 +274,12 @@ impl IntelligenceCoordinator {
 
         // Write Cache
         let mut cache = cache_arc.write().await;
+        let mentions_arc = Arc::new(mentions_with_words);
         cache.insert(
             cid.to_string(),
-            (
-                meta.len,
-                meta.modified,
-                scanner_hash,
-                mentions_with_words.clone(),
-            ),
+            (meta.len, meta.modified, scanner_hash, mentions_arc.clone()),
         );
-        mentions_with_words
+        mentions_arc
     }
 }
 
