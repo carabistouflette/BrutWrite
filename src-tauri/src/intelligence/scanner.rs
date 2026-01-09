@@ -1,5 +1,6 @@
 use crate::models::Character;
 use aho_corasick::{AhoCorasick, MatchKind};
+use uuid::Uuid;
 
 pub const MAX_NAME_LEN: usize = 256;
 
@@ -11,7 +12,7 @@ pub struct CharacterScanner {
     /// Maps pattern index from AC -> index in `ids` vector
     pattern_to_char_idx: Vec<usize>,
     /// Unique character IDs
-    ids: Vec<String>,
+    ids: Vec<Uuid>,
     /// Bitmask indicating which patterns require strict word boundary checks.
     requires_boundary: Vec<bool>,
 }
@@ -31,6 +32,7 @@ impl CharacterScanner {
                 );
             }
             let safe_name = c.name[..c.name.len().min(MAX_NAME_LEN)].to_lowercase();
+            // We still need the string ID for pattern matching data-id attributes
             let id_str = c.id.to_string();
 
             // 1. Literal Name (Requires \b checks)
@@ -66,8 +68,8 @@ impl CharacterScanner {
             pattern_to_char_idx.push(i);
             requires_boundary.push(false);
 
-            // Store ID
-            ids.push(id_str);
+            // Store ID as Uuid
+            ids.push(c.id);
         }
 
         if patterns.is_empty() {
@@ -92,7 +94,7 @@ impl CharacterScanner {
     }
 
     /// Scans text and returns mentions as (offset, char_id)
-    pub fn scan(&self, text: &str) -> Vec<(usize, String)> {
+    pub fn scan(&self, text: &str) -> Vec<(usize, Uuid)> {
         let mut mentions = Vec::new();
         // Aho-Corasick find_iter returns non-overlapping matches by default
         for mat in self.ac.find_iter(text) {
@@ -108,7 +110,7 @@ impl CharacterScanner {
             // Map back to ID
             let char_idx = self.pattern_to_char_idx[pattern_idx];
             if let Some(id) = self.ids.get(char_idx) {
-                mentions.push((start, id.clone()));
+                mentions.push((start, *id));
             }
         }
         mentions
@@ -175,15 +177,9 @@ mod tests {
         // Should detect: Robert, Bob, Bobby
         assert_eq!(mentions.len(), 3);
 
-        let found_ids: Vec<String> = mentions.iter().map(|(_, id)| id.clone()).collect();
-        assert_eq!(
-            found_ids,
-            vec![
-                id1_str.to_string(),
-                id1_str.to_string(),
-                id1_str.to_string()
-            ]
-        );
+        let found_ids: Vec<Uuid> = mentions.iter().map(|(_, id)| *id).collect();
+        let expected_uuid = uuid::Uuid::parse_str(id1_str).unwrap();
+        assert_eq!(found_ids, vec![expected_uuid, expected_uuid, expected_uuid]);
 
         // Verify names/offsets
         // "Robert" at 0

@@ -10,7 +10,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-/// Cache Types
+// Cache Types
 /// Keys:
 /// - IntelligenceCache: Project ID -> (Hash of Characters, Scanner)
 /// - ChapterContentCache: Chapter ID -> (Hash of Content, Mentions)
@@ -18,7 +18,7 @@ use uuid::Uuid;
 /// Note: Hash is now storing 64 bits derived from SHA256 for efficient checking,
 /// but the calculation is deterministic.
 pub type IntelligenceCache = RwLock<HashMap<Uuid, (u64, CharacterScanner)>>;
-pub type ChapterContentCache = RwLock<HashMap<String, (u64, u64, Vec<(usize, String)>)>>;
+pub type ChapterContentCache = RwLock<HashMap<String, (u64, u64, Vec<(usize, Uuid)>)>>;
 
 pub struct IntelligenceCoordinator {
     scanner_cache: Arc<IntelligenceCache>,
@@ -58,9 +58,12 @@ impl IntelligenceCoordinator {
         // 2. Initialize Scanner (Cached)
         let (scanner, scanner_hash) = self.get_or_create_scanner(project_id, metadata).await?;
 
+        // Wrap scanner in Arc for cheap cloning across threads
+        let scanner_arc = Arc::new(scanner);
+
         // 3. Process Chapters
         let (chapter_texts, chapter_mentions) = self
-            .process_chapters(root_path, metadata, &scanner, scanner_hash, &options)
+            .process_chapters(root_path, metadata, scanner_arc, scanner_hash, &options)
             .await?;
 
         // 4. Build Graph
@@ -127,13 +130,10 @@ impl IntelligenceCoordinator {
         &self,
         root_path: &std::path::Path,
         metadata: &ProjectMetadata,
-        scanner: &CharacterScanner,
+        scanner: Arc<CharacterScanner>,
         scanner_hash: u64,
         options: &AnalysisOptions,
-    ) -> crate::errors::Result<(
-        HashMap<String, String>,
-        HashMap<String, Vec<(usize, String)>>,
-    )> {
+    ) -> crate::errors::Result<(HashMap<String, String>, HashMap<String, Vec<(usize, Uuid)>>)> {
         let repo = LocalFileRepository;
         let mut tasks = Vec::new();
 
@@ -160,7 +160,7 @@ impl IntelligenceCoordinator {
         for (cid, path) in tasks {
             let repo = repo.clone();
             let content_cache = self.content_cache.clone();
-            let scanner = scanner.clone();
+            let scanner = scanner.clone(); // Arc clone
             let cid_clone = cid.clone();
 
             join_set.spawn(async move {
@@ -216,7 +216,7 @@ impl IntelligenceCoordinator {
         content: &str,
         scanner: &CharacterScanner,
         scanner_hash: u64,
-    ) -> Vec<(usize, String)> {
+    ) -> Vec<(usize, Uuid)> {
         // Deterministic content hash
         let mut hasher = Sha256::new();
         hasher.update(content.as_bytes());
@@ -258,7 +258,7 @@ impl IntelligenceCoordinator {
         content: &str,
         scanner: &CharacterScanner,
         scanner_hash: u64,
-    ) -> Vec<(usize, String)> {
+    ) -> Vec<(usize, Uuid)> {
         // Deterministic content hash
         let mut hasher = Sha256::new();
         hasher.update(content.as_bytes());

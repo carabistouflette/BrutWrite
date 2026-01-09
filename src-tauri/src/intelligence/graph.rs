@@ -58,7 +58,7 @@ fn proximity_bonus(word_distance: usize, proximity_window: usize, base_bonus: f3
 pub fn build_character_graph_cached(
     metadata: &ProjectMetadata,
     chapter_contents: &HashMap<String, String>,
-    chapter_mentions: &HashMap<String, Vec<(usize, String)>>,
+    chapter_mentions: &HashMap<String, Vec<(usize, uuid::Uuid)>>,
     proximity_window: usize,
     prune_threshold: f32,
     custom_weights: Option<GraphWeights>,
@@ -82,10 +82,10 @@ pub fn build_character_graph_cached(
     let weights = custom_weights.unwrap_or_default();
 
     // 1. Map Character IDs to Integers for O(1) array access and cheap copying
-    let char_id_to_idx: HashMap<String, usize> = characters
+    let char_id_to_idx: HashMap<uuid::Uuid, usize> = characters
         .iter()
         .enumerate()
-        .map(|(i, c)| (c.id.to_string(), i))
+        .map(|(i, c)| (c.id, i))
         .collect();
 
     let mut mention_counts: Vec<u32> = vec![0; n_chars];
@@ -114,7 +114,6 @@ pub fn build_character_graph_cached(
         let word_indexer = WordIndexer::new(content);
 
         // Transform mentions to (word_index, char_index)
-        // This avoids string cloning in the loop
         let mut linear_mentions: Vec<(usize, usize, usize)> = Vec::with_capacity(mentions.len());
 
         for (char_offset, char_uuid) in mentions {
@@ -217,10 +216,17 @@ pub fn build_character_graph_cached(
     // 6. Metrics
     let mut uf = UnionFind::new(n_chars);
     for edge in &edges {
-        if let (Some(&i), Some(&j)) = (
-            char_id_to_idx.get(&edge.source),
-            char_id_to_idx.get(&edge.target),
-        ) {
+        // Here we're using String IDs from edges to lookup index in char_id_to_idx (which is now Uuid based).
+        // This is a disconnect. Graph building logic (UF) relies on indices anyway.
+        // We already know indices idx_a and idx_b when creating edges.
+        // But the loop iterates edges.
+        // Let's re-parse or easier:
+        // Use the indices we know? No, edges struct doesn't have them.
+
+        let uuid_a = uuid::Uuid::parse_str(&edge.source).unwrap_or_default();
+        let uuid_b = uuid::Uuid::parse_str(&edge.target).unwrap_or_default();
+
+        if let (Some(&i), Some(&j)) = (char_id_to_idx.get(&uuid_a), char_id_to_idx.get(&uuid_b)) {
             uf.union(i, j);
         }
     }
@@ -229,8 +235,10 @@ pub fn build_character_graph_cached(
     let connected_components = component_sizes.len() as u32;
     let largest_component_size = component_sizes.iter().copied().max().unwrap_or(0);
 
-    let connected_chars: HashSet<&String> =
-        edges.iter().flat_map(|e| [&e.source, &e.target]).collect();
+    let connected_chars: HashSet<String> = edges
+        .iter()
+        .flat_map(|e| [e.source.clone(), e.target.clone()])
+        .collect();
     let isolated_count = characters
         .iter()
         .filter(|c| !connected_chars.contains(&c.id.to_string()))
