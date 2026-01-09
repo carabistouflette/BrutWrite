@@ -21,8 +21,13 @@ const style = computed(() => {
   return {
     top: `${props.y}px`,
     left: `${props.x}px`,
+    // Apply scale to content, but keep position absolute.
+    // Using transform on fixed element can be tricky with hit-testing if not careful.
     transform: `scale(${scale})`,
     transformOrigin: 'top left',
+    maxHeight: `calc(100vh - ${props.y}px - 20px)`, // Prevent going off screen bottom
+    overflowY: 'auto' as const, // Fix TypeScript literal type
+    maxWidth: '300px',
   };
 });
 
@@ -62,7 +67,7 @@ const handleClose = () => {
 @reference "../../style.css";
 
 .context-menu-glass {
-  @apply bg-paper/90 backdrop-blur-xl;
+  @apply bg-paper/95;
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
   border: 1px solid theme('colors.ink / 10%');
 }

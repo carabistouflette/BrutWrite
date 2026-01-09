@@ -4,6 +4,8 @@ import { EditorContent } from '@tiptap/vue-3';
 import { useTiptapEditor } from '../../composables/editor/useTiptapEditor';
 import { APP_CONSTANTS } from '../../config/constants';
 import type { EditorSettings } from '../../config/defaultSettings';
+import CharacterAssociationMenu from './CharacterAssociationMenu.vue';
+import { useCharacters } from '../../composables/domain/characters/useCharacters';
 
 const props = defineProps<{
   id: string;
@@ -25,6 +27,85 @@ const emit = defineEmits<{
 }>();
 
 const isDirtyModel = defineModel<boolean>('isDirty', { default: false });
+
+// --- Characters & Association ---
+const { characters, addAliasToCharacter, removeAliasFromCharacter } = useCharacters();
+const showAssociationMenu = ref(false);
+const associationMenuPos = ref({ x: 0, y: 0 });
+const selectedTextForAssociation = ref('');
+
+const closeAssociationMenu = () => {
+  showAssociationMenu.value = false;
+  selectedTextForAssociation.value = '';
+};
+
+const selectedTextMenuRange = ref<{ from: number; to: number } | null>(null);
+
+// Handle right-click on editor
+const handleContextMenu = (e: MouseEvent) => {
+  const selection = window.getSelection();
+  if (selection && selection.toString().trim().length > 0) {
+    e.preventDefault();
+    selectedTextForAssociation.value = selection.toString().trim().slice(0, 30); // Max 30 chars
+
+    // Capture Tiptap selection to ensure we mark the correct range
+    if (editor.value) {
+      const { from, to } = editor.value.state.selection;
+      selectedTextMenuRange.value = { from, to };
+    }
+
+    associationMenuPos.value = { x: e.clientX, y: e.clientY };
+    showAssociationMenu.value = true;
+  }
+};
+
+const associateCharacter = async (characterId: string) => {
+  console.log('Associating text:', selectedTextForAssociation.value, 'with char:', characterId);
+  try {
+    await addAliasToCharacter(props.projectId, characterId, selectedTextForAssociation.value);
+
+    // Apply visual highlight immediately
+    if (editor.value && selectedTextMenuRange.value) {
+      editor.value
+        .chain()
+        .setTextSelection(selectedTextMenuRange.value)
+        .setMark('characterMention', { id: characterId })
+        .run();
+    }
+
+    closeAssociationMenu();
+  } catch (e) {
+    console.error('Association failed:', e);
+  }
+};
+
+const removeAssociation = async () => {
+  console.log('Removing association for text:', selectedTextForAssociation.value);
+  try {
+    await removeAliasFromCharacter(props.projectId, selectedTextForAssociation.value);
+
+    // Remove visual highlight immediately
+    if (editor.value && selectedTextMenuRange.value) {
+      editor.value
+        .chain()
+        .setTextSelection(selectedTextMenuRange.value)
+        .unsetMark('characterMention')
+        .run();
+    }
+
+    closeAssociationMenu();
+  } catch (e) {
+    console.error('Removal failed:', e);
+  }
+};
+
+// Global click to close menu
+onMounted(() => {
+  window.addEventListener('click', closeAssociationMenu);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('click', closeAssociationMenu);
+});
 
 // --- Title Logic ---
 const editableTitle = ref(props.title);
@@ -123,8 +204,21 @@ defineExpose({
     class="h-full w-full overflow-y-auto scroll-smooth bg-transparent relative"
     :class="{ 'focus-mode': props.editorSettings.focusMode }"
     @click="handleResearchClick"
+    @contextmenu="handleContextMenu"
   >
-    <!-- Brutalist Editor Area -->
+    <!-- Character Association Menu -->
+    <CharacterAssociationMenu
+      v-if="showAssociationMenu"
+      :x="associationMenuPos.x"
+      :y="associationMenuPos.y"
+      :selected-text="selectedTextForAssociation"
+      :characters="characters"
+      @select-character="associateCharacter"
+      @remove-association="removeAssociation"
+      @close="closeAssociationMenu"
+    />
+
+    <!-- Editor Area -->
     <div
       class="mx-auto py-24 min-h-[150vh] cursor-text transition-all duration-500"
       :style="editorStyles"

@@ -22,6 +22,14 @@ export default {
       boxShadow: {
         brut: '4px 4px 0px 0px rgba(0,0,0,1)',
       },
+      zIndex: {
+        base: '0',
+        dock: '10',
+        dialog: '50',
+        tooltip: '100',
+        toast: '900',
+        max: '9999',
+      },
     },
   },
   plugins: [typography],

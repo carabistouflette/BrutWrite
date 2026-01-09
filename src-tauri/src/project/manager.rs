@@ -71,6 +71,17 @@ impl ProjectManager {
         name: String,
         author: String,
     ) -> crate::errors::Result<models::ProjectMetadata> {
+        if name.trim().is_empty() || name.len() > 100 {
+            return Err(crate::errors::Error::Validation(
+                "Project name must be between 1 and 100 characters".to_string(),
+            ));
+        }
+        if author.trim().len() > 100 {
+            return Err(crate::errors::Error::Validation(
+                "Author name must be under 100 characters".to_string(),
+            ));
+        }
+
         let metadata = storage::create_project_structure(&path, &name, &author).await?;
         self.register_project(metadata.id, path.clone(), metadata.clone())
             .await;
@@ -141,7 +152,10 @@ mod tests {
             .register_project(project_id, path.clone(), metadata)
             .await;
 
-        let (retrieved_path, _metadata_arc) = manager.get_context(project_id).await.unwrap();
+        let (retrieved_path, _metadata_arc) = manager
+            .get_context(project_id)
+            .await
+            .expect("Project should be retrievable after registration");
         assert_eq!(retrieved_path, path);
     }
 

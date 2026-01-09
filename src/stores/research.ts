@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { listen } from '@tauri-apps/api/event';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { researchApi, type ResearchArtifact } from '../api/research';
 import { APP_CONSTANTS } from '../config/constants';
 import { useAppStatus } from '../composables/ui/useAppStatus';
@@ -10,6 +10,9 @@ export const useResearchStore = defineStore('research', () => {
   const activeArtifact = ref<ResearchArtifact | null>(null);
   const { notifyError } = useAppStatus();
   const isLoading = ref(false);
+
+  // Store unlisten function to prevent memory leaks
+  let unlistenResearchUpdate: UnlistenFn | null = null;
 
   async function fetchArtifacts() {
     isLoading.value = true;
@@ -95,10 +98,27 @@ export const useResearchStore = defineStore('research', () => {
     }
   }
 
-  // Listen for backend updates
-  listen(APP_CONSTANTS.EVENTS.RESEARCH_UPDATE, () => {
-    fetchArtifacts();
-  });
+  // Setup event listener with proper cleanup
+  async function setupListener() {
+    // Clean up any existing listener first
+    if (unlistenResearchUpdate) {
+      unlistenResearchUpdate();
+    }
+    unlistenResearchUpdate = await listen(APP_CONSTANTS.EVENTS.RESEARCH_UPDATE, () => {
+      fetchArtifacts();
+    });
+  }
+
+  // Dispose function to clean up listeners (call when store is no longer needed)
+  function dispose() {
+    if (unlistenResearchUpdate) {
+      unlistenResearchUpdate();
+      unlistenResearchUpdate = null;
+    }
+  }
+
+  // Initialize listener
+  setupListener();
 
   return {
     artifacts,
@@ -112,5 +132,6 @@ export const useResearchStore = defineStore('research', () => {
     saveNoteContent,
     renameArtifact,
     deleteArtifact,
+    dispose,
   };
 });

@@ -1,4 +1,4 @@
-use super::traits::FileRepository;
+use super::traits::{FileMetadata, FileRepository};
 use crate::errors::Result;
 use async_trait::async_trait;
 use std::path::Path;
@@ -18,7 +18,7 @@ impl FileRepository for LocalFileRepository {
     }
 
     async fn exists(&self, path: &Path) -> Result<bool> {
-        Ok(tokio::fs::try_exists(path).await.unwrap_or(false))
+        Ok(tokio::fs::try_exists(path).await?)
     }
 
     async fn delete(&self, path: &Path) -> Result<()> {
@@ -40,5 +40,17 @@ impl FileRepository for LocalFileRepository {
             paths.push(entry.path());
         }
         Ok(paths)
+    }
+
+    async fn get_metadata(&self, path: &Path) -> Result<FileMetadata> {
+        let meta = tokio::fs::metadata(path).await?;
+        let len = meta.len();
+        let modified = meta
+            .modified()
+            .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        Ok(FileMetadata { len, modified })
     }
 }

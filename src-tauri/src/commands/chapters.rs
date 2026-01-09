@@ -1,5 +1,6 @@
 use crate::models::ProjectMetadata;
 use crate::storage;
+use crate::validation;
 use crate::AppState;
 use tauri::State;
 use uuid::Uuid;
@@ -25,6 +26,9 @@ pub async fn save_chapter(
     chapter_id: String,
     content: String,
 ) -> crate::errors::Result<ProjectMetadata> {
+    // Validate content size to prevent resource exhaustion
+    validation::validate_content_size(&content)?;
+
     let (root_path, metadata_arc) = state.projects.get_context(project_id).await?;
     let mut metadata = metadata_arc.lock().await;
 

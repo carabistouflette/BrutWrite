@@ -4,14 +4,36 @@ use crate::errors::{Error, Result};
 use crate::models::ProjectMetadata;
 use std::path::{Path, PathBuf};
 
+/// Helper to resolve internal path from a known filename. Pure logic.
+pub fn resolve_chapter_path_from_filename<P: AsRef<Path>>(
+    root_path: P,
+    filename: &str,
+) -> Result<PathBuf> {
+    let root = root_path.as_ref();
+    let path = Path::new(filename);
+
+    // Security: Strictly validate components to prevent traversal or absolute path injection
+    for component in path.components() {
+        match component {
+            std::path::Component::Normal(_) => {}
+            std::path::Component::CurDir => {} // "." is fine
+            _ => {
+                // ParentDir (..), RootDir (/), or Prefix (C:) are not allowed
+                return Err(Error::ChapterNotFound {
+                    id: format!("Invalid filename: {}", filename),
+                });
+            }
+        }
+    }
+    Ok(root.join(MANUSCRIPT_DIR).join(path))
+}
+
 /// Helper to resolve internal path. Pure logic.
 pub fn resolve_chapter_path<P: AsRef<Path>>(
     root_path: P,
     metadata: &ProjectMetadata,
     chapter_id: &str,
 ) -> Result<PathBuf> {
-    let root = root_path.as_ref();
-
     let filename = metadata
         .manifest
         .chapters
@@ -20,7 +42,7 @@ pub fn resolve_chapter_path<P: AsRef<Path>>(
         .map(|c| c.filename.clone());
 
     if let Some(fname) = filename {
-        Ok(root.join(MANUSCRIPT_DIR).join(fname))
+        resolve_chapter_path_from_filename(root_path, &fname)
     } else {
         Err(Error::ChapterNotFound {
             id: chapter_id.to_string(),

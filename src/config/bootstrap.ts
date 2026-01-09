@@ -1,6 +1,6 @@
 import { useSettingsStore } from '../stores/settings';
-import { useProjectIO } from '../composables/domain/project/useProjectIO';
 import { useProjectSession } from '../composables/domain/project/useProjectSession';
+import { useProjectLoader } from '../composables/domain/project/useProjectLoader';
 import { useTheme } from '../composables/ui/useTheme';
 import { useAppStatus } from '../composables/ui/useAppStatus';
 
@@ -10,7 +10,7 @@ import { useAppStatus } from '../composables/ui/useAppStatus';
  */
 export async function initApp() {
   const settingsStore = useSettingsStore();
-  const { loadProject } = useProjectIO();
+  const { loadProject } = useProjectLoader();
   const { restoreSession, setupAutoSave } = useProjectSession();
   const { initTheme } = useTheme();
 
@@ -29,7 +29,7 @@ export async function initApp() {
     if (lastPath) {
       const restored = restoreSession(lastPath);
       if (restored) {
-        console.debug('Session restored from cache', lastPath);
+        // Session restored from cache
       }
     }
 
@@ -37,8 +37,7 @@ export async function initApp() {
       settingsStore.loadSettings(),
       lastPath
         ? (async () => {
-            // Even if restored, we fetch fresh data
-            console.debug('Loading fresh project data:', lastPath);
+            // Loading fresh project data
             await loadProject(lastPath);
           })()
         : Promise.resolve(),

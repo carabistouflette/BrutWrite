@@ -109,7 +109,11 @@ pub async fn branch_snapshot(
 
     // 2. Create new chapter in manifest (Branching off)
     // We can name it "Branch from <date>" or similar.
-    let timestamp = snapshot_filename.split('_').next().unwrap_or("snapshot");
+    let timestamp = snapshot_filename
+        .split('_')
+        .next()
+        .filter(|s| !s.is_empty())
+        .unwrap_or("snapshot");
     let name = format!("Branch from {}", timestamp);
 
     // Find parent_id of the original chapter to place the branch as a sibling

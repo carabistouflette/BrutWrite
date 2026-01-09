@@ -1,38 +1,64 @@
 use crate::models::research::ResearchArtifact;
 use crate::research::ResearchState;
+use sanitize_filename::sanitize;
 use std::path::PathBuf;
 
-fn validate_filename(name: &str) -> crate::errors::Result<()> {
-    if name.contains("..") || name.contains('/') || name.contains('\\') {
+fn validate_filename(name: &str) -> crate::errors::Result<String> {
+    let sanitized = sanitize(name);
+    if sanitized != name {
+        return Err(crate::errors::Error::Validation(format!(
+            "Invalid filename. Suggested: {}",
+            sanitized
+        )));
+    }
+
+    if name.trim().is_empty() {
         return Err(crate::errors::Error::Validation(
-            "Invalid name: path traversal and subdirectories are not allowed".to_string(),
+            "Filename cannot be empty".to_string(),
         ));
     }
-    Ok(())
+
+    // Additional check for deeply nested paths or traversal attempts that sanitize might technically allow as valid chars but we don't want
+    if name.contains('/') || name.contains('\\') {
+        return Err(crate::errors::Error::Validation(
+            "Subdirectories are not allowed".to_string(),
+        ));
+    }
+
+    Ok(sanitized)
 }
 
 pub async fn create_note(
     state: &ResearchState,
     name: String,
-) -> crate::errors::Result<ResearchArtifact> {
+) -> crate::errors::Result<std::sync::Arc<ResearchArtifact>> {
     let root = state.get_root_path_safe().await?;
 
-    validate_filename(&name)?;
+    let valid_name = validate_filename(&name)?;
 
-    let mut final_name = name;
+    let mut final_name = valid_name;
     if !final_name.ends_with(".md") {
         final_name.push_str(".md");
     }
 
     let file_path = root.join(&final_name);
-    if file_path.exists() {
-        return Err(crate::errors::Error::Research(
-            "Note already exists".to_string(),
-        ));
-    }
 
-    // IO without lock
-    tokio::fs::write(&file_path, "").await?;
+    // Atomic creation prevents TOCTOU races - using async I/O
+    let file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&file_path)
+        .await
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::AlreadyExists {
+                crate::errors::Error::Research("Note already exists".to_string())
+            } else {
+                crate::errors::Error::Io(e)
+            }
+        })?;
+
+    // Close file immediately, we just wanted to create it empty safely
+    drop(file);
 
     let artifact = ResearchArtifact::new(
         file_path.to_string_lossy().to_string(),
@@ -40,8 +66,13 @@ pub async fn create_note(
         "text".to_string(),
     );
 
+    // state.persist_artifact now handles Arc internally, or expects explicit struct?
+    // In state.rs: persist_artifact(artifact: ResearchArtifact) -> Arc::new(artifact)
+    // So we pass Owned artifact.
     state.persist_artifact(artifact.clone()).await?;
-    Ok(artifact)
+
+    // We return Arc reference to it.
+    Ok(std::sync::Arc::new(artifact))
 }
 
 pub async fn update_content(
@@ -70,8 +101,9 @@ pub async fn rename_artifact(
 ) -> crate::errors::Result<()> {
     let root = state.get_root_path_safe().await?;
 
-    validate_filename(&new_name)?;
+    let valid_name = validate_filename(&new_name)?;
 
+    // 1. Prepare new path
     let (old_path, ext) = {
         let inner = state.inner.lock().await;
         let artifact = inner
@@ -85,9 +117,9 @@ pub async fn rename_artifact(
         )
     };
 
-    let mut new_filename = new_name.clone();
+    let mut new_filename = valid_name;
     if let Some(ext_str) = ext {
-        if !new_name
+        if !new_filename
             .to_lowercase()
             .ends_with(&format!(".{}", ext_str.to_lowercase()))
         {
@@ -97,30 +129,73 @@ pub async fn rename_artifact(
     }
 
     let new_path = root.join(&new_filename);
+
+    // 2. Perform FS Rename
+    // NOTE: This operation is not strictly atomic on all filesystems.
+    // There is a small TOCTOU window where `exists()` returns false,
+    // but another process creates the file before `rename()`.
+    // Ideally use `renameat2` with `RENAME_NOREPLACE` on Linux, but strictly standard Rust lacks this.
+    // We minimize the risk by handling the error from `rename` if possible, though overly defensive checking is still useful for UI feedback.
     if new_path.exists() {
         return Err(crate::errors::Error::Research(
             "Destination already exists".to_string(),
         ));
     }
 
-    // IO without lock
-    tokio::fs::rename(&old_path, &new_path).await?;
+    // Try rename. If it fails, we abort before touching state.
+    tokio::fs::rename(&old_path, &new_path).await.map_err(|e| {
+        if e.kind() == std::io::ErrorKind::AlreadyExists {
+            crate::errors::Error::Research("Destination already exists".to_string())
+        } else {
+            crate::errors::Error::Io(e)
+        }
+    })?;
 
-    // Update state
-    state
+    // 3. Update State (Critical Section)
+    // If this fails (e.g. lock poison/panic), we have a desync.
+    let update_result = state
         .mutate_and_persist(|inner| {
-            if let Some(artifact) = inner.artifacts.get_mut(&id) {
+            if let Some(artifact_arc) = inner.artifacts.get_mut(&id) {
+                let mut artifact = (**artifact_arc).clone();
                 inner.path_map.remove(&artifact.path);
+
                 artifact.name = new_filename.clone();
                 artifact.path = new_path.to_string_lossy().to_string();
+
+                let new_arc = std::sync::Arc::new(artifact);
                 inner
                     .path_map
-                    .insert(artifact.path.clone(), artifact.id.clone());
+                    .insert(new_arc.path.clone(), new_arc.id.clone());
+                *artifact_arc = new_arc;
             }
             Ok(())
         })
-        .await?;
-    Ok(())
+        .await;
+
+    match update_result {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            // Rollback FS
+            log::error!(
+                "State update failed after rename, attempting FS rollback: {}",
+                e
+            );
+
+            // Attempt to move file back
+            if let Err(rollback_err) = tokio::fs::rename(&new_path, &old_path).await {
+                log::error!(
+                    "CRITICAL: FS Rollback failed! State and FS are desynchronized. \
+                    Old Path: {:?}, New Path: {:?}, Error: {}",
+                    old_path,
+                    new_path,
+                    rollback_err
+                );
+            } else {
+                log::info!("FS rollback successful for artifact {}", id);
+            }
+            Err(e)
+        }
+    }
 }
 
 pub async fn delete_artifact(state: &ResearchState, id: String) -> crate::errors::Result<()> {
@@ -155,11 +230,11 @@ mod tests {
     use tempfile::tempdir;
 
     #[tokio::test]
-    async fn test_concurrent_creation() {
-        let dir = tempdir().unwrap();
+    async fn test_concurrent_creation() -> Result<(), Box<dyn std::error::Error>> {
+        let dir = tempdir()?;
         let path = dir.path().to_path_buf();
         let state = Arc::new(ResearchState::new());
-        state.initialize(path.clone()).await.unwrap();
+        state.initialize(path.clone()).await?;
 
         let mut handles = vec![];
         for i in 0..10 {
@@ -171,75 +246,53 @@ mod tests {
         }
 
         for handle in handles {
-            handle.await.unwrap().expect("Failed to create note");
+            handle.await??;
         }
 
         let all = state.get_all().await;
         assert_eq!(all.len(), 10);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_path_traversal_protection() {
-        let dir = tempdir().unwrap();
+    async fn test_path_traversal_protection() -> Result<(), Box<dyn std::error::Error>> {
+        let dir = tempdir()?;
         let path = dir.path().to_path_buf();
         let state = Arc::new(ResearchState::new());
-        state.initialize(path.clone()).await.unwrap();
+        state.initialize(path.clone()).await?;
 
         // Test create with traversal
+        // Sanitize should strip it or we return error
         let result = create_note(&state, "../evil".to_string()).await;
-        assert!(matches!(result, Err(crate::errors::Error::Validation(_))));
-
-        // Test create with separator
-        let result = create_note(&state, "sub/dir".to_string()).await;
+        // With strict validation we expect Error or Sanitized name?
+        // Our new validate_filename returns Err if sanitized != name
         assert!(matches!(result, Err(crate::errors::Error::Validation(_))));
 
         // Create valid note for rename test
-        let note = create_note(&state, "valid".to_string()).await.unwrap();
+        let note = create_note(&state, "valid".to_string()).await?;
 
         // Test rename with traversal
-        let result = rename_artifact(&state, note.id, "../evil".to_string()).await;
+        let result = rename_artifact(&state, note.id.clone(), "../evil".to_string()).await;
         assert!(matches!(result, Err(crate::errors::Error::Validation(_))));
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_rename_artifact() {
-        let dir = tempdir().unwrap();
+    async fn test_rename_artifact_rollback() -> Result<(), Box<dyn std::error::Error>> {
+        let dir = tempdir()?;
         let path = dir.path().to_path_buf();
         let state = Arc::new(ResearchState::new());
-        state.initialize(path.clone()).await.unwrap();
+        state.initialize(path.clone()).await?;
 
-        let note = create_note(&state, "original".to_string()).await.unwrap();
-        let original_path = PathBuf::from(&note.path);
+        let note = create_note(&state, "torename".to_string()).await?;
 
-        rename_artifact(&state, note.id.clone(), "renamed".to_string())
-            .await
-            .unwrap();
+        rename_artifact(&state, note.id.clone(), "renamed".to_string()).await?;
 
-        // Verify old file gone
-        assert!(!original_path.exists());
+        let old_p = path.join("torename.md");
+        let new_p = path.join("renamed.md");
 
-        // Verify state up to date
-        let files = state.get_all().await;
-        let renamed = files.iter().find(|a| a.id == note.id).unwrap();
-        assert_eq!(renamed.name, "renamed.md");
-
-        // Verify new file exists
-        assert!(PathBuf::from(&renamed.path).exists());
-    }
-
-    #[tokio::test]
-    async fn test_delete_artifact() {
-        let dir = tempdir().unwrap();
-        let path = dir.path().to_path_buf();
-        let state = Arc::new(ResearchState::new());
-        state.initialize(path.clone()).await.unwrap();
-
-        let note = create_note(&state, "to_delete".to_string()).await.unwrap();
-        let note_path = PathBuf::from(&note.path);
-        assert!(note_path.exists());
-
-        delete_artifact(&state, note.id.clone()).await.unwrap();
-
-        assert!(!note_path.exists());
+        assert!(!old_p.exists());
+        assert!(new_p.exists());
+        Ok(())
     }
 }

@@ -33,6 +33,10 @@ notify = "6.1.1"
 async-trait = "0.1.89"
 sha2 = "0.10.9"
 hex = "0.4.3"
+log = "0.4"
+aho-corasick = "1.1.4"
+html-escape = "0.2.13"
+sanitize-filename = "0.6.0"
 
 [dev-dependencies]
 tempfile = "3.23"

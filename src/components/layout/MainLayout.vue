@@ -1,69 +1,64 @@
 <script setup lang="ts">
-import { ref, defineAsyncComponent, watch } from 'vue';
+import { ref, defineAsyncComponent } from 'vue';
 import GamificationStatus from '../gamification/GamificationStatus.vue';
 import SidebarController from './SidebarController.vue';
-import { useResizable } from '../../composables/ui/useResizable';
-import { useProjectIO } from '../../composables/domain/project/useProjectIO';
-import { useResearchStore } from '../../stores/research';
+import { useLayoutController } from '../../composables/ui/useLayoutController';
+import { useProjectStore } from '../../stores/project';
 
 const ResearchPanel = defineAsyncComponent(() => import('../research/ResearchPanel.vue'));
 const SettingsModal = defineAsyncComponent(() => import('../settings/SettingsModal.vue'));
 const CharacterSheet = defineAsyncComponent(() => import('../characters/CharacterSheet.vue'));
 const TimelineView = defineAsyncComponent(() => import('../timeline/Timeline.vue'));
+const CharacterGraphModal = defineAsyncComponent(
+  () => import('../intelligence/CharacterGraphModal.vue')
+);
 
-// --- Composables ---
+// Extract layout logic
 const {
-  width: sidebarWidth,
-  isResizing,
-  startResize,
-} = useResizable({
-  initialWidth: 256,
-  minWidth: 200,
-  maxWidth: 600,
-});
+  sidebarWidth,
+  isResizingSidebar,
+  startResizeSidebar,
+  researchWidth,
+  isResizingResearch,
+  startResizeResearch,
+  showSettings,
+  showCharacters,
+  showCharacterGraph,
+  showTimeline,
+  showResearch,
+} = useLayoutController();
 
-const {
-  width: researchWidth,
-  isResizing: isResizingResearch,
-  startResize: startResizeResearch,
-} = useResizable({
-  initialWidth: 400,
-  minWidth: 300,
-  maxWidth: 800,
-  edge: 'right',
-});
-
-const { closeProject } = useProjectIO();
-const researchStore = useResearchStore();
+const projectStore = useProjectStore();
+const { closeProject } = projectStore;
 
 // --- Local State ---
-const showSettings = ref(false);
-const showCharacters = ref(false);
-const showTimeline = ref(false);
-const showResearch = ref(false);
 const isExiting = ref(false);
 
 // --- Event Handlers ---
-const handleChangeProject = async () => {
+let exitTimeout: number | undefined;
+
+const handleChangeProject = () => {
   isExiting.value = true;
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  closeProject();
+  // Safety fallback in case transitionend fails
+  exitTimeout = setTimeout(() => {
+    closeProject();
+  }, 600);
 };
 
-watch(
-  () => researchStore.activeArtifact,
-  (artifact) => {
-    if (artifact && !showResearch.value) {
-      showResearch.value = true;
-    }
+const onExited = (e: TransitionEvent) => {
+  // Only trigger if we are explicitly exiting and for the main opacity transition
+  if (isExiting.value && e.propertyName === 'opacity') {
+    clearTimeout(exitTimeout);
+    closeProject();
   }
-);
+};
 </script>
 
 <template>
   <div
     class="animate-enter flex flex-1 w-full h-full text-ink font-sans overflow-hidden relative transition-all duration-500"
     :class="{ 'opacity-0 scale-95': isExiting }"
+    @transitionend="onExited"
   >
     <!-- Sidebar -->
     <aside
@@ -73,20 +68,17 @@ watch(
       <SidebarController
         @open-settings="showSettings = true"
         @open-characters="showCharacters = true"
+        @open-character-graph="showCharacterGraph = true"
         @open-timeline="showTimeline = !showTimeline"
         @open-research="showResearch = !showResearch"
         @change-project="handleChangeProject"
       />
 
-      <!-- Global Modals (anchored here or elsewhere) -->
-      <SettingsModal :show="showSettings" @close="showSettings = false" />
-      <CharacterSheet :show="showCharacters" @close="showCharacters = false" />
-
       <!-- Resize Handle -->
       <div
         class="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-accent/50 transition-colors z-20"
-        :class="{ 'bg-accent/50': isResizing }"
-        @mousedown="startResize"
+        :class="{ 'bg-accent/50': isResizingSidebar }"
+        @mousedown="startResizeSidebar"
       ></div>
     </aside>
 
@@ -125,6 +117,11 @@ watch(
         <ResearchPanel @close="showResearch = false" />
       </aside>
     </Transition>
+
+    <!-- Global Modals (Moved to root to prevent clipping/z-index issues) -->
+    <SettingsModal :show="showSettings" @close="showSettings = false" />
+    <CharacterSheet :show="showCharacters" @close="showCharacters = false" />
+    <CharacterGraphModal :show="showCharacterGraph" @close="showCharacterGraph = false" />
   </div>
 </template>
 

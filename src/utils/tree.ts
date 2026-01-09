@@ -1,11 +1,14 @@
 import type { FileNode, Manifest, Chapter } from '../types';
 
 export function findNode(nodes: FileNode[], id: string): FileNode | undefined {
-  for (const node of nodes) {
+  const stack = [...nodes];
+  while (stack.length > 0) {
+    const node = stack.pop()!;
     if (node.id === id) return node;
-    if (node.children) {
-      const found = findNode(node.children, id);
-      if (found) return found;
+    if (node.children && node.children.length > 0) {
+      for (const child of node.children) {
+        stack.push(child);
+      }
     }
   }
   return undefined;
@@ -16,10 +19,25 @@ export function traverse(
   callback: (node: FileNode, parentId?: string) => void,
   parentId?: string
 ) {
-  for (const node of nodes) {
-    callback(node, parentId);
-    if (node.children) traverse(node.children, callback, node.id);
+  const stack: { node: FileNode; pid?: string }[] = nodes.map((n) => ({ node: n, pid: parentId }));
+  while (stack.length > 0) {
+    const { node, pid } = stack.pop()!;
+    callback(node, pid);
+    if (node.children && node.children.length > 0) {
+      // Push in reverse order to maintain visual order if popping from end
+      for (let i = node.children.length - 1; i >= 0; i--) {
+        stack.push({ node: node.children[i], pid: node.id });
+      }
+    }
   }
+}
+
+export function buildNodeMap(nodes: FileNode[]): Map<string, FileNode> {
+  const map = new Map<string, FileNode>();
+  traverse(nodes, (node) => {
+    map.set(node.id, node);
+  });
+  return map;
 }
 
 export function deleteFromList(nodes: FileNode[], id: string): boolean {
@@ -84,9 +102,11 @@ export function reconstructHierarchy(chapters: Chapter[]): FileNode[] {
 
   // Second pass: link parents/children
   for (const c of sortedChapters) {
-    const node = nodeMap.get(c.id)!;
-    if (c.parent_id && nodeMap.has(c.parent_id)) {
-      nodeMap.get(c.parent_id)!.children?.push(node);
+    const node = nodeMap.get(c.id);
+    if (!node) continue;
+    if (c.parent_id) {
+      const parent = nodeMap.get(c.parent_id);
+      parent?.children?.push(node);
     } else {
       rootNodes.push(node);
     }

@@ -113,11 +113,13 @@
 </template>
 
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue';
 import { useResearchStore } from '../../stores/research';
-import PDFViewer from './PDFViewer.vue';
 import ImageViewer from './ImageViewer.vue';
 import NoteEditor from './NoteEditor.vue';
 import BaseIcon from '../base/BaseIcon.vue';
+
+const PDFViewer = defineAsyncComponent(() => import('./PDFViewer.vue'));
 
 const store = useResearchStore();
 

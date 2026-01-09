@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
-import { ref, shallowRef, computed, watch } from 'vue';
-import type { FileNode, ProjectSettings, Character, Plotline, ProjectMetadata } from '../types';
-import { reconstructHierarchy } from '../utils/tree';
+import { ref, shallowRef, computed, triggerRef } from 'vue';
+import type { FileNode, ProjectSettings, Character, Plotline } from '../types';
 
 export const useProjectStore = defineStore('project', () => {
   // State
@@ -12,6 +11,9 @@ export const useProjectStore = defineStore('project', () => {
   const settings = ref<ProjectSettings | null>(null);
   const plotlines = ref<Plotline[]>([]);
   const characters = ref<Character[]>([]);
+
+  // Statistics (tracked separately to avoid O(N) traversals on every word count change)
+  const totalWordCount = ref(0);
 
   // Derived State (Optimized Lookups)
   const nodeMap = shallowRef(new Map<string, FileNode>());
@@ -26,16 +28,15 @@ export const useProjectStore = defineStore('project', () => {
     return map;
   });
 
-  // Internal Helper
-  const rebuildMap = (fileNodes: FileNode[]) => {
+  const indexNodes = (fileNodes: FileNode[]) => {
     const map = new Map<string, FileNode>();
-    const list: FileNode[] = [];
+    // Depth-first traversal
+    // Using simple recursion or stack.
     const stack: FileNode[] = [...fileNodes].reverse();
 
     while (stack.length > 0) {
       const node = stack.pop()!;
       map.set(node.id, node);
-      list.push(node);
 
       if (node.children && node.children.length > 0) {
         for (let i = node.children.length - 1; i >= 0; i--) {
@@ -44,11 +45,33 @@ export const useProjectStore = defineStore('project', () => {
       }
     }
     nodeMap.value = map;
-    flatNodes.value = list;
   };
 
-  // Watcher to keep lookups in sync
-  watch(nodes, (newVal) => rebuildMap(newVal), { deep: false });
+  const updateDerived = (fileNodes: FileNode[]) => {
+    // Rebuild flat list and total word count
+    const list: FileNode[] = [];
+    const stack: FileNode[] = [...fileNodes].reverse();
+    let totalWc = 0;
+
+    while (stack.length > 0) {
+      const node = stack.pop()!;
+      list.push(node);
+      totalWc += node.word_count || 0;
+
+      if (node.children && node.children.length > 0) {
+        for (let i = node.children.length - 1; i >= 0; i--) {
+          stack.push(node.children[i]);
+        }
+      }
+    }
+    flatNodes.value = list;
+    totalWordCount.value = totalWc;
+  };
+
+  const rebuildAll = (fileNodes: FileNode[]) => {
+    indexNodes(fileNodes);
+    updateDerived(fileNodes);
+  };
 
   // --- Getters ---
 
@@ -57,28 +80,11 @@ export const useProjectStore = defineStore('project', () => {
     return nodeMap.value.get(activeId.value);
   });
 
-  /**
-   * Get a chapter/node by ID with O(1) complexity.
-   */
   const chapterById = (id: string) => nodeMap.value.get(id);
-
-  /**
-   * Get a character by ID with O(1) complexity.
-   */
   const characterById = (id: string) => characterMap.value.get(id);
-
-  /**
-   * Total word count of all nodes in the project.
-   */
-  const totalWordCount = computed(() => {
-    return flatNodes.value.reduce((sum, node) => sum + (node.word_count || 0), 0);
-  });
 
   // --- Actions ---
 
-  /**
-   * Initialize the store with full project data from the backend.
-   */
   function setProjectData(
     id: string,
     projectPath: string,
@@ -87,29 +93,25 @@ export const useProjectStore = defineStore('project', () => {
   ) {
     projectId.value = id;
     path.value = projectPath;
+
+    // Deep reactive assignment
     nodes.value = fileNodes;
+
+    rebuildAll(fileNodes); // Full rebuild on load
+
     settings.value = projectSettingsData;
-    // Reset active ID on new project load
     activeId.value = undefined;
   }
 
-  /**
-   * Set the currently active node/chapter ID.
-   */
   function setActiveId(id: string | undefined) {
     activeId.value = id;
   }
 
-  /**
-   * Update the entire file structure (manifest).
-   */
   function updateStructure(newNodes: FileNode[]) {
-    nodes.value = newNodes;
+    nodes.value = [...newNodes];
+    rebuildAll(newNodes);
   }
 
-  /**
-   * Clear all project data from the store.
-   */
   function closeProject() {
     projectId.value = undefined;
     path.value = undefined;
@@ -118,39 +120,68 @@ export const useProjectStore = defineStore('project', () => {
     settings.value = null;
     plotlines.value = [];
     characters.value = [];
+    totalWordCount.value = 0;
+
+    localStorage.removeItem('last_opened_project_path');
+
+    // Clear derived state
+    rebuildAll([]);
   }
 
-  // Granular Mutations
+  // Granular Mutations (Optimized)
 
-  /**
-   * Optimistically rename a node in the local store.
-   */
   function renameNodeAction(id: string, name: string) {
     const node = nodeMap.value.get(id);
     if (node) {
       node.name = name;
+      triggerRef(nodes);
     }
   }
 
-  /**
-   * Optimistically update word count for a node.
-   */
   function updateNodeStatsAction(id: string, wordCount: number) {
     const node = nodeMap.value.get(id);
     if (node) {
+      const diff = wordCount - (node.word_count || 0);
       node.word_count = wordCount;
+      totalWordCount.value += diff;
+      triggerRef(nodes);
     }
   }
 
-  /**
-   * Optimistically update generic metadata for a node.
-   */
   function updateNodeMetadataAction(id: string, updates: Partial<FileNode>) {
     const node = nodeMap.value.get(id);
     if (node) {
       Object.assign(node, updates);
+      triggerRef(nodes);
     }
   }
+
+  const setSettings = (newSettings: ProjectSettings) => {
+    settings.value = newSettings;
+  };
+
+  const setPlotlines = (newPlotlines: Plotline[]) => {
+    plotlines.value = newPlotlines;
+  };
+
+  // Character Actions
+  const setCharacters = (list: Character[]) => {
+    characters.value = list;
+  };
+
+  const updateCharacter = (character: Character) => {
+    const index = characters.value.findIndex((c) => c.id === character.id);
+    if (index !== -1) {
+      characters.value[index] = character;
+    } else {
+      characters.value.push(character);
+    }
+    triggerRef(characters); // Ensure deep reactivity triggers if needed
+  };
+
+  const removeCharacter = (id: string) => {
+    characters.value = characters.value.filter((c) => c.id !== id);
+  };
 
   return {
     // State
@@ -163,12 +194,12 @@ export const useProjectStore = defineStore('project', () => {
     characters,
     nodeMap,
     flatNodes,
+    totalWordCount,
 
     // Getters
     activeChapter,
     chapterById,
     characterById,
-    totalWordCount,
 
     // Actions
     setProjectData,
@@ -178,29 +209,10 @@ export const useProjectStore = defineStore('project', () => {
     renameNodeAction,
     updateNodeStatsAction,
     updateNodeMetadataAction,
-    loadProject,
+    setSettings,
+    setPlotlines,
+    setCharacters,
+    updateCharacter,
+    removeCharacter,
   };
-
-  async function loadProject(id: string) {
-    // Import invoke dynamically or at top? Top is fine if valid.
-    // But we are inside defineStore callback.
-    const { invoke } = await import('@tauri-apps/api/core');
-    try {
-      const metadata = await invoke<ProjectMetadata>('load_project', { projectId: id });
-      // We need to parse keys.
-      // Actually setProjectData expects specific args.
-      // Let's assume metadata matches or we map it.
-      // backend load_project returns ProjectMetadata + root_path usually?
-      // Converting internal types might be needed.
-      // To stay safe and avoid huge refactor, let's look at how it was done before.
-      // Step 121 SnapshotManager didn't show loadProject.
-      // Let's check `useProjectIO.ts` or similar later if needed.
-      // But for now, let's just use `updateStructure` if we can.
-      const hierarchy = reconstructHierarchy(metadata.manifest.chapters);
-      updateStructure(hierarchy);
-      // Also update settings?
-    } catch (e) {
-      console.error('Failed to reload project', e);
-    }
-  }
 });

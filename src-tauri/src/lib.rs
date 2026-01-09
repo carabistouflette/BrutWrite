@@ -1,11 +1,13 @@
 pub mod commands;
 pub mod errors;
 pub mod models;
+pub mod validation;
 
 pub mod research;
 pub mod storage;
 
 pub mod integrations;
+pub mod intelligence;
 pub mod project;
 
 use crate::project::manager::ProjectManager;
@@ -13,6 +15,7 @@ use crate::project::manager::ProjectManager;
 pub struct AppState {
     pub projects: ProjectManager,
     pub research: research::ResearchState,
+    pub intelligence: intelligence::service::IntelligenceService,
 }
 
 impl AppState {
@@ -20,6 +23,7 @@ impl AppState {
         Self {
             projects: ProjectManager::new(),
             research: research::ResearchState::new(),
+            intelligence: intelligence::service::IntelligenceService::new(),
         }
     }
 }
@@ -60,8 +64,15 @@ pub fn run() {
             commands::load_snapshot_content,
             commands::create_snapshot,
             commands::restore_snapshot,
-            commands::branch_snapshot
+            commands::branch_snapshot,
+            commands::analyze_character_graph,
+            #[cfg(debug_assertions)]
+            commands::seed_demo_project
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .unwrap_or_else(|e| {
+            log::error!("Fatal: Failed to start application: {}", e);
+            eprintln!("Fatal: Failed to start application: {}", e);
+            std::process::exit(1);
+        });
 }

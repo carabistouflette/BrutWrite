@@ -50,7 +50,10 @@ pub async fn handle_fs_change(
             continue;
         }
 
-        let file_name = path.file_name().unwrap().to_string_lossy().to_string();
+        let file_name = match path.file_name() {
+            Some(n) => n.to_string_lossy().to_string(),
+            None => continue,
+        };
         let path_str = path.to_string_lossy().to_string();
 
         if path.exists() {
@@ -67,8 +70,14 @@ pub async fn handle_fs_change(
                         let file_type = ResearchArtifact::determine_type(&file_name);
                         let artifact =
                             ResearchArtifact::new(path_str.clone(), file_name, file_type);
-                        inner.path_map.insert(path_str.clone(), artifact.id.clone());
-                        inner.artifacts.insert(artifact.id.clone(), artifact);
+
+                        let arc_artifact = std::sync::Arc::new(artifact);
+                        inner
+                            .path_map
+                            .insert(path_str.clone(), arc_artifact.id.clone());
+                        inner
+                            .artifacts
+                            .insert(arc_artifact.id.clone(), arc_artifact);
                     }
                     Ok(())
                 })

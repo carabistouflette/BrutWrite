@@ -2,11 +2,13 @@ import { defineStore } from 'pinia';
 import { invoke } from '@tauri-apps/api/core';
 import { ref } from 'vue';
 import { useProjectStore } from './project';
+import { useProjectLoader } from '../composables/domain/project/useProjectLoader';
 
 export const useSnapshotStore = defineStore('snapshots', () => {
   const snapshots = ref<string[]>([]);
   const loading = ref(false);
   const projectStore = useProjectStore();
+  const { loadProject } = useProjectLoader();
 
   async function fetchSnapshots(chapterId: string) {
     if (!projectStore.projectId) return;
@@ -79,7 +81,7 @@ export const useSnapshotStore = defineStore('snapshots', () => {
         snapshotChapterId: chapterId,
         snapshotFilename,
       });
-      await projectStore.loadProject(projectStore.projectId);
+      await loadProject(projectStore.projectId);
     } catch (e) {
       console.error('Failed to branch snapshot', e);
       throw e;

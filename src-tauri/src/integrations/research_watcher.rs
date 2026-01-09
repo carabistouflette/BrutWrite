@@ -1,4 +1,5 @@
 use crate::AppState;
+use log::{error, warn};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager, Runtime};
@@ -13,17 +14,26 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
         let app_state = app_handle.state::<AppState>();
         let state = &app_state.research;
 
-        // 1. Initialize State (Ensure dir exists, scan)
+        // 1. Synchronize initialization
+        let _lock = state.init_lock.lock().await;
+
+        // Ensure we stop any existing watcher before starting a new one
+        state.stop().await;
+
+        // 2. Initialize State (Ensure dir exists, scan)
         if let Err(e) = state.initialize(research_path.clone()).await {
-            println!("Failed to initialize research state: {:?}", e);
+            error!("Failed to initialize research state: {:?}", e);
             return;
         }
 
-        // 2. Setup Watcher
+        // 3. Setup Watcher
         let (tx, mut rx) = mpsc::unbounded_channel();
         let watcher_res = RecommendedWatcher::new(
             move |res| {
-                let _ = tx.send(res);
+                if let Err(e) = tx.send(res) {
+                    // This is expected when the channel is closed
+                    warn!("Watcher failed to send event: {}", e);
+                }
             },
             Config::default(),
         );
@@ -31,33 +41,30 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
         match watcher_res {
             Ok(mut watcher) => {
                 if let Err(e) = watcher.watch(&research_path, RecursiveMode::Recursive) {
-                    println!("Failed to watch research directory: {:?}", e);
+                    error!("Failed to watch research directory: {:?}", e);
                     return;
                 }
 
-                // Save watcher in state
+                // Save watcher in state. This drops any previous watcher,
+                // which closes its associated channel and stops its task.
                 state.set_watcher(watcher).await;
 
-                // 3. Handle Events
+                // 4. Handle Events
                 while let Some(res) = rx.recv().await {
                     match res {
                         Ok(event) => {
-                            // Handle incremental change
-                            // Debouncing could be added here or in state.
-                            // For now, let's trust simple events.
-                            // To avoid spamming frontend, we might want to debounce emissions.
-                            // But let's start simple.
                             if let Err(e) = state.handle_fs_change(event).await {
-                                println!("Error handling fs change: {:?}", e);
+                                warn!("Error handling fs change: {:?}", e);
                             } else {
                                 let _ = app_handle.emit("research-update", ());
                             }
                         }
-                        Err(e) => println!("watch error: {:?}", e),
+                        Err(e) => error!("Watch error: {:?}", e),
                     }
                 }
+                warn!("Research watcher task for {:?} exiting.", research_path);
             }
-            Err(e) => println!("Failed to create watcher: {:?}", e),
+            Err(e) => error!("Failed to create watcher: {:?}", e),
         }
     });
 }

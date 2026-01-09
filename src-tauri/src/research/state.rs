@@ -4,9 +4,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::sync::Mutex;
 
+use std::sync::Arc;
+
 pub struct ResearchInner {
     pub watcher: Option<RecommendedWatcher>,
-    pub artifacts: HashMap<String, ResearchArtifact>,
+    pub artifacts: HashMap<String, Arc<ResearchArtifact>>,
     /// Reverse index for O(1) lookup by path (Path -> ID)
     pub path_map: HashMap<String, String>,
     pub root_path: Option<PathBuf>,
@@ -20,6 +22,8 @@ pub struct PersistenceState {
 pub struct ResearchState {
     pub inner: Mutex<ResearchInner>,
     pub persistence: Mutex<PersistenceState>,
+    /// Prevents concurrent initializations during rapid project switching
+    pub init_lock: Mutex<()>,
 }
 
 impl Default for ResearchState {
@@ -35,6 +39,7 @@ impl Default for ResearchState {
             persistence: Mutex::new(PersistenceState {
                 last_saved_version: 0,
             }),
+            init_lock: Mutex::new(()),
         }
     }
 }
@@ -52,11 +57,11 @@ impl ResearchState {
         crate::research::lifecycle::set_watcher(self, watcher).await;
     }
 
-    pub async fn get_all(&self) -> Vec<ResearchArtifact> {
+    pub async fn get_all(&self) -> Vec<Arc<ResearchArtifact>> {
         crate::research::lifecycle::get_all(self).await
     }
 
-    pub async fn create_note(&self, name: String) -> crate::errors::Result<ResearchArtifact> {
+    pub async fn create_note(&self, name: String) -> crate::errors::Result<Arc<ResearchArtifact>> {
         crate::research::crud::create_note(self, name).await
     }
 
@@ -80,7 +85,11 @@ impl ResearchState {
         crate::research::io::handle_fs_change(self, event).await
     }
 
-    /// Helper to safely get the root path without holding the lock for long
+    pub async fn stop(&self) {
+        let mut inner = self.inner.lock().await;
+        inner.watcher = None; // Dropping the watcher stops the underlying implementation
+        inner.root_path = None;
+    }
     pub async fn get_root_path_safe(&self) -> crate::errors::Result<PathBuf> {
         let inner = self.inner.lock().await;
         inner
@@ -116,6 +125,18 @@ impl ResearchState {
             return Ok(());
         }
 
+        // We need to deref Arc for serialization to match old format if needed,
+        // OR rely on serde handling Arc (it does, transparently).
+        // Since storage::save_index likely expects HashMap<String, ResearchArtifact>, we might have a mismatch.
+        // Let's check storage::save_index signature.
+        // If save_index expects `&HashMap<String, ResearchArtifact>`, we are in trouble.
+        // We'll need to check storage definitions.
+        // For now, let's assume we need to update storage too, or map it here.
+        // Mapping here would defeat the purpose of optimization for persistence (it would clone).
+        // But get_all is more frequent than persist.
+        // Let's map it here temporarily if needed, but optimally update storage.
+        // Actually, if we change the artifacts in `ResearchInner` to `Arc`, `artifacts` here is `HashMap<String, Arc<ResearchArtifact>>`.
+
         crate::storage::save_index(&root, &artifacts).await?;
         persistence.last_saved_version = version;
 
@@ -124,11 +145,14 @@ impl ResearchState {
 
     /// Helper to insert an artifact and save the index
     pub async fn persist_artifact(&self, artifact: ResearchArtifact) -> crate::errors::Result<()> {
-        self.mutate_and_persist(|inner| {
+        let arc_artifact = Arc::new(artifact);
+        self.mutate_and_persist(move |inner| {
             inner
                 .path_map
-                .insert(artifact.path.clone(), artifact.id.clone());
-            inner.artifacts.insert(artifact.id.clone(), artifact);
+                .insert(arc_artifact.path.clone(), arc_artifact.id.clone());
+            inner
+                .artifacts
+                .insert(arc_artifact.id.clone(), arc_artifact);
             Ok(())
         })
         .await

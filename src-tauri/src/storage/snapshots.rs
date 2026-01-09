@@ -4,6 +4,26 @@ use sha2::{Digest, Sha256};
 use std::path::Path;
 
 const SNAPSHOTS_DIR: &str = ".snapshots";
+/// Maximum number of snapshots to keep per chapter
+const MAX_SNAPSHOTS_PER_CHAPTER: usize = 50;
+
+/// Cleans up old snapshots, keeping only the most recent MAX_SNAPSHOTS_PER_CHAPTER.
+/// This prevents disk space exhaustion over time.
+async fn cleanup_old_snapshots<R: FileRepository>(
+    repo: &R,
+    _snapshots_dir: &Path, // Kept for future logging if needed
+    entries: &[std::path::PathBuf],
+) -> Result<()> {
+    if entries.len() > MAX_SNAPSHOTS_PER_CHAPTER {
+        let to_delete = entries.len() - MAX_SNAPSHOTS_PER_CHAPTER;
+        // Entries are sorted oldest first, so delete from the beginning
+        for path in entries.iter().take(to_delete) {
+            // Ignore errors during deletion - best effort cleanup
+            let _ = repo.delete(path).await;
+        }
+    }
+    Ok(())
+}
 
 /// Creates a snapshot of the given content for a chapter.
 /// Returns Ok(Some(snapshot_path)) if a snapshot was created,
@@ -66,6 +86,13 @@ pub async fn create_snapshot<R: FileRepository>(
     let path = snapshots_dir.join(&filename);
 
     repo.write_file(&path, content).await?;
+
+    // 5. Cleanup old snapshots to prevent disk exhaustion
+    // Re-read entries after adding the new one
+    let mut updated_entries = repo.read_dir(&snapshots_dir).await?;
+    updated_entries.retain(|e| e.extension().is_some_and(|ext| ext == "md"));
+    updated_entries.sort();
+    cleanup_old_snapshots(repo, &snapshots_dir, &updated_entries).await?;
 
     Ok(Some(filename))
 }

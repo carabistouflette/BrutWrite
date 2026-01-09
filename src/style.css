@@ -27,188 +27,245 @@
   --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
 }
 
-:root {
-  /* Light Mode Palette */
-  --paper: #f4f4f0;
-  --ink: #1a1a1a;
-  --ink-rgb: 26, 26, 26;
-  --stone: #e5e5e0;
+@layer base {
+  :root {
+    /* Light Mode Palette */
+    --paper: #f4f4f0;
+    --ink: #1a1a1a;
+    --ink-rgb: 26, 26, 26;
+    --stone: #e5e5e0;
 
-  /* Semantic mappings */
-  --bg-primary: var(--paper);
-  --bg-secondary: #ffffff; /* Modal bg needs to be distinct from paper/stone? Or stick to stone? Let's use Paper for main, Stone for secondary */
-  --bg-secondary: var(--stone);
-  --bg-tertiary: #d6d6d0; /* Darker stone */
+    /* Semantic mappings */
+    --bg-primary: var(--paper);
+    --bg-secondary: var(--stone);
+    --bg-tertiary: #d6d6d0; /* Darker stone */
 
-  --text-primary: var(--ink);
-  --text-secondary: #4a4a4a;
-  --text-tertiary: #7a7a7a;
+    --text-primary: var(--ink);
+    --text-secondary: #4a4a4a;
+    --text-tertiary: #7a7a7a;
 
-  --border-color: #d1d1d1;
-  --color-danger: #ef4444;
+    --border-color: #d1d1d1;
+    --color-danger: #ef4444;
+    --color-antagonist: #dc2626;
+    --ink-muted: rgba(var(--ink-rgb), 0.5);
 
-  font-family: 'Inter', sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+    font-family: 'Inter', sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
 
-  color-scheme: light;
+    color-scheme: light;
 
-  /* Cyber-Glass Defaults */
-  --cyber-glass-blur: 20px;
-  --cyber-glass-opacity: 0.15;
-}
+    /* Cyber-Glass Defaults */
+    --cyber-glass-blur: 20px;
+    --cyber-glass-opacity: 0.15;
+  }
 
-/* Deep Dark Mode Palette */
-.dark {
-  --paper: #0a0a0a;
-  --ink: #ededed;
-  --ink-rgb: 237, 237, 237;
-  --stone: #1f1f1f;
+  /* Deep Dark Mode Palette */
+  .dark {
+    --paper: #0a0a0a;
+    --ink: #ededed;
+    --ink-rgb: 237, 237, 237;
+    --stone: #1f1f1f;
 
-  --bg-primary: var(--paper);
-  --bg-secondary: var(--stone);
-  --bg-tertiary: #2e2e2e;
+    --bg-primary: var(--paper);
+    --bg-secondary: var(--stone);
+    --bg-tertiary: #2e2e2e;
 
-  --text-primary: var(--ink);
-  --text-secondary: #a3a3a3;
-  --text-tertiary: #666666;
+    --text-primary: var(--ink);
+    --text-secondary: #a3a3a3;
+    --text-tertiary: #666666;
 
-  --border-color: #333333;
-  --color-danger: #ef4444;
+    --border-color: #333333;
+    --color-danger: #ef4444;
 
-  color-scheme: dark;
+    color-scheme: dark;
+  }
 }
 
 /**
  * --- Base Styles ---
  */
-html,
-body {
-  height: 100%;
-  margin: 0;
-}
+@layer base {
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+  }
 
-body {
-  min-width: 320px;
-  height: 100vh;
-  background-color: var(--color-paper);
-  overflow: hidden;
-  color: var(--color-ink);
-  -webkit-user-select: none;
-  user-select: none;
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
-}
+  body {
+    min-width: 320px;
+    height: 100vh;
+    background-color: var(--color-paper);
+    overflow: hidden;
+    color: var(--color-ink);
+    -webkit-user-select: none;
+    user-select: none;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
+  }
 
-/* Custom scrollbar for brutalist feel */
-::-webkit-scrollbar {
-  width: 10px;
-}
+  /* Custom scrollbar for brutalist feel */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
 
-::-webkit-scrollbar-track {
-  background: var(--color-paper);
-  border-left: 1px solid var(--color-stone);
-}
+  ::-webkit-scrollbar-track {
+    background: var(--color-paper);
+    border-left: 1px solid var(--color-stone);
+  }
 
-::-webkit-scrollbar-thumb {
-  background: var(--color-stone);
-  border-radius: 5px;
-}
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-stone);
+    border-radius: 5px;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-brut-gray);
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-brut-gray);
+  }
 }
 
 /**
  * --- Animations ---
  */
-@keyframes slide-up-spring {
-  0% {
-    transform: translateY(10px) scale(0.98);
-    opacity: 0;
+@layer utilities {
+  @keyframes slide-up-spring {
+    0% {
+      transform: translateY(10px) scale(0.98);
+      opacity: 0;
+    }
+
+    60% {
+      transform: translateY(-2px) scale(1.01);
+      opacity: 1;
+    }
+
+    100% {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
   }
 
-  60% {
-    transform: translateY(-2px) scale(1.01);
-    opacity: 1;
+  .animate-enter {
+    animation: slide-up-spring 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
   }
 
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
+  .stagger-1 {
+    animation-delay: 50ms;
+    transition-delay: 50ms;
   }
-}
-
-.animate-enter {
-  animation: slide-up-spring 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-
-.stagger-1 {
-  animation-delay: 50ms;
-  transition-delay: 50ms;
 }
 
 /**
  * --- Global Effects & Utilities ---
  */
 
-/* Interaction triggers */
-.hover-trigger .hover-target {
-  opacity: 0;
-  transform: translateY(4px);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
+@layer utilities {
+  /* Interaction triggers */
+  .hover-trigger .hover-target {
+    opacity: 0;
+    transform: translateY(4px);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
 
-.hover-trigger:hover .hover-target {
-  opacity: 1;
-  transform: translateY(0);
-}
+  .hover-trigger:hover .hover-target {
+    opacity: 1;
+    transform: translateY(0);
+  }
 
-/* Global Cyber-Glass Effect */
-.cyber-glass {
-  background-color: color-mix(
-    in srgb,
-    var(--paper),
-    transparent calc(100% - (var(--cyber-glass-opacity) * 100%))
-  ) !important;
-  backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%) !important;
-}
+  /* Global Cyber-Glass Effect */
+  .cyber-glass {
+    background-color: color-mix(
+      in srgb,
+      var(--paper),
+      transparent calc(100% - (var(--cyber-glass-opacity) * 100%))
+    );
+    backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%);
+  }
 
-/* Global Context Menu Glass Effect */
-.context-menu-glass {
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.2) !important;
-  border: 1px solid color-mix(in srgb, var(--ink), transparent 90%) !important;
-  background-color: color-mix(
-    in srgb,
-    var(--paper),
-    transparent calc(100% - (var(--cyber-glass-opacity) * 100%))
-  ) !important;
-  backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%) !important;
+  @media (prefers-reduced-motion: reduce) {
+    .cyber-glass {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      background-color: var(--paper); /* Fallback opaque background */
+      border: 1px solid var(--border-color);
+    }
+  }
+
+  /* Global Context Menu Glass Effect */
+  .context-menu-glass {
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.2);
+    border: 1px solid color-mix(in srgb, var(--ink), transparent 90%);
+    background-color: color-mix(
+      in srgb,
+      var(--paper),
+      transparent calc(100% - (var(--cyber-glass-opacity) * 100%))
+    );
+    backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--cyber-glass-blur)) saturate(180%);
+  }
 }
 
 /**
  * --- Forms & Inputs ---
  */
 
-/* Hide number input spinners */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  appearance: none;
-  margin: 0;
+@layer base {
+  /* Hide number input spinners */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }
 
-input[type='number'] {
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
+@layer components {
+  /* Unit input utility */
+  .input-with-unit {
+    padding-right: 4rem !important;
+  }
 
-/* Unit input utility */
-.input-with-unit {
-  padding-right: 4rem !important;
+  .mention {
+    color: var(--color-accent);
+    background-color: transparent;
+    padding: 0 1px;
+    border-radius: 4px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mention:hover {
+    background-color: color-mix(in srgb, var(--color-accent), transparent 90%);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+
+  .research-mention {
+    color: var(--color-ink);
+    background-color: var(--color-stone);
+    padding: 0 4px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.9em;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+
+  .research-mention:hover {
+    border-color: var(--color-ink);
+  }
 }
 
 /**
@@ -217,8 +274,12 @@ input[type='number'] {
 #app-scale-root {
   transform: scale(var(--ui-scale, 1));
   transform-origin: top left;
-  width: calc(100vw / var(--ui-scale, 1));
-  height: calc(100vh / var(--ui-scale, 1));
+  /**
+   * Fix for scaling: ensure the container takes up the inverse fraction of the viewport
+   * so that when scaled down, it covers the full window.
+   */
+  width: calc(100% / var(--ui-scale, 1));
+  height: calc(100% / var(--ui-scale, 1));
 }
 
 #app {

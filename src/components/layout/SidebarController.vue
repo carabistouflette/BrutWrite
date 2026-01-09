@@ -14,6 +14,7 @@ import { useAppStatus } from '../../composables/ui/useAppStatus';
 const emit = defineEmits<{
   (e: 'open-settings'): void;
   (e: 'open-characters'): void;
+  (e: 'open-character-graph'): void;
   (e: 'open-timeline'): void;
   (e: 'open-research'): void;
   (e: 'change-project'): void;
@@ -146,6 +147,7 @@ const addChapter = async () => {
       class="mt-auto"
       @open-settings="emit('open-settings')"
       @open-characters="emit('open-characters')"
+      @open-character-graph="emit('open-character-graph')"
       @open-timeline="emit('open-timeline')"
       @open-research="emit('open-research')"
       @change-project="emit('change-project')"

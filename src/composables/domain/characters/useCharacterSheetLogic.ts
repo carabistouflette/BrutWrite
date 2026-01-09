@@ -4,6 +4,7 @@ import { useProjectStore } from '../../../stores/project';
 import { useCharacters } from './useCharacters';
 import { CharacterRole, type Character } from '../../../types';
 import { useAppStatus } from '../../ui/useAppStatus';
+import { useCharacterGraph } from '../../domain/intelligence/useCharacterGraph';
 
 export function useCharacterSheetLogic(emit: (event: 'close') => void) {
   const projectStore = useProjectStore();
@@ -70,6 +71,7 @@ export function useCharacterSheetLogic(emit: (event: 'close') => void) {
         description: '',
         engine: { desire: '', fear: '', wound: '', secret: '' },
         physical_features: '',
+        aliases: [],
         traits: [],
         arc: '',
         notes: '',
@@ -92,6 +94,10 @@ export function useCharacterSheetLogic(emit: (event: 'close') => void) {
         await saveCharacter(projectId.value, localCharacter.value);
         hasChanges.value = false;
         notifySuccess('Character saved');
+
+        // Trigger graph refresh to reflect changes (e.g. name, aliases)
+        const graphStore = useCharacterGraph();
+        graphStore.analyze();
       } catch (e) {
         notifyError('Failed to save character', e);
       }

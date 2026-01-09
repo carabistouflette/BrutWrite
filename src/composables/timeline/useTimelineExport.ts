@@ -49,7 +49,7 @@ export function useTimelineExport() {
 
       if (path) {
         await writeFile(path, fileData);
-        console.debug(`Export saved to ${path}`);
+        // Export saved successfully
         return true;
       }
       return false;

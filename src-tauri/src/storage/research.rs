@@ -21,7 +21,7 @@ pub async fn load_index<P: AsRef<Path>>(path: P) -> HashMap<String, ResearchArti
 
 pub async fn save_index<P: AsRef<Path>>(
     path: P,
-    artifacts: &HashMap<String, ResearchArtifact>,
+    artifacts: &HashMap<String, std::sync::Arc<ResearchArtifact>>,
 ) -> Result<()> {
     let index_path = path.as_ref().join(INDEX_FILENAME);
     let new_content = serde_json::to_string_pretty(artifacts)?;
@@ -48,11 +48,10 @@ pub async fn scan_on_disk<P: AsRef<Path>>(path: P) -> HashMap<String, String> {
     while let Ok(Some(entry)) = entries.next_entry().await {
         let entry_path = entry.path();
         if entry_path.is_file() {
-            let file_name = entry_path
-                .file_name()
-                .unwrap()
-                .to_string_lossy()
-                .to_string();
+            let file_name = match entry_path.file_name() {
+                Some(name) => name.to_string_lossy().to_string(),
+                None => continue,
+            };
 
             // Skip the index file itself
             if file_name == INDEX_FILENAME {
