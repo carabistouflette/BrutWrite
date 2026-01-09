@@ -3,10 +3,9 @@ use crate::intelligence::models::CharacterGraphPayload;
 use crate::intelligence::scanner::CharacterScanner;
 use crate::models::utils::WordIndexer;
 use crate::models::ProjectMetadata;
-use crate::storage::resolve_chapter_path_from_filename;
 use crate::storage::traits::{FileMetadata, FileRepository};
 
-use crate::storage::LocalFileRepository;
+use crate::storage::{resolve_chapter_path_from_filename, LocalFileRepository};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
