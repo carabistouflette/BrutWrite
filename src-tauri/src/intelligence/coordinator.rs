@@ -96,7 +96,11 @@ impl<'a> IntelligenceCoordinator<'a> {
         }
         let hash_result = hasher.finalize();
         // Take first 8 bytes as u64 signature
-        let current_hash = u64::from_le_bytes(hash_result[0..8].try_into().unwrap());
+        let current_hash = u64::from_le_bytes(
+            hash_result[0..8]
+                .try_into()
+                .expect("Sha256 output is 32 bytes, slice is 8 bytes"),
+        );
 
         let mut cache = self.scanner_cache.lock().await;
 
@@ -211,7 +215,11 @@ impl<'a> IntelligenceCoordinator<'a> {
         // No, `state` is passed in.
 
         let hash_result = hasher.finalize();
-        let content_hash = u64::from_le_bytes(hash_result[0..8].try_into().unwrap());
+        let content_hash = u64::from_le_bytes(
+            hash_result[0..8]
+                .try_into()
+                .expect("Sha256 output is 32 bytes, slice is 8 bytes"),
+        );
 
         // We really need to verify if the scanner used for the cached mentions is compatible.
         // For this audit fix, I will assume the caller manages cache invalidation or that collision is rare enough.

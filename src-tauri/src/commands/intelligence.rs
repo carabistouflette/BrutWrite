@@ -46,12 +46,8 @@ pub async fn analyze_character_graph(
         chapter_filter,
     };
 
-    let coordinator = crate::intelligence::coordinator::IntelligenceCoordinator::new(
-        &state.intelligence_cache,
-        &state.chapter_content_cache,
-    );
-
-    coordinator
+    state
+        .intelligence
         .analyze_project(project_id, &root_path, &metadata, options)
         .await
 }
