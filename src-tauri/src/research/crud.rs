@@ -66,32 +66,50 @@ pub async fn create_note(
         "text".to_string(),
     );
 
-    // state.persist_artifact now handles Arc internally, or expects explicit struct?
-    // In state.rs: persist_artifact(artifact: ResearchArtifact) -> Arc::new(artifact)
-    // So we pass Owned artifact.
-    state.persist_artifact(artifact.clone()).await?;
+    state.persist_artifact(artifact).await
+}
 
-    // We return Arc reference to it.
-    Ok(std::sync::Arc::new(artifact))
+pub async fn update_tags(
+    state: &ResearchState,
+    id: String,
+    tags: Vec<String>,
+) -> crate::errors::Result<()> {
+    state
+        .mutate_and_persist(move |inner| {
+            let artifact = inner
+                .artifacts
+                .get_mut(&id)
+                .ok_or_else(|| crate::errors::Error::ArtifactNotFound(id.clone()))?;
+            let mut updated = (**artifact).clone();
+            updated.tags = tags;
+            *artifact = std::sync::Arc::new(updated);
+            Ok(())
+        })
+        .await
 }
 
 pub async fn update_content(
     state: &ResearchState,
     id: String,
+    expected_path: String,
     content: String,
 ) -> crate::errors::Result<()> {
-    // Read artifact path under lock
     let artifact_path = {
         let inner = state.inner.lock().await;
-        inner.artifacts.get(&id).map(|a| a.path.clone())
+        let artifact = inner
+            .artifacts
+            .get(&id)
+            .ok_or_else(|| crate::errors::Error::ArtifactNotFound(id.clone()))?;
+        if artifact.path != expected_path {
+            return Err(crate::errors::Error::Research(
+                "Research artifact path changed before save".to_string(),
+            ));
+        }
+        artifact.path.clone()
     };
 
-    if let Some(path) = artifact_path {
-        tokio::fs::write(path, content).await?;
-        Ok(())
-    } else {
-        Err(crate::errors::Error::ArtifactNotFound(id))
-    }
+    tokio::fs::write(artifact_path, content).await?;
+    Ok(())
 }
 
 pub async fn rename_artifact(
@@ -293,6 +311,79 @@ mod tests {
 
         assert!(!old_p.exists());
         assert!(new_p.exists());
+        Ok(())
+    }
+    #[tokio::test]
+    async fn test_tags_rename_and_delete_persist_across_reinitialization(
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let dir = tempdir()?;
+        let path = dir.path().to_path_buf();
+        let state = ResearchState::new();
+        state.initialize(path.clone()).await?;
+
+        let note = create_note(&state, "reference".to_string()).await?;
+        update_tags(&state, note.id.clone(), vec!["history".to_string()]).await?;
+        rename_artifact(&state, note.id.clone(), "renamed".to_string()).await?;
+
+        let reloaded = ResearchState::new();
+        reloaded.initialize(path.clone()).await?;
+        let reloaded_note = reloaded
+            .get_all()
+            .await
+            .into_iter()
+            .find(|artifact| artifact.id == note.id)
+            .expect("renamed note should remain indexed");
+        assert_eq!(reloaded_note.name, "renamed.md");
+        assert_eq!(reloaded_note.tags, vec!["history".to_string()]);
+
+        delete_artifact(&reloaded, note.id.clone()).await?;
+        assert!(!path.join("renamed.md").exists());
+
+        let after_delete = ResearchState::new();
+        after_delete.initialize(path).await?;
+        assert!(after_delete.get_all().await.is_empty());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn update_content_rejects_a_copied_id_from_another_project_path(
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let dir = tempdir()?;
+        let root_a = dir.path().join("project-a");
+        let root_b = dir.path().join("project-b");
+        std::fs::create_dir_all(&root_a)?;
+        std::fs::create_dir_all(&root_b)?;
+
+        let path_a = root_a.join("research").join("note.md");
+        let path_b = root_b.join("research").join("note.md");
+        std::fs::create_dir_all(path_a.parent().unwrap())?;
+        std::fs::create_dir_all(path_b.parent().unwrap())?;
+        tokio::fs::write(&path_a, "project A").await?;
+
+        let state = ResearchState::new();
+        state.initialize(root_b).await?;
+        tokio::fs::write(&path_b, "project B").await?;
+        state
+            .persist_artifact(crate::models::research::ResearchArtifact {
+                id: "copied-id".to_string(),
+                path: path_b.to_string_lossy().to_string(),
+                name: "note.md".to_string(),
+                file_type: "text".to_string(),
+                tags: Vec::new(),
+            })
+            .await?;
+
+        let result = update_content(
+            &state,
+            "copied-id".to_string(),
+            path_a.to_string_lossy().to_string(),
+            "overwritten".to_string(),
+        )
+        .await;
+
+        assert!(matches!(result, Err(crate::errors::Error::Research(_))));
+        assert_eq!(tokio::fs::read_to_string(path_a).await?, "project A");
+        assert_eq!(tokio::fs::read_to_string(path_b).await?, "project B");
         Ok(())
     }
 }

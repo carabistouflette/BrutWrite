@@ -13,15 +13,29 @@ export const useResearchStore = defineStore('research', () => {
 
   // Store unlisten function to prevent memory leaks
   let unlistenResearchUpdate: UnlistenFn | null = null;
+  let fetchGeneration = 0;
 
   async function fetchArtifacts() {
+    const request = ++fetchGeneration;
     isLoading.value = true;
     try {
-      artifacts.value = await researchApi.fetchArtifacts();
+      const fetchedArtifacts = await researchApi.fetchArtifacts();
+      if (request !== fetchGeneration) return;
+      artifacts.value = fetchedArtifacts;
+      const activeId = activeArtifact.value?.id;
+      activeArtifact.value = activeId
+        ? (fetchedArtifacts.find((artifact) => artifact.id === activeId) ?? null)
+        : null;
     } catch (error) {
-      notifyError('Failed to fetch research artifacts', error);
+      if (request === fetchGeneration) {
+        artifacts.value = [];
+        activeArtifact.value = null;
+        notifyError('Failed to fetch research artifacts', error);
+      }
     } finally {
-      isLoading.value = false;
+      if (request === fetchGeneration) {
+        isLoading.value = false;
+      }
     }
   }
 
@@ -32,33 +46,39 @@ export const useResearchStore = defineStore('research', () => {
   async function addFiles(paths: string[]) {
     try {
       await researchApi.addFiles(paths);
-      // Watcher should trigger update, but we can force fetch
-      await fetchArtifacts();
     } catch (error) {
       notifyError('Failed to add files', error);
+    } finally {
+      await fetchArtifacts();
     }
   }
 
-  async function updateArtifact(artifact: ResearchArtifact) {
+  async function updateTags(id: string, tags: string[]) {
     try {
-      await researchApi.updateArtifact(artifact);
-      // Optimistically update local state
-      const index = artifacts.value.findIndex((a) => a.id === artifact.id);
+      await researchApi.updateTags(id, tags);
+      const index = artifacts.value.findIndex((artifact) => artifact.id === id);
       if (index !== -1) {
-        artifacts.value[index] = artifact;
-      }
-      if (activeArtifact.value?.id === artifact.id) {
-        activeArtifact.value = artifact;
+        const updatedArtifact = { ...artifacts.value[index], tags };
+        artifacts.value[index] = updatedArtifact;
+        if (activeArtifact.value?.id === id) {
+          activeArtifact.value = updatedArtifact;
+        }
       }
     } catch (error) {
-      notifyError('Failed to update artifact', error);
+      notifyError('Failed to update research tags', error);
+      throw error;
     }
   }
 
   async function createNote(name: string) {
     try {
       const artifact = await researchApi.createNote(name);
-      artifacts.value.push(artifact);
+      const index = artifacts.value.findIndex((item) => item.id === artifact.id);
+      if (index === -1) {
+        artifacts.value.push(artifact);
+      } else {
+        artifacts.value[index] = artifact;
+      }
       setActiveArtifact(artifact);
       return artifact;
     } catch (error) {
@@ -67,11 +87,12 @@ export const useResearchStore = defineStore('research', () => {
     }
   }
 
-  async function saveNoteContent(id: string, content: string) {
+  async function saveNoteContent(id: string, expectedPath: string, content: string) {
     try {
-      await researchApi.saveNoteContent(id, content);
+      await researchApi.saveNoteContent(id, expectedPath, content);
     } catch (error) {
       notifyError('Failed to save note content', error);
+      throw error;
     }
   }
 
@@ -93,7 +114,7 @@ export const useResearchStore = defineStore('research', () => {
         activeArtifact.value = null;
       }
     } catch (error) {
-      console.error('Failed to delete artifact:', error);
+      notifyError('Failed to delete artifact', error);
       throw error;
     }
   }
@@ -127,7 +148,7 @@ export const useResearchStore = defineStore('research', () => {
     fetchArtifacts,
     setActiveArtifact,
     addFiles,
-    updateArtifact,
+    updateTags,
     createNote,
     saveNoteContent,
     renameArtifact,

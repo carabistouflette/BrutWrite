@@ -5,6 +5,7 @@ import SidebarController from './SidebarController.vue';
 import { useLayoutController } from '../../composables/ui/useLayoutController';
 import { useProjectStore } from '../../stores/project';
 import { flushChapterSessions } from '../../composables/domain/project/useChapterSession';
+import { flushResearchNoteSessions } from '../../composables/domain/research/useResearchNoteSession';
 import { useProjectSync } from '../../composables/domain/project/useProjectSync';
 import { useAppStatus } from '../../composables/ui/useAppStatus';
 import { useProjectSession } from '../../composables/domain/project/useProjectSession';
@@ -52,8 +53,13 @@ const finishProjectChange = async () => {
   clearTimeout(exitTimeout);
 
   try {
+    const projectId = projectStore.projectId;
+    const projectPath = projectStore.path;
     await flushChapterSessions(projectStore);
-    await flushProjectSync();
+    if (projectId && projectPath) {
+      await flushResearchNoteSessions(projectStore, projectId, projectPath);
+    }
+    await flushProjectSync(projectId);
     saveCurrentSessionToCache();
   } catch (error) {
     isExiting.value = false;
@@ -72,8 +78,13 @@ const handleChangeProject = async () => {
   isPreparingExit.value = true;
 
   try {
+    const projectId = projectStore.projectId;
+    const projectPath = projectStore.path;
     await flushChapterSessions(projectStore);
-    await flushProjectSync();
+    if (projectId && projectPath) {
+      await flushResearchNoteSessions(projectStore, projectId, projectPath);
+    }
+    await flushProjectSync(projectId);
     saveCurrentSessionToCache();
   } catch (error) {
     isPreparingExit.value = false;
@@ -123,7 +134,7 @@ const onExited = (e: TransitionEvent) => {
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col h-full bg-transparent relative">
+    <main class="min-w-0 flex-1 flex flex-col h-full bg-transparent relative">
       <!-- Top Bar / Header -->
       <div class="h-16 px-8 flex justify-between items-center bg-transparent">
         <h1 class="font-normal text-sm text-ink/40 uppercase tracking-widest">Editor</h1>

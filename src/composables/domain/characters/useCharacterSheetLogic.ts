@@ -16,9 +16,12 @@ export function useCharacterSheetLogic(emit: (event: 'close') => void) {
   const localCharacter = ref<Character | null>(null);
   const hasChanges = ref(false);
   const showDeleteConfirm = ref(false);
+  const showUnsavedConfirm = ref(false);
+  const pendingSelectedId = ref<string | null>(null);
+  const createAfterDiscard = ref(false);
 
   const selectedCharacter = computed(() => {
-    return characters.value.find((c) => c.id === selectedId.value);
+    return characters.value.find((character) => character.id === selectedId.value);
   });
 
   watch(selectedId, (newId) => {
@@ -27,22 +30,50 @@ export function useCharacterSheetLogic(emit: (event: 'close') => void) {
       hasChanges.value = false;
     } else {
       localCharacter.value = null;
+      hasChanges.value = false;
     }
   });
 
-  const showUnsavedConfirm = ref(false);
+  watch(
+    projectId,
+    () => {
+      selectedId.value = null;
+      localCharacter.value = null;
+      hasChanges.value = false;
+      showDeleteConfirm.value = false;
+      showUnsavedConfirm.value = false;
+      pendingSelectedId.value = null;
+      createAfterDiscard.value = false;
+      emit('close');
+    },
+    { flush: 'sync' }
+  );
 
   const attemptClose = () => {
     if (hasChanges.value) {
+      pendingSelectedId.value = null;
+      createAfterDiscard.value = false;
       showUnsavedConfirm.value = true;
     } else {
       emit('close');
     }
   };
 
-  const forceClose = () => {
+  const cancelUnsavedChanges = () => {
     showUnsavedConfirm.value = false;
-    emit('close');
+    pendingSelectedId.value = null;
+    createAfterDiscard.value = false;
+  };
+
+  const requestSelectCharacter = (id: string) => {
+    if (id === selectedId.value) return;
+    if (hasChanges.value) {
+      pendingSelectedId.value = id;
+      createAfterDiscard.value = false;
+      showUnsavedConfirm.value = true;
+      return;
+    }
+    selectedId.value = id;
   };
 
   const generateUUID = () => {
@@ -56,14 +87,15 @@ export function useCharacterSheetLogic(emit: (event: 'close') => void) {
     });
   };
 
-  const createCharacter = async () => {
-    if (!projectId.value) {
+  const performCreateCharacter = async () => {
+    const currentProjectId = projectId.value;
+    if (!currentProjectId) {
       notifyError('Cannot create character: No active project found.');
       return;
     }
 
     try {
-      const newChar: Character = {
+      const newCharacter: Character = {
         id: generateUUID(),
         name: 'New Character',
         role: CharacterRole.Secondary,
@@ -77,30 +109,59 @@ export function useCharacterSheetLogic(emit: (event: 'close') => void) {
         notes: '',
       };
 
-      await saveCharacter(projectId.value, newChar);
-      notifySuccess(`Character ${newChar.name} created`);
+      await saveCharacter(currentProjectId, newCharacter);
+      if (projectId.value !== currentProjectId) return;
 
-      setTimeout(() => {
-        selectedId.value = newChar.id;
-      }, 50);
-    } catch (e) {
-      notifyError('Failed to create character', e);
+      notifySuccess(`Character ${newCharacter.name} created`);
+      selectedId.value = newCharacter.id;
+      useCharacterGraph().analyze();
+    } catch (error) {
+      notifyError('Failed to create character', error);
+    }
+  };
+
+  const createCharacter = async () => {
+    if (hasChanges.value) {
+      pendingSelectedId.value = null;
+      createAfterDiscard.value = true;
+      showUnsavedConfirm.value = true;
+      return;
+    }
+    await performCreateCharacter();
+  };
+
+  const forceClose = async () => {
+    showUnsavedConfirm.value = false;
+    const nextId = pendingSelectedId.value;
+    const shouldCreate = createAfterDiscard.value;
+    pendingSelectedId.value = null;
+    createAfterDiscard.value = false;
+
+    if (nextId) {
+      selectedId.value = nextId;
+    } else if (shouldCreate) {
+      await performCreateCharacter();
+    } else {
+      emit('close');
     }
   };
 
   const saveCurrent = async () => {
-    if (localCharacter.value && projectId.value) {
-      try {
-        await saveCharacter(projectId.value, localCharacter.value);
-        hasChanges.value = false;
-        notifySuccess('Character saved');
+    const currentProjectId = projectId.value;
+    const character = localCharacter.value;
+    if (!currentProjectId || !character) return;
 
-        // Trigger graph refresh to reflect changes (e.g. name, aliases)
-        const graphStore = useCharacterGraph();
-        graphStore.analyze();
-      } catch (e) {
-        notifyError('Failed to save character', e);
-      }
+    try {
+      await saveCharacter(currentProjectId, character);
+      if (projectId.value !== currentProjectId || localCharacter.value?.id !== character.id) return;
+
+      hasChanges.value = false;
+      notifySuccess('Character saved');
+
+      const graphStore = useCharacterGraph();
+      graphStore.analyze();
+    } catch (error) {
+      notifyError('Failed to save character', error);
     }
   };
 
@@ -110,16 +171,24 @@ export function useCharacterSheetLogic(emit: (event: 'close') => void) {
   };
 
   const confirmDelete = async () => {
-    if (localCharacter.value && projectId.value) {
-      try {
-        const name = localCharacter.value.name;
-        await deleteCharacter(projectId.value, localCharacter.value.id);
-        selectedId.value = null;
-        showDeleteConfirm.value = false;
-        notifySuccess(`Character ${name} deleted`);
-      } catch (e) {
-        notifyError('Failed to delete character', e);
-      }
+    const currentProjectId = projectId.value;
+    const character = localCharacter.value;
+    if (!currentProjectId || !character) return;
+
+    try {
+      await deleteCharacter(currentProjectId, character.id);
+      if (projectId.value !== currentProjectId) return;
+
+      selectedId.value = null;
+      localCharacter.value = null;
+      hasChanges.value = false;
+      showDeleteConfirm.value = false;
+      notifySuccess(`Character ${character.name} deleted`);
+      const graphStore = useCharacterGraph();
+      graphStore.clear();
+      graphStore.analyze();
+    } catch (error) {
+      notifyError('Failed to delete character', error);
     }
   };
 
@@ -136,6 +205,8 @@ export function useCharacterSheetLogic(emit: (event: 'close') => void) {
     showUnsavedConfirm,
     attemptClose,
     forceClose,
+    cancelUnsavedChanges,
+    requestSelectCharacter,
     createCharacter,
     saveCurrent,
     requestDelete,

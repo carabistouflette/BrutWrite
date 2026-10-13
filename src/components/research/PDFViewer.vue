@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onMounted, shallowRef, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, shallowRef, ref, watch } from 'vue';
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { readFile } from '@tauri-apps/plugin-fs';
 import BaseIcon from '../base/BaseIcon.vue';
 
-// Set worker source using a stable CDN that includes map and font files
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+// Bundle all PDF.js assets so previews work offline under the native CSP.
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+const pdfAssetRoot = `${import.meta.env.BASE_URL}pdfjs/`;
 
 const props = defineProps<{
   path: string;
@@ -16,8 +18,12 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 const error = ref<string | null>(null);
 const isLoading = ref(false);
 
+const pageNumber = ref(1);
 const scale = ref(1.0);
 const pdfDoc = shallowRef<pdfjsLib.PDFDocumentProxy | null>(null);
+const pageCount = computed(() => pdfDoc.value?.numPages ?? 0);
+let renderGeneration = 0;
+let activeRenderTask: { cancel: () => void } | null = null;
 
 // Panning State
 const isDragging = ref(false);
@@ -29,7 +35,11 @@ const scrollTop = ref(0);
 const renderPDF = async () => {
   if (!containerRef.value || !canvasRef.value) return;
 
+  const request = ++renderGeneration;
+  activeRenderTask?.cancel();
+  activeRenderTask = null;
   const currentScale = scale.value;
+  const currentPage = pageNumber.value;
   isLoading.value = true;
   error.value = null;
 
@@ -37,18 +47,24 @@ const renderPDF = async () => {
     let pdf = pdfDoc.value;
     if (!pdf) {
       const data = await readFile(props.path);
+      if (request !== renderGeneration) return;
       const loadingTask = pdfjsLib.getDocument({
         data,
-        cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
+        cMapUrl: `${pdfAssetRoot}cmaps/`,
         cMapPacked: true,
-        standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
+        standardFontDataUrl: `${pdfAssetRoot}standard_fonts/`,
         disableFontFace: true,
       });
       pdf = await loadingTask.promise;
+      if (request !== renderGeneration) {
+        void pdf.loadingTask.destroy();
+        return;
+      }
       pdfDoc.value = pdf;
     }
 
-    const page = await pdf.getPage(1);
+    const page = await pdf.getPage(currentPage);
+    if (request !== renderGeneration) return;
     const viewport = page.getViewport({ scale: currentScale });
     const canvas = canvasRef.value;
     if (!canvas) return;
@@ -60,17 +76,22 @@ const renderPDF = async () => {
 
       const renderContext = {
         canvasContext: context,
-        viewport: viewport,
+        viewport,
         canvas,
       };
 
-      await page.render(renderContext).promise;
+      const renderTask = page.render(renderContext);
+      activeRenderTask = renderTask;
+      await renderTask.promise;
     }
   } catch (e: unknown) {
-    console.error('PDF Render Error', e);
+    if (request !== renderGeneration) return;
     error.value = 'Failed to load PDF: ' + (e instanceof Error ? e.message : String(e));
   } finally {
-    isLoading.value = false;
+    if (request === renderGeneration) {
+      isLoading.value = false;
+      activeRenderTask = null;
+    }
   }
 };
 
@@ -85,11 +106,25 @@ const handleZoomOut = () => {
 };
 
 const handleFitWidth = async () => {
-  if (!pdfDoc.value || !containerRef.value) return;
-  const page = await pdfDoc.value.getPage(1);
+  const pdf = pdfDoc.value;
+  if (!pdf || !containerRef.value) return;
+  const page = await pdf.getPage(pageNumber.value);
+  if (pdf !== pdfDoc.value) return;
   const viewportUnscaled = page.getViewport({ scale: 1.0 });
   const containerWidth = containerRef.value.clientWidth - 64; // padding
-  scale.value = containerWidth / viewportUnscaled.width;
+  scale.value = Math.max(0.5, Math.min(3.0, containerWidth / viewportUnscaled.width));
+  renderPDF();
+};
+
+const handlePreviousPage = () => {
+  if (pageNumber.value <= 1) return;
+  pageNumber.value -= 1;
+  renderPDF();
+};
+
+const handleNextPage = () => {
+  if (pageNumber.value >= pageCount.value) return;
+  pageNumber.value += 1;
   renderPDF();
 };
 
@@ -128,12 +163,28 @@ onMounted(() => {
 
 watch(
   () => props.path,
-  () => {
-    pdfDoc.value = null; // Clear cache on new file
-    scale.value = 1.0; // Reset scale
-    renderPDF();
+  async () => {
+    const request = ++renderGeneration;
+    activeRenderTask?.cancel();
+    activeRenderTask = null;
+    const previousDocument = pdfDoc.value;
+    pdfDoc.value = null;
+    pageNumber.value = 1;
+    scale.value = 1.0;
+    if (previousDocument) {
+      await previousDocument.loadingTask.destroy();
+    }
+    if (request === renderGeneration) {
+      renderPDF();
+    }
   }
 );
+
+onBeforeUnmount(() => {
+  renderGeneration++;
+  activeRenderTask?.cancel();
+  void pdfDoc.value?.loadingTask.destroy();
+});
 </script>
 
 <template>
@@ -148,7 +199,28 @@ watch(
     <!-- Floating Toolbar -->
     <div
       class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-paper shadow-xl border border-ink/10 rounded-full px-4 py-2 flex items-center gap-4 z-50 backdrop-blur-md"
+      @mousedown.stop
     >
+      <button
+        class="text-ink/60 hover:text-ink hover:scale-110 transition-all font-mono text-xs disabled:opacity-30"
+        title="Previous Page"
+        :disabled="pageNumber <= 1"
+        @click="handlePreviousPage"
+      >
+        <BaseIcon name="arrowLeft" size="16" />
+      </button>
+      <span class="text-[10px] font-bold text-ink/40 min-w-10 text-center">
+        {{ pageNumber }} / {{ pageCount }}
+      </span>
+      <button
+        class="text-ink/60 hover:text-ink hover:scale-110 transition-all font-mono text-xs disabled:opacity-30"
+        title="Next Page"
+        :disabled="pageNumber >= pageCount"
+        @click="handleNextPage"
+      >
+        <BaseIcon name="arrowLeft" size="16" class="rotate-180" />
+      </button>
+      <div class="h-4 w-px bg-ink/10"></div>
       <button
         class="text-ink/60 hover:text-ink hover:scale-110 transition-all font-mono text-xs"
         title="Zoom Out"

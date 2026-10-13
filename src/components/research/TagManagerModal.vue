@@ -44,7 +44,6 @@ const removeTag = (tagToRemove: string) => {
 
 const handleSave = () => {
   emit('save', localTags.value);
-  emit('close');
 };
 </script>
 

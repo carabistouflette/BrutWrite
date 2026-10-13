@@ -31,12 +31,12 @@ impl CharacterScanner {
                     c.name
                 );
             }
-            let safe_name = c.name[..c.name.len().min(MAX_NAME_LEN)].to_lowercase();
+            let safe_name = truncate_at_char_boundary(&c.name, MAX_NAME_LEN);
             // We still need the string ID for pattern matching data-id attributes
             let id_str = c.id.to_string();
 
             // 1. Literal Name (Requires \b checks)
-            patterns.push(safe_name.clone());
+            patterns.push(safe_name.to_owned());
             pattern_to_char_idx.push(i);
             requires_boundary.push(true);
 
@@ -45,8 +45,8 @@ impl CharacterScanner {
                 if alias.trim().is_empty() {
                     continue;
                 }
-                let safe_alias = alias[..alias.len().min(MAX_NAME_LEN)].to_lowercase();
-                patterns.push(safe_alias); // Aliases act like names
+                let safe_alias = truncate_at_char_boundary(alias, MAX_NAME_LEN);
+                patterns.push(safe_alias.to_owned()); // Aliases act like names
                 pattern_to_char_idx.push(i);
                 requires_boundary.push(true);
             }
@@ -139,6 +139,14 @@ fn is_word_boundary(text: &str, start: usize, end: usize) -> bool {
     true
 }
 
+fn truncate_at_char_boundary(value: &str, max_bytes: usize) -> &str {
+    let mut end = value.len().min(max_bytes);
+    while !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    &value[..end]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -204,5 +212,24 @@ mod tests {
         assert_eq!(mentions.len(), 1);
         // Should only match the second "Bob"
         assert_eq!(mentions[0].0, 13);
+    }
+
+    #[test]
+    fn test_scanner_truncates_long_unicode_names_and_aliases_safely() {
+        let id_str = "00000000-0000-0000-0000-000000000001";
+        let name = "漢".repeat(MAX_NAME_LEN / 3 + 1);
+        let alias = "Ω".repeat(MAX_NAME_LEN / 2 + 1);
+        let character = make_char(id_str, &name, vec![alias]);
+        let scanner = CharacterScanner::try_new(&[character]).expect("Scanner init failed");
+
+        let text = format!(
+            "{} {}",
+            "漢".repeat(MAX_NAME_LEN / 3),
+            "Ω".repeat(MAX_NAME_LEN / 2)
+        );
+        let mentions = scanner.scan(&text);
+
+        let id = uuid::Uuid::parse_str(id_str).unwrap();
+        assert_eq!(mentions, vec![(0, id), (MAX_NAME_LEN / 3 * 3 + 1, id)]);
     }
 }

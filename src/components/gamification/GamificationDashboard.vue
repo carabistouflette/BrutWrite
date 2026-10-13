@@ -32,6 +32,12 @@ const isEditing = ref(false);
 const tempDailyGoal = ref(dailyGoal.value);
 const tempProjectTarget = ref(projectTarget.value);
 
+const startEditing = () => {
+  tempDailyGoal.value = dailyGoal.value;
+  tempProjectTarget.value = projectTarget.value;
+  isEditing.value = true;
+};
+
 const saveGoals = () => {
   settings.value.general.dailyGoal = Number(tempDailyGoal.value);
   setProjectTarget(Number(tempProjectTarget.value));
@@ -193,7 +199,7 @@ const chartData = computed(() => {
             <button
               v-if="!isEditing"
               class="text-xs text-ink/40 hover:text-accent underline decoration-dotted underline-offset-4"
-              @click="isEditing = true"
+              @click="startEditing"
             >
               Adjust Goals
             </button>

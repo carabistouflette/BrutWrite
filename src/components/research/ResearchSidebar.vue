@@ -88,11 +88,7 @@
           "
         >
           <BaseIcon v-if="item.file_type === 'pdf'" name="file" size="16" />
-          <BaseIcon
-            v-else-if="['png', 'jpg', 'jpeg', 'webp'].includes(item.file_type)"
-            name="image"
-            size="16"
-          />
+          <BaseIcon v-else-if="item.file_type === 'image'" name="image" size="16" />
           <BaseIcon v-else name="fileText" size="16" />
         </div>
 
@@ -269,13 +265,17 @@ const handleEditTags = () => {
   closeMenu();
 };
 
-const handleSaveTags = (newTags: string[]) => {
-  if (!managingArtifact.value) return;
-  const item = JSON.parse(JSON.stringify(managingArtifact.value));
-  item.tags = newTags;
-  store.updateArtifact(item);
-  showTagManager.value = false;
-  managingArtifact.value = null;
+const handleSaveTags = async (newTags: string[]) => {
+  const artifact = managingArtifact.value;
+  if (!artifact) return;
+
+  try {
+    await store.updateTags(artifact.id, newTags);
+    showTagManager.value = false;
+    managingArtifact.value = null;
+  } catch {
+    // Keep the editor open so the user can retry after the store reports the error.
+  }
 };
 
 // --- Handlers ---

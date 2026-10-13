@@ -33,69 +33,97 @@ const { characters, addAliasToCharacter, removeAliasFromCharacter } = useCharact
 const showAssociationMenu = ref(false);
 const associationMenuPos = ref({ x: 0, y: 0 });
 const selectedTextForAssociation = ref('');
+const selectedTextMenuRange = ref<{ from: number; to: number } | null>(null);
+const selectedTextHasCharacterMark = ref(false);
+const selectedCharacterMarkId = ref<string | null>(null);
 
 const closeAssociationMenu = () => {
   showAssociationMenu.value = false;
   selectedTextForAssociation.value = '';
 };
 
-const selectedTextMenuRange = ref<{ from: number; to: number } | null>(null);
-
 // Handle right-click on editor
-const handleContextMenu = (e: MouseEvent) => {
-  const selection = window.getSelection();
-  if (selection && selection.toString().trim().length > 0) {
-    e.preventDefault();
-    selectedTextForAssociation.value = selection.toString().trim().slice(0, 30); // Max 30 chars
+const handleContextMenu = (event: MouseEvent) => {
+  const browserSelection = window.getSelection();
+  const currentEditor = editor.value;
+  const selection = currentEditor?.state.selection;
+  if (!browserSelection?.toString().trim() || !currentEditor || !selection || selection.empty)
+    return;
 
-    // Capture Tiptap selection to ensure we mark the correct range
-    if (editor.value) {
-      const { from, to } = editor.value.state.selection;
-      selectedTextMenuRange.value = { from, to };
+  const selectedText = currentEditor.state.doc
+    .textBetween(selection.from, selection.to, '\n')
+    .trim();
+  if (!selectedText) return;
+
+  event.preventDefault();
+  selectedTextForAssociation.value = selectedText;
+  selectedTextMenuRange.value = { from: selection.from, to: selection.to };
+
+  const markedCharacterIds = new Set<string>();
+  currentEditor.state.doc.nodesBetween(selection.from, selection.to, (node) => {
+    for (const mark of node.marks) {
+      if (mark.type.name === 'characterMention' && typeof mark.attrs.id === 'string') {
+        markedCharacterIds.add(mark.attrs.id);
+      }
     }
+  });
+  selectedTextHasCharacterMark.value = markedCharacterIds.size > 0;
+  selectedCharacterMarkId.value =
+    markedCharacterIds.size === 1 ? Array.from(markedCharacterIds)[0] : null;
 
-    associationMenuPos.value = { x: e.clientX, y: e.clientY };
-    showAssociationMenu.value = true;
-  }
+  associationMenuPos.value = { x: event.clientX, y: event.clientY };
+  showAssociationMenu.value = true;
 };
 
 const associateCharacter = async (characterId: string) => {
-  console.log('Associating text:', selectedTextForAssociation.value, 'with char:', characterId);
-  try {
-    await addAliasToCharacter(props.projectId, characterId, selectedTextForAssociation.value);
+  const alias = selectedTextForAssociation.value;
+  const range = selectedTextMenuRange.value;
+  const projectId = props.projectId;
+  const chapterId = props.id;
 
-    // Apply visual highlight immediately
-    if (editor.value && selectedTextMenuRange.value) {
+  try {
+    await addAliasToCharacter(projectId, characterId, alias);
+    if (props.projectId !== projectId || props.id !== chapterId) return;
+
+    if (editor.value && range) {
       editor.value
         .chain()
-        .setTextSelection(selectedTextMenuRange.value)
+        .setTextSelection(range)
         .setMark('characterMention', { id: characterId })
         .run();
     }
 
     closeAssociationMenu();
-  } catch (e) {
-    console.error('Association failed:', e);
+  } catch (error) {
+    console.error('Association failed:', error);
   }
 };
 
 const removeAssociation = async () => {
-  console.log('Removing association for text:', selectedTextForAssociation.value);
-  try {
-    await removeAliasFromCharacter(props.projectId, selectedTextForAssociation.value);
+  const alias = selectedTextForAssociation.value;
+  const range = selectedTextMenuRange.value;
+  const projectId = props.projectId;
+  const chapterId = props.id;
 
-    // Remove visual highlight immediately
-    if (editor.value && selectedTextMenuRange.value) {
-      editor.value
-        .chain()
-        .setTextSelection(selectedTextMenuRange.value)
-        .unsetMark('characterMention')
-        .run();
+  try {
+    const normalizedAlias = alias.trim().toLowerCase();
+    const hasAliasAssociation = characters.value.some((character) =>
+      (character.aliases || []).some(
+        (candidate) => candidate.trim().toLowerCase() === normalizedAlias
+      )
+    );
+    if (hasAliasAssociation) {
+      await removeAliasFromCharacter(projectId, alias);
+    }
+    if (props.projectId !== projectId || props.id !== chapterId) return;
+
+    if (editor.value && range) {
+      editor.value.chain().setTextSelection(range).unsetMark('characterMention').run();
     }
 
     closeAssociationMenu();
-  } catch (e) {
-    console.error('Removal failed:', e);
+  } catch (error) {
+    console.error('Removal failed:', error);
   }
 };
 
@@ -137,6 +165,16 @@ const handleResearchClick = (e: MouseEvent) => {
 const { editor, isDirty, setContent, focus } = useTiptapEditor(
   ({ delta }) => emit('content-change', delta),
   (html) => emit('update:content', html)
+);
+
+watch(
+  () => [props.projectId, props.id],
+  () => {
+    closeAssociationMenu();
+    selectedTextMenuRange.value = null;
+    selectedTextHasCharacterMark.value = false;
+    selectedCharacterMarkId.value = null;
+  }
 );
 
 watch(
@@ -220,6 +258,8 @@ defineExpose({
       :y="associationMenuPos.y"
       :selected-text="selectedTextForAssociation"
       :characters="characters"
+      :has-character-mark="selectedTextHasCharacterMark"
+      :marked-character-id="selectedCharacterMarkId"
       @select-character="associateCharacter"
       @remove-association="removeAssociation"
       @close="closeAssociationMenu"
@@ -274,13 +314,13 @@ defineExpose({
 
 <style scoped>
 /* Focus Mode */
-:deep(.focus-mode .ProseMirror > *) {
+.focus-mode :deep(.ProseMirror > *) {
   opacity: 0.2;
   transition: opacity 0.5s ease;
   filter: blur(1px);
 }
 
-:deep(.focus-mode .ProseMirror > *.has-focus) {
+.focus-mode :deep(.ProseMirror > *.has-focus) {
   opacity: 1;
   filter: blur(0);
 }

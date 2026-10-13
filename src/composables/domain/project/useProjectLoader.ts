@@ -4,6 +4,7 @@ import { useCharacters } from '../characters/useCharacters';
 import { useRecentProjects } from './useRecentProjects';
 import { useProjectSession } from './useProjectSession';
 import { flushChapterSessions } from './useChapterSession';
+import { flushResearchNoteSessions } from '../research/useResearchNoteSession';
 import { useProjectSync } from './useProjectSync';
 import { projectApi } from '../../../api/project';
 import { chaptersApi } from '../../../api/chapters';
@@ -19,8 +20,13 @@ export function useProjectLoader() {
 
   const { flush: flushProjectSync } = useProjectSync();
   const flushBeforeTransition = async () => {
+    const projectId = projectStore.projectId;
+    const projectPath = projectStore.path;
     await flushChapterSessions(projectStore);
-    await flushProjectSync();
+    if (projectId && projectPath) {
+      await flushResearchNoteSessions(projectStore, projectId, projectPath);
+    }
+    await flushProjectSync(projectId);
     saveCurrentSessionToCache();
   };
 

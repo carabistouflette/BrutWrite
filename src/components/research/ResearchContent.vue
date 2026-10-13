@@ -5,10 +5,10 @@
       v-if="store.activeArtifact"
       class="h-20 px-4 flex items-center justify-between border-b border-ink/5 bg-paper/95 backdrop-blur z-20"
     >
-      <div class="flex items-center gap-3">
+      <div class="flex-1 min-w-0 flex items-center gap-3">
         <!-- Back Button -->
         <button
-          class="mr-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-stone text-ink/40 hover:text-ink transition-colors"
+          class="mr-2 w-8 h-8 shrink-0 flex items-center justify-center rounded-full hover:bg-stone text-ink/40 hover:text-ink transition-colors"
           @click="store.setActiveArtifact(null)"
         >
           <BaseIcon name="arrowLeft" size="20" />
@@ -18,11 +18,13 @@
           <h1 class="font-serif text-xl text-ink tracking-wide truncate max-w-[180px]">
             {{ store.activeArtifact.name }}
           </h1>
-          <div class="flex items-center gap-3 mt-1">
-            <span class="text-[10px] font-black uppercase tracking-widest text-ink/40">
+          <div class="flex min-w-0 items-center gap-3 mt-1">
+            <span class="shrink-0 text-[10px] font-black uppercase tracking-widest text-ink/40">
               {{ store.activeArtifact.file_type }}
             </span>
-            <span class="text-[10px] font-bold uppercase tracking-widest text-ink/10"> • </span>
+            <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest text-ink/10">
+              •
+            </span>
             <span class="text-[10px] font-mono text-ink/30 truncate max-w-lg">
               {{ store.activeArtifact.path }}
             </span>
@@ -30,10 +32,11 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="shrink-0 flex items-center gap-2">
         <button
           class="text-[10px] font-black uppercase tracking-widest text-ink/40 hover:text-ink transition-colors flex items-center gap-1 px-2 py-1"
           title="Open in System Explorer"
+          @click="openArtifactLocation"
         >
           <BaseIcon name="externalLink" size="12" />
           Open
@@ -114,7 +117,9 @@
 
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { useResearchStore } from '../../stores/research';
+import { useAppStatus } from '../../composables/ui/useAppStatus';
 import ImageViewer from './ImageViewer.vue';
 import NoteEditor from './NoteEditor.vue';
 import BaseIcon from '../base/BaseIcon.vue';
@@ -122,6 +127,18 @@ import BaseIcon from '../base/BaseIcon.vue';
 const PDFViewer = defineAsyncComponent(() => import('./PDFViewer.vue'));
 
 const store = useResearchStore();
+const { notifyError } = useAppStatus();
 
 defineEmits(['add', 'close']);
+
+const openArtifactLocation = async () => {
+  const artifact = store.activeArtifact;
+  if (!artifact) return;
+
+  try {
+    await revealItemInDir(artifact.path);
+  } catch (error) {
+    notifyError('Failed to open research file location', error);
+  }
+};
 </script>

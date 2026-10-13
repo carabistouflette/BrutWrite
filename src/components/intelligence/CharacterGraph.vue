@@ -19,6 +19,7 @@ import GraphGhosts from './graph/GraphGhosts.vue';
 interface Props {
   width?: number;
   height?: number;
+  chapterIds?: string[];
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -172,7 +173,7 @@ async function copyCharacterTag(node: D3Node) {
 // --- Lifecycle ---
 
 onMounted(async () => {
-  await analyze();
+  await analyze(props.chapterIds?.length ? props.chapterIds : undefined);
   // Ensure DOM is ready for D3
   await nextTick();
   initEngine();
@@ -187,14 +188,53 @@ onUnmounted(() => {
 watch(
   () => payload.value,
   (newData) => {
-    if (newData && engine) {
+    if (!newData) {
+      engine?.dispose();
+      engine = null;
+      selectedNodeId.value = null;
+      contextMenuData.value = null;
+      tooltipData.value = null;
+      emit('nodeSelect', null);
+    } else if (engine) {
+      contextMenuData.value = null;
+      tooltipData.value = null;
       engine.update(newData.nodes, newData.edges);
-    } else if (newData && !engine) {
-      // Lazy init if not ready yet
+      if (selectedNodeId.value && newData.nodes.some((node) => node.id === selectedNodeId.value)) {
+        engine.highlightNode(selectedNodeId.value);
+      } else if (selectedNodeId.value) {
+        selectedNodeId.value = null;
+        emit('nodeSelect', null);
+      }
+    } else {
       nextTick(() => initEngine());
     }
   },
   { deep: false } // Disable deep watch to improve performance
+);
+
+watch(
+  () => [props.width, props.height] as const,
+  ([width, height]) => {
+    engine?.resize(width, height);
+  }
+);
+
+watch(
+  () => projectStore.projectId,
+  (projectId, previousProjectId) => {
+    if (projectId === previousProjectId) return;
+
+    selectedNodeId.value = null;
+    contextMenuData.value = null;
+    tooltipData.value = null;
+    if (projectId) {
+      void nextTick(() => {
+        if (projectStore.projectId === projectId) {
+          void analyze(props.chapterIds?.length ? props.chapterIds : undefined);
+        }
+      });
+    }
+  }
 );
 </script>
 
@@ -241,7 +281,7 @@ watch(
     <svg
       ref="svgRef"
       :viewBox="`0 0 ${props.width} ${props.height}`"
-      class="w-full h-full cursor-grab active:cursor-grabbing"
+      class="graph-svg w-full h-full cursor-grab active:cursor-grabbing"
       role="img"
       aria-label="Character interaction graph"
     />

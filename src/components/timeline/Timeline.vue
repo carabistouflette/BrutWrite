@@ -69,8 +69,9 @@ function zoomOut() {
 }
 
 async function handleExport(format: 'png' | 'pdf') {
-  if (!containerRef.value) return;
-  await exportTimeline(containerRef.value, format);
+  const wrapper = containerRef.value?.parentElement;
+  if (!wrapper) return;
+  await exportTimeline(wrapper, format);
 }
 </script>
 
@@ -94,7 +95,12 @@ async function handleExport(format: 'png' | 'pdf') {
 
       <!-- Main Timeline -->
       <div class="timeline-canvas-wrapper">
-        <div ref="containerRef" class="timeline-canvas" @dragover.prevent @drop="handleDrop"></div>
+        <div
+          ref="containerRef"
+          class="timeline-canvas"
+          @dragover.prevent
+          @drop.capture="handleDrop"
+        ></div>
 
         <NarrativeOverlay
           ref="narrativeOverlayRef"

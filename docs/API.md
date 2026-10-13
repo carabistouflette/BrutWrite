@@ -35,21 +35,28 @@ Metadata is published in memory only after `project.json` has been saved through
 
 ## Characters (`commands/characters.rs`)
 
-| Command            | Arguments                                   | Return value      | Description                                         |
-| ------------------ | ------------------------------------------- | ----------------- | --------------------------------------------------- |
-| `save_character`   | `projectId: string`, `character: Character` | `ProjectMetadata` | Creates or updates a character in project metadata. |
-| `delete_character` | `projectId: string`, `characterId: string`  | `ProjectMetadata` | Removes a character from project metadata.          |
+| Command            | Arguments                                   | Return value      | Description                                                                                       |
+| ------------------ | ------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------- |
+| `save_character`   | `projectId: string`, `character: Character` | `ProjectMetadata` | Creates or updates a character in project metadata.                                               |
+| `delete_character` | `projectId: string`, `characterId: string`  | `ProjectMetadata` | Removes the character and clears matching chapter POV metadata without rewriting manuscript HTML. |
+
+Character roles serialize as `protagonist`, `antagonist`, `secondary`, or `extra`. Alias matching is case-insensitive; orphaned mention IDs remain visible until the writer removes the reference or associates it with another character. Character sheets preserve unsaved edits until save or an explicit discard.
 
 ## Research (`commands/research.rs`)
 
-| Command                    | Arguments                       | Return value         | Description                                                      |
-| -------------------------- | ------------------------------- | -------------------- | ---------------------------------------------------------------- |
-| `get_research_artifacts`   | —                               | `ResearchArtifact[]` | Lists indexed research files.                                    |
-| `add_research_files`       | `paths: string[]`               | `void`               | Copies the selected files into the project's research directory. |
-| `create_research_note`     | `name: string`                  | `ResearchArtifact`   | Creates a Markdown note in the research directory.               |
-| `update_note_content`      | `id: string`, `content: string` | `void`               | Writes a research note's content.                                |
-| `rename_research_artifact` | `id: string`, `newName: string` | `void`               | Renames a research file.                                         |
-| `delete_research_artifact` | `id: string`                    | `void`               | Deletes a research file.                                         |
+| Command                         | Arguments                                               | Return value         | Description                                                                        |
+| ------------------------------- | ------------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------- |
+| `get_research_artifacts`        | —                                                       | `ResearchArtifact[]` | Lists indexed research files.                                                      |
+| `add_research_files`            | `paths: string[]`                                       | `void`               | Copies the selected files into the project's research directory.                   |
+| `create_research_note`          | `name: string`                                          | `ResearchArtifact`   | Creates a Markdown note in the research directory.                                 |
+| `update_note_content`           | `id: string`, `expectedPath: string`, `content: string` | `void`               | Writes a research note only if its current indexed path matches the captured path. |
+| `update_research_artifact_tags` | `id: string`, `tags: string[]`                          | `void`               | Updates tags and persists the research index.                                      |
+| `rename_research_artifact`      | `id: string`, `newName: string`                         | `void`               | Renames a research file.                                                           |
+| `delete_research_artifact`      | `id: string`                                            | `void`               | Deletes a research file.                                                           |
+
+Research note editors capture the artifact path and flush pending or in-flight saves before project changes and native window close. A failed save retains its payload and blocks the transition; a copied artifact ID cannot write to a different project's path. When a project is moved or copied, index reconciliation preserves IDs and tags by filename and rebases paths to the current research directory.
+
+A failed note read leaves the editor read-only and displays the error; it cannot overwrite an unread document with an empty draft. Image previews read bytes through the existing filesystem permissions and revoke their Blob URLs when selection changes.
 
 ## Snapshots (`commands/snapshots.rs`)
 
@@ -69,4 +76,6 @@ Snapshot filenames are validated against the chapter's snapshot directory. Empty
 | ------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------- |
 | `analyze_character_graph` | `projectId: string`, `proximityWindow?: number`, `pruneThreshold?: number`, `chapterIds?: string[]` | `CharacterGraphPayload` | Scans selected or all chapters and returns character-interaction graph data. |
 
-The `seed_demo_project(path)` command is registered only in debug builds. Its module and embedded demo data are excluded from release builds.
+Graph scanning truncates long names and aliases only at UTF-8 character boundaries and preserves non-ASCII spelling. ASCII matching is case-insensitive. In the graph UI, clearing chapter selection analyzes all chapters; stale refresh results cannot replace a newer request or another project's graph.
+
+The `seed_demo_project(path)` command creates the embedded example project and returns its project ID. It is registered in both development and release builds because the welcome screen offers demo creation in both.

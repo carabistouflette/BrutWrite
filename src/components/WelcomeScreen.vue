@@ -60,10 +60,6 @@
         class="absolute bottom-8 left-0 right-0 px-12 flex justify-between items-end opacity-20 text-[10px] uppercase tracking-widest font-bold"
       >
         <span>© {{ currentYear }} BrutWrite Studio</span>
-        <div class="flex gap-8">
-          <span class="hover:text-ink cursor-pointer transition-colors">Documentation</span>
-          <span class="hover:text-ink cursor-pointer transition-colors">Release Notes</span>
-        </div>
       </div>
     </div>
   </Transition>
@@ -162,12 +158,7 @@ const handleDemoProject = async () => {
         try {
           await createDemoProject(selected);
         } catch (e: unknown) {
-          const err = String(e);
-          if (err.includes('command not found') || err.includes('not allow')) {
-            notifyError('Demo project creation is disabled in this build.', err);
-          } else {
-            notifyError('Failed to create demo project', err);
-          }
+          notifyError('Failed to create demo project', e);
         }
       };
       isVisible.value = false;

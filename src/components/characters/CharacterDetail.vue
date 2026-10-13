@@ -14,11 +14,18 @@ const roles = Object.values(CharacterRole);
 
 // OPTIMIZATION: Use a local ref to batch updates and avoid O(N) object spreading on every keystroke
 const localCharacter = ref<Character>({ ...props.modelValue });
+const traitsInput = ref((props.modelValue.traits || []).join('\n'));
 
 // Sync prop changes back to local (e.g., when parent resets or changes character)
 watch(
   () => props.modelValue,
   (newVal) => {
+    if (
+      newVal.id !== localCharacter.value.id ||
+      (newVal.traits || []).join('\n') !== (localCharacter.value.traits || []).join('\n')
+    ) {
+      traitsInput.value = (newVal.traits || []).join('\n');
+    }
     localCharacter.value = { ...newVal };
   },
   { deep: true }
@@ -50,6 +57,14 @@ const updateEngineField = (field: string, value: string) => {
   };
   emit('update:modelValue', { ...localCharacter.value });
   emit('change');
+};
+const updateTraits = (value: string) => {
+  traitsInput.value = value;
+  const traits = value
+    .split('\n')
+    .map((trait) => trait.trim())
+    .filter(Boolean);
+  localCharacter.value = { ...localCharacter.value, traits };
   emit('update:modelValue', { ...localCharacter.value });
   emit('change');
 };
@@ -62,7 +77,7 @@ const addAlias = () => {
   if (!raw) return;
 
   const current = localCharacter.value.aliases || [];
-  if (!current.includes(raw)) {
+  if (!current.some((alias) => alias.trim().toLowerCase() === raw.toLowerCase())) {
     const updated = [...current, raw];
     localCharacter.value = { ...localCharacter.value, aliases: updated };
     emit('update:modelValue', { ...localCharacter.value });
@@ -149,6 +164,39 @@ const removeAlias = (aliasToRemove: string) => {
               placeholder="e.g. The Reluctant Hero, The Mentor"
               @input="(e) => updateField('archetype', (e.target as HTMLInputElement).value)"
             />
+          </div>
+        </section>
+
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="space-y-3">
+            <label
+              for="character-description"
+              class="block text-xs uppercase tracking-widest text-ink/40 font-bold"
+              >Description</label
+            >
+            <textarea
+              id="character-description"
+              :value="modelValue.description"
+              rows="4"
+              class="w-full bg-ink/5 border border-ink/10 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink"
+              placeholder="Describe this character..."
+              @input="(e) => updateField('description', (e.target as HTMLTextAreaElement).value)"
+            ></textarea>
+          </div>
+          <div class="space-y-3">
+            <label
+              for="character-traits"
+              class="block text-xs uppercase tracking-widest text-ink/40 font-bold"
+              >Traits</label
+            >
+            <textarea
+              id="character-traits"
+              :value="traitsInput"
+              rows="4"
+              class="w-full bg-ink/5 border border-ink/10 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-accent/20 text-ink"
+              placeholder="One trait per line..."
+              @input="(e) => updateTraits((e.target as HTMLTextAreaElement).value)"
+            ></textarea>
           </div>
         </section>
 
@@ -274,7 +322,6 @@ const removeAlias = (aliasToRemove: string) => {
           </div>
         </section>
 
-        <!-- Physical & Notes -->
         <section class="grid grid-cols-1 gap-8">
           <div class="space-y-3">
             <h3 class="text-lg font-bold font-serif italic text-ink">Physicality</h3>
@@ -292,9 +339,26 @@ const removeAlias = (aliasToRemove: string) => {
               ></textarea>
             </div>
           </div>
+        </section>
+
+        <section class="grid grid-cols-1 gap-8">
+          <div class="space-y-3">
+            <h3 class="text-lg font-bold font-serif italic text-ink">Character Arc</h3>
+            <div
+              class="bg-ink/5 rounded-xl p-4 border border-ink/10 focus-within:ring-2 focus-within:ring-accent/10 transition-all"
+            >
+              <textarea
+                :value="modelValue.arc"
+                rows="4"
+                class="w-full bg-transparent resize-none focus:outline-none text-ink placeholder-ink/10 leading-relaxed font-medium"
+                placeholder="How does this character change over the story?"
+                @input="(e) => updateField('arc', (e.target as HTMLTextAreaElement).value)"
+              ></textarea>
+            </div>
+          </div>
 
           <div class="space-y-3">
-            <h3 class="text-lg font-bold font-serif italic text-ink">Notes & Arc</h3>
+            <h3 class="text-lg font-bold font-serif italic text-ink">Notes</h3>
             <div
               class="bg-ink/5 rounded-xl p-4 border border-ink/10 focus-within:ring-2 focus-within:ring-accent/10 transition-all"
             >
@@ -302,7 +366,7 @@ const removeAlias = (aliasToRemove: string) => {
                 :value="modelValue.notes"
                 rows="8"
                 class="w-full bg-transparent resize-none focus:outline-none text-ink placeholder-ink/10 leading-relaxed font-medium"
-                placeholder="General notes, ideas, character arc progression..."
+                placeholder="General notes and ideas..."
                 @input="(e) => updateField('notes', (e.target as HTMLTextAreaElement).value)"
               ></textarea>
             </div>

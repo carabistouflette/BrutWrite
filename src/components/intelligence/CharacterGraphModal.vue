@@ -9,7 +9,7 @@
  * - Styled to match CharacterSheet's warm, editorial aesthetic.
  */
 
-import { ref, defineAsyncComponent, computed } from 'vue';
+import { ref, defineAsyncComponent, computed, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
@@ -44,9 +44,16 @@ const handleRefresh = async () => {
   await analyze(selectedChapterIds.value.length > 0 ? selectedChapterIds.value : undefined);
 };
 
-// Chapter filter state
 const selectedChapterIds = ref<string[]>([]);
 const showChapterFilter = ref(false);
+
+watch(
+  () => projectStore.projectId,
+  () => {
+    selectedChapterIds.value = [];
+    showChapterFilter.value = false;
+  }
+);
 
 // Get all chapters (leaf nodes only)
 const chapters = computed(() =>
@@ -103,69 +110,71 @@ const exportPng = async () => {
   const svg = document.querySelector('.graph-svg') as SVGSVGElement | null;
   if (!svg) return;
 
-  // Clone SVG and prepare for export
+  const width = Math.round(svg.viewBox.baseVal.width);
+  const height = Math.round(svg.viewBox.baseVal.height);
+  if (width <= 0 || height <= 0) return;
+
   const clone = svg.cloneNode(true) as SVGSVGElement;
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('width', String(width));
+  clone.setAttribute('height', String(height));
 
-  // Inline styles for export
   const styleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-  // Use a centralized constant if possible, or at least keep this string clean
   styleElement.textContent = EXPORT_CSS_STYLES;
   clone.insertBefore(styleElement, clone.firstChild);
 
-  // Add white background
-  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-  bg.setAttribute('width', '100%');
-  bg.setAttribute('height', '100%');
-  bg.setAttribute('fill', '#f4f4f0');
-  clone.insertBefore(bg, clone.firstChild);
+  const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  background.setAttribute('width', String(width));
+  background.setAttribute('height', String(height));
+  background.setAttribute('fill', '#f4f4f0');
+  clone.insertBefore(background, clone.firstChild);
 
-  // Convert to data URL
   const svgData = new XMLSerializer().serializeToString(clone);
   const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(svgBlob);
+  const image = new Image();
 
-  // Create canvas and draw
-  const img = new Image();
-  img.onload = async () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1000;
-    canvas.height = 550;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.fillStyle = '#f4f4f0';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0);
-
-    URL.revokeObjectURL(url);
-
+  image.onload = async () => {
     try {
-      // Get data URL and convert to Uint8Array
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Unable to create an image canvas');
+
+      context.fillStyle = '#f4f4f0';
+      context.fillRect(0, 0, width, height);
+      context.drawImage(image, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+
       const dataUrl = canvas.toDataURL('image/png');
       const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
       const binaryString = atob(base64);
       const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+      for (let index = 0; index < binaryString.length; index++) {
+        bytes[index] = binaryString.charCodeAt(index);
       }
 
-      // Open save dialog
       const path = await save({
         defaultPath: `character-graph-${new Date().toISOString().split('T')[0]}.png`,
         filters: [{ name: 'Image', extensions: ['png'] }],
       });
 
-      // Write to file if path selected
       if (path) {
         await writeFile(path, bytes);
         notify('Graph exported successfully');
       }
-    } catch (e) {
-      notifyError('Failed to export graph', e);
+    } catch (error) {
+      URL.revokeObjectURL(url);
+      notifyError('Failed to export graph', error);
     }
   };
-  img.src = url;
+
+  image.onerror = () => {
+    URL.revokeObjectURL(url);
+    notifyError('Failed to render graph for export');
+  };
+  image.src = url;
 };
 </script>
 
@@ -320,6 +329,7 @@ const exportPng = async () => {
             <CharacterGraph
               :width="1000"
               :height="showChapterFilter ? 480 : 550"
+              :chapter-ids="selectedChapterIds"
               @navigate-to-mention="handleNavigateToMention"
             />
           </div>

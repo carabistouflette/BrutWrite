@@ -25,6 +25,7 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
             error!("Failed to initialize research state: {:?}", e);
             return;
         }
+        let _ = app_handle.emit("research-update", ());
 
         // 3. Setup Watcher
         let (tx, mut rx) = mpsc::unbounded_channel();
@@ -48,6 +49,7 @@ pub fn init_research_watcher<R: Runtime>(app: &AppHandle<R>, project_path: PathB
                 // Save watcher in state. This drops any previous watcher,
                 // which closes its associated channel and stops its task.
                 state.set_watcher(watcher).await;
+                drop(_lock);
 
                 // 4. Handle Events
                 while let Some(res) = rx.recv().await {

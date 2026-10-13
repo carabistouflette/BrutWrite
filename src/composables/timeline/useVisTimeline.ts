@@ -1,9 +1,10 @@
-import { ref, onMounted, onUnmounted, type Ref } from 'vue';
+import { ref, onMounted, onUnmounted, watch, type Ref } from 'vue';
 import { DataSet } from 'vis-data';
 import { Timeline } from 'vis-timeline';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
 import { useVisTimelineOptions } from './useVisTimelineOptions';
 import { useVisTimelineEvents } from './useVisTimelineEvents';
+import { useCalendar } from './useCalendar';
 import {
   useVisTimelineData,
   type VisTimelineItem,
@@ -26,6 +27,8 @@ export function useVisTimeline(
   const { handleItemMove, handleDrop } = useVisTimelineEvents(timeline, groups);
   const { options } = useVisTimelineOptions(handleItemMove);
   const { syncData } = useVisTimelineData(items, groups, isMounted, timeline);
+  const { currentSystem, startYear, customMonths } = useCalendar();
+  watch([currentSystem, startYear, customMonths], () => timeline.value?.redraw(), { deep: true });
 
   onMounted(() => {
     isMounted.value = true;

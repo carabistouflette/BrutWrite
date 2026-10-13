@@ -11,6 +11,7 @@ import { useAppStatus } from '../ui/useAppStatus';
 import { useAutoSave } from '../../composables/editor/useAutoSave';
 import { registerChapterSession, useChapterSession } from '../domain/project/useChapterSession';
 import { useProjectSync } from '../domain/project/useProjectSync';
+import { researchApi } from '../../api/research';
 import { chaptersApi } from '../../api/chapters';
 import { countWords } from '../../utils/stats';
 import { APP_CONSTANTS } from '../../config/constants';
@@ -26,7 +27,7 @@ export interface EditorSession {
   handleSave: (content: string) => Promise<void>;
   restoreSnapshot: (filename: string) => Promise<string | undefined>;
   branchSnapshot: (filename: string) => Promise<void>;
-  openResearchArtifact: (id: string) => void;
+  openResearchArtifact: (id: string) => Promise<void>;
 }
 
 export function useEditorSession(projectId: Ref<string>, chapterId: Ref<string>): EditorSession {
@@ -284,15 +285,38 @@ export function useEditorSession(projectId: Ref<string>, chapterId: Ref<string>)
     await flushCurrentSession();
   };
 
-  const openResearchArtifact = (id: string) => {
-    const artifact = researchStore.artifacts.find((item) => item.id === id);
-    if (artifact) {
-      researchStore.setActiveArtifact(artifact);
-    } else {
-      researchStore.fetchArtifacts().then(() => {
-        const found = researchStore.artifacts.find((item) => item.id === id);
-        if (found) researchStore.setActiveArtifact(found);
-      });
+  const openResearchArtifact = async (id: string) => {
+    const identity = { projectId: projectId.value, projectPath: projectStore.path };
+    if (!identity.projectPath) return;
+
+    try {
+      const artifacts = await researchApi.fetchArtifacts();
+      if (projectId.value !== identity.projectId || projectStore.path !== identity.projectPath)
+        return;
+
+      const researchRoot = `${identity.projectPath.replace(/[\\/]+$/, '')}/research/`.replace(
+        /\\/g,
+        '/'
+      );
+      const currentProjectArtifacts = artifacts.filter((artifact) =>
+        artifact.path.replace(/\\/g, '/').startsWith(researchRoot)
+      );
+      researchStore.artifacts = currentProjectArtifacts;
+      const currentActiveId = researchStore.activeArtifact?.id;
+      researchStore.setActiveArtifact(
+        currentActiveId
+          ? (currentProjectArtifacts.find((artifact) => artifact.id === currentActiveId) ?? null)
+          : null
+      );
+
+      const artifact = currentProjectArtifacts.find((item) => item.id === id);
+      if (artifact) {
+        researchStore.setActiveArtifact(artifact);
+      }
+    } catch (error) {
+      if (projectId.value === identity.projectId && projectStore.path === identity.projectPath) {
+        notifyError('Failed to fetch research artifacts', error);
+      }
     }
   };
 

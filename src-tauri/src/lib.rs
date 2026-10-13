@@ -58,6 +58,7 @@ pub fn run() {
             commands::add_research_files,
             commands::create_research_note,
             commands::update_note_content,
+            commands::update_research_artifact_tags,
             commands::rename_research_artifact,
             commands::delete_research_artifact,
             commands::list_snapshots,
@@ -66,7 +67,6 @@ pub fn run() {
             commands::restore_snapshot,
             commands::branch_snapshot,
             commands::analyze_character_graph,
-            #[cfg(debug_assertions)]
             commands::seed_demo_project
         ])
         .run(tauri::generate_context!())

@@ -81,8 +81,9 @@ import BaseIcon from '../base/BaseIcon.vue';
 <style scoped>
 .timeline-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 24px;
+  gap: 8px 24px;
   padding: 10px 16px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
@@ -90,6 +91,7 @@ import BaseIcon from '../base/BaseIcon.vue';
 
 .controls-group {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }

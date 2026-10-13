@@ -69,12 +69,21 @@ impl ResearchState {
         crate::research::io::import_files(self, paths).await
     }
 
-    pub async fn update_content(&self, id: String, content: String) -> crate::errors::Result<()> {
-        crate::research::crud::update_content(self, id, content).await
+    pub async fn update_content(
+        &self,
+        id: String,
+        expected_path: String,
+        content: String,
+    ) -> crate::errors::Result<()> {
+        crate::research::crud::update_content(self, id, expected_path, content).await
     }
 
     pub async fn rename_artifact(&self, id: String, new_name: String) -> crate::errors::Result<()> {
         crate::research::crud::rename_artifact(self, id, new_name).await
+    }
+
+    pub async fn update_tags(&self, id: String, tags: Vec<String>) -> crate::errors::Result<()> {
+        crate::research::crud::update_tags(self, id, tags).await
     }
 
     pub async fn delete_artifact(&self, id: String) -> crate::errors::Result<()> {
@@ -87,8 +96,10 @@ impl ResearchState {
 
     pub async fn stop(&self) {
         let mut inner = self.inner.lock().await;
-        inner.watcher = None; // Dropping the watcher stops the underlying implementation
+        inner.watcher = None;
         inner.root_path = None;
+        inner.artifacts.clear();
+        inner.path_map.clear();
     }
     pub async fn get_root_path_safe(&self) -> crate::errors::Result<PathBuf> {
         let inner = self.inner.lock().await;
@@ -125,18 +136,6 @@ impl ResearchState {
             return Ok(());
         }
 
-        // We need to deref Arc for serialization to match old format if needed,
-        // OR rely on serde handling Arc (it does, transparently).
-        // Since storage::save_index likely expects HashMap<String, ResearchArtifact>, we might have a mismatch.
-        // Let's check storage::save_index signature.
-        // If save_index expects `&HashMap<String, ResearchArtifact>`, we are in trouble.
-        // We'll need to check storage definitions.
-        // For now, let's assume we need to update storage too, or map it here.
-        // Mapping here would defeat the purpose of optimization for persistence (it would clone).
-        // But get_all is more frequent than persist.
-        // Let's map it here temporarily if needed, but optimally update storage.
-        // Actually, if we change the artifacts in `ResearchInner` to `Arc`, `artifacts` here is `HashMap<String, Arc<ResearchArtifact>>`.
-
         crate::storage::save_index(&root, &artifacts).await?;
         persistence.last_saved_version = version;
 
@@ -144,17 +143,32 @@ impl ResearchState {
     }
 
     /// Helper to insert an artifact and save the index
-    pub async fn persist_artifact(&self, artifact: ResearchArtifact) -> crate::errors::Result<()> {
-        let arc_artifact = Arc::new(artifact);
-        self.mutate_and_persist(move |inner| {
+    pub async fn persist_artifact(
+        &self,
+        artifact: ResearchArtifact,
+    ) -> crate::errors::Result<Arc<ResearchArtifact>> {
+        let artifact = Arc::new(artifact);
+        let mut registered = None;
+
+        self.mutate_and_persist(|inner| {
+            if let Some(existing_id) = inner.path_map.get(&artifact.path) {
+                if let Some(existing) = inner.artifacts.get(existing_id) {
+                    registered = Some(Arc::clone(existing));
+                    return Ok(());
+                }
+            }
+
             inner
                 .path_map
-                .insert(arc_artifact.path.clone(), arc_artifact.id.clone());
+                .insert(artifact.path.clone(), artifact.id.clone());
             inner
                 .artifacts
-                .insert(arc_artifact.id.clone(), arc_artifact);
+                .insert(artifact.id.clone(), Arc::clone(&artifact));
+            registered = Some(Arc::clone(&artifact));
             Ok(())
         })
-        .await
+        .await?;
+
+        Ok(registered.expect("artifact registration always returns an artifact"))
     }
 }

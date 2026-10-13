@@ -44,11 +44,14 @@ const handleUpdate = (newList: FileNode[]) => {
   emit('update:modelValue', newList);
 };
 
-const handleNestedUpdate = (index: number, newChildren: FileNode[]) => {
-  const updatedList = [...localList.value];
-  updatedList[index] = { ...updatedList[index], children: newChildren };
-  localList.value = updatedList;
-  emit('update:modelValue', updatedList);
+const handleNestedUpdate = (id: string, newChildren: FileNode[]) => {
+  const index = localList.value.findIndex((node) => node.id === id);
+  if (index === -1) return;
+
+  // Preserve the array shared with Sortable until both add/remove callbacks finish.
+  // Its root removal must see the destination's updated children before Vue rerenders.
+  localList.value[index] = { ...localList.value[index], children: newChildren };
+  emit('update:modelValue', [...localList.value]);
 };
 
 const editName = ref('');
@@ -102,7 +105,7 @@ const handleRenameSubmit = (id: string) => {
     @end="setDragging(false)"
   >
     <div
-      v-for="(element, index) in localList"
+      v-for="element in localList"
       :key="element.id"
       class="cursor-pointer select-none group/row"
     >
@@ -139,7 +142,7 @@ const handleRenameSubmit = (id: string) => {
             :active-id="activeId"
             :editing-id="editingId"
             :depth="depth + 1"
-            @update:model-value="(val) => handleNestedUpdate(index, val)"
+            @update:model-value="(val) => handleNestedUpdate(element.id, val)"
             @context-menu="(p) => emit('context-menu', p)"
             @request-rename="(id) => emit('request-rename', id)"
             @submit-rename="(p) => emit('submit-rename', p)"

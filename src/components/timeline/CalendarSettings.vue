@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import {
   useCalendar,
   type CalendarSystem,
@@ -17,7 +17,26 @@ const localStartYear = ref(startYear.value);
 // Deep copy for editing
 const localCustomMonths = ref<MonthConfig[]>(JSON.parse(JSON.stringify(customMonths.value)));
 
+const validationError = computed(() => {
+  if (activeTab.value === 'gregorian') return '';
+  if (!Number.isSafeInteger(localStartYear.value)) return 'Enter a whole-number start year.';
+  if (activeTab.value !== 'custom') return '';
+  if (localCustomMonths.value.length === 0) return 'Add at least one month.';
+  if (
+    localCustomMonths.value.some(
+      (month) => !month.name.trim() || !Number.isSafeInteger(month.days) || month.days <= 0
+    )
+  ) {
+    return 'Each month needs a name and a positive whole number of days.';
+  }
+  if (!Number.isSafeInteger(localCustomMonths.value.reduce((sum, month) => sum + month.days, 0))) {
+    return 'The total number of days in a year is too large.';
+  }
+  return '';
+});
+
 function apply() {
+  if (validationError.value) return;
   setSystem(activeTab.value);
   setStartYear(localStartYear.value);
   if (activeTab.value === 'custom') {
@@ -67,10 +86,13 @@ function apply() {
 
         <!-- Custom Editor -->
         <CustomMonthEditor v-if="activeTab === 'custom'" v-model="localCustomMonths" />
+        <p v-if="validationError" role="alert">{{ validationError }}</p>
       </div>
 
       <footer>
-        <button class="btn-primary" @click="apply">Apply Changes</button>
+        <button class="btn-primary" :disabled="!!validationError" @click="apply">
+          Apply Changes
+        </button>
       </footer>
     </div>
   </div>

@@ -14,8 +14,19 @@ export function useTimelineExport() {
 
       const canvas = await html2canvas(container, {
         scale: 2,
-        backgroundColor: '#1a1a1a',
-        ignoreElements: (element: Element) => element.classList.contains('narrative-overlay'),
+        backgroundColor: getComputedStyle(document.body).backgroundColor,
+        onclone: (_document, clonedContainer) => {
+          const sourcePaths = container.querySelectorAll('.narrative-overlay path');
+          const clonedPaths = clonedContainer.querySelectorAll('.narrative-overlay path');
+          sourcePaths.forEach((path, index) => {
+            const clonedPath = clonedPaths[index];
+            if (!clonedPath) return;
+            const style = getComputedStyle(path);
+            // Serialized SVG images cannot inherit the page's CSS variables.
+            clonedPath.setAttribute('stroke', style.stroke);
+            clonedPath.setAttribute('fill', style.fill);
+          });
+        },
       });
 
       const defaultName = `${defaultNamePrefix}_${new Date().toISOString().split('T')[0]}`;

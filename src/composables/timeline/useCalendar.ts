@@ -72,14 +72,8 @@ export function useCalendar() {
     const months = currentSystem.value === 'fixed360' ? fixed360Months : customMonths.value;
     const daysInYear = months.reduce((sum, m) => sum + m.days, 0);
 
-    let year = Math.floor(totalDays / daysInYear) + startYear.value;
-    let dayOfYear = totalDays % daysInYear;
-
-    if (totalDays < 0) {
-      dayOfYear = daysInYear + (totalDays % daysInYear);
-      if (dayOfYear === daysInYear) dayOfYear = 0;
-      year = Math.floor(totalDays / daysInYear) + startYear.value - 1;
-    }
+    const year = Math.floor(totalDays / daysInYear) + startYear.value;
+    const dayOfYear = ((totalDays % daysInYear) + daysInYear) % daysInYear;
 
     let currentMonth = months[0];
     let remainingDays = dayOfYear;

@@ -4,6 +4,7 @@ import type { Ref } from 'vue';
 export interface NarrativeConnector {
   from: string;
   to: string;
+  isFlashback: boolean;
 }
 
 export interface ConnectorPath {
@@ -81,12 +82,12 @@ export function useNarrativeConnectors(
         const cp2x = x2 - dist * 0.4;
         const cp2y = y2;
 
-        const isFlashback = x2 < x1;
+        const isFlashback = conn.isFlashback;
         const pathD = `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`;
 
         paths.push({
           d: pathD,
-          color: isFlashback ? 'var(--color-warning)' : 'var(--color-primary)',
+          color: isFlashback ? 'var(--color-danger)' : 'var(--color-accent)',
           isFlashback,
         });
       }

@@ -4,6 +4,7 @@ import type { UnlistenFn } from '@tauri-apps/api/event';
 import { useProjectStore } from '../../stores/project';
 import { useProjectSync } from '../domain/project/useProjectSync';
 import { flushChapterSessions } from '../domain/project/useChapterSession';
+import { flushResearchNoteSessions } from '../domain/research/useResearchNoteSession';
 import { useAppStatus } from './useAppStatus';
 
 export function useWindowControls() {
@@ -26,11 +27,15 @@ export function useWindowControls() {
         }
         closing = true;
         const projectId = projectStore.projectId;
+        const projectPath = projectStore.path;
         const appRoot = document.getElementById('app');
         const wasInert = appRoot?.inert ?? false;
         if (appRoot) appRoot.inert = true;
         try {
           await flushChapterSessions(projectStore);
+          if (projectId && projectPath) {
+            await flushResearchNoteSessions(projectStore, projectId, projectPath);
+          }
           await flush(projectId);
         } catch (error) {
           if (appRoot) appRoot.inert = wasInert;

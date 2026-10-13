@@ -1,7 +1,8 @@
 import { storeToRefs } from 'pinia';
 import { useProjectStore } from '../../../stores/project';
+import { useProjectSync } from '../project/useProjectSync';
 import { charactersApi } from '../../../api/characters';
-import type { Character } from '../../../types';
+import type { Character, ProjectMetadata } from '../../../types';
 import { useAppStatus } from '../../ui/useAppStatus';
 import { useCharacterGraph } from '../../domain/intelligence/useCharacterGraph';
 
@@ -9,6 +10,8 @@ export function useCharacters() {
   const { notify, notifyError } = useAppStatus();
   const projectStore = useProjectStore();
   const { characters: projectCharacters } = storeToRefs(projectStore);
+
+  const normalizeAlias = (alias: string) => alias.trim().toLowerCase();
 
   /**
    * Set the full list of characters (e.g., after loading a project)
@@ -23,10 +26,9 @@ export function useCharacters() {
   const saveCharacter = async (projectId: string, character: Character) => {
     try {
       const metadata = await charactersApi.save(projectId, character);
-      // The backend returns the updated metadata.
-      // Optimistically update or use backend source of truth?
-      // Backend returns full list in metadata.characters
-      projectStore.setCharacters(metadata.characters);
+      if (projectStore.projectId === projectId) {
+        projectStore.setCharacters(metadata.characters);
+      }
       return metadata;
     } catch (e) {
       notifyError('Failed to save character', e);
@@ -39,8 +41,21 @@ export function useCharacters() {
    */
   const deleteCharacter = async (projectId: string, characterId: string) => {
     try {
+      if (projectStore.projectId !== projectId) return;
+
+      const { flush } = useProjectSync();
+      await flush(projectId);
+      if (projectStore.projectId !== projectId) return;
+
       const metadata = await charactersApi.delete(projectId, characterId);
-      projectStore.setCharacters(metadata.characters);
+      if (projectStore.projectId === projectId) {
+        projectStore.setCharacters(metadata.characters);
+        for (const node of projectStore.flatNodes) {
+          if (node.pov_character_id?.toLowerCase() === characterId.toLowerCase()) {
+            projectStore.updateNodeMetadataAction(node.id, { pov_character_id: undefined });
+          }
+        }
+      }
       return metadata;
     } catch (e) {
       notifyError('Failed to delete character', e);
@@ -52,26 +67,51 @@ export function useCharacters() {
    * Add an alias to a character
    */
   const addAliasToCharacter = async (projectId: string, characterId: string, alias: string) => {
-    const char = projectCharacters.value.find((c) => c.id === characterId);
+    if (projectStore.projectId !== projectId) throw new Error('The active project changed');
+
+    const normalizedAlias = normalizeAlias(alias);
+    if (!normalizedAlias) throw new Error('Alias cannot be empty');
+
+    const char = projectCharacters.value.find((character) => character.id === characterId);
     if (!char) throw new Error('Character not found');
 
-    // Avoid duplicates
     const currentAliases = char.aliases || [];
-    if (currentAliases.includes(alias)) return;
+    const hasTargetAlias = currentAliases.some(
+      (currentAlias) => normalizeAlias(currentAlias) === normalizedAlias
+    );
+    let result: ProjectMetadata | undefined;
 
-    const updatedChar = {
-      ...char,
-      aliases: [...currentAliases, alias],
-    };
+    if (!hasTargetAlias) {
+      result = await saveCharacter(projectId, {
+        ...char,
+        aliases: [...currentAliases, alias.trim()],
+      });
+    }
+    if (projectStore.projectId !== projectId) return result;
 
-    const result = await saveCharacter(projectId, updatedChar);
+    const previousOwners = projectCharacters.value.filter(
+      (character) =>
+        character.id !== characterId &&
+        (character.aliases || []).some(
+          (currentAlias) => normalizeAlias(currentAlias) === normalizedAlias
+        )
+    );
+    for (const previousOwner of previousOwners) {
+      if (projectStore.projectId !== projectId) return result;
 
-    // Trigger graph refresh to reflect new alias
+      result = await saveCharacter(projectId, {
+        ...previousOwner,
+        aliases: (previousOwner.aliases || []).filter(
+          (currentAlias) => normalizeAlias(currentAlias) !== normalizedAlias
+        ),
+      });
+    }
+
+    if (projectStore.projectId !== projectId || !result) return result;
+
     const graphStore = useCharacterGraph();
-    // We don't await this to keep UI snappy, it will update in background
     graphStore.analyze();
-
-    notify(`Associated "${alias}" with ${char.name}`);
+    notify(`Associated "${alias.trim()}" with ${char.name}`);
     return result;
   };
 
@@ -80,30 +120,33 @@ export function useCharacters() {
    * Finds the character that has this alias and removes it.
    */
   const removeAliasFromCharacter = async (projectId: string, alias: string) => {
-    // Case-insensitive search
-    const normalizedAlias = alias.toLowerCase().trim();
-    const char = projectCharacters.value.find((c) =>
-      (c.aliases || []).some((a) => a.toLowerCase().trim() === normalizedAlias)
+    if (projectStore.projectId !== projectId) throw new Error('The active project changed');
+
+    const normalizedAlias = normalizeAlias(alias);
+    const owners = projectCharacters.value.filter((character) =>
+      (character.aliases || []).some(
+        (currentAlias) => normalizeAlias(currentAlias) === normalizedAlias
+      )
     );
 
-    if (!char) throw new Error('No character associated with this alias');
+    if (owners.length === 0) throw new Error('No character associated with this alias');
 
-    const updatedAliases = (char.aliases || []).filter(
-      (a) => a.toLowerCase().trim() !== normalizedAlias
-    );
+    let result: ProjectMetadata | undefined;
+    for (const owner of owners) {
+      if (projectStore.projectId !== projectId) return result;
 
-    const updatedChar = {
-      ...char,
-      aliases: updatedAliases,
-    };
+      result = await saveCharacter(projectId, {
+        ...owner,
+        aliases: (owner.aliases || []).filter(
+          (currentAlias) => normalizeAlias(currentAlias) !== normalizedAlias
+        ),
+      });
+    }
+    if (projectStore.projectId !== projectId) return result;
 
-    const result = await saveCharacter(projectId, updatedChar);
-
-    // Trigger graph refresh
     const graphStore = useCharacterGraph();
     graphStore.analyze();
-
-    notify(`Removed association "${alias}" from ${char.name}`);
+    notify(`Removed association "${alias}"`);
     return result;
   };
 

@@ -35,6 +35,7 @@ export class CharacterGraphEngine {
   private width: number;
   private height: number;
   private options: GraphEngineOptions;
+  private reducedMotion = false;
   private radiusScale: d3.ScaleLinear<number, number> | null = null;
   private nodeMap = new Map<string, D3Node>();
 
@@ -55,6 +56,23 @@ export class CharacterGraphEngine {
     this.height = options.height;
     this.options = options;
     this.onZoom = options.onZoom;
+  }
+
+  public resize(width: number, height: number) {
+    if (this.width === width && this.height === height) return;
+
+    this.width = width;
+    this.height = height;
+    const centerForce = this.simulation?.force('center') as d3.ForceCenter<D3Node> | undefined;
+    centerForce?.x(width / 2).y(height / 2);
+
+    if (!this.simulation) return;
+    if (this.reducedMotion) {
+      this.simulation.alpha(1).tick(GRAPH_CONFIG.STATIC_TICKS);
+      this.updatePositions();
+    } else {
+      this.simulation.alpha(0.3).restart();
+    }
   }
 
   /**
@@ -117,10 +135,14 @@ export class CharacterGraphEngine {
         linkForce.links(d3Links);
       }
 
-      // Re-heat simulation slightly to settle new structure
-      this.simulation.alpha(0.3).restart();
+      // Respect reduced-motion settings while settling updates.
+      if (this.reducedMotion) {
+        this.simulation.stop();
+        this.simulation.alpha(1).tick(GRAPH_CONFIG.STATIC_TICKS);
+      } else {
+        this.simulation.alpha(0.3).restart();
+      }
     }
-
     // 3. Update Visuals
     this.renderGraph(d3Nodes, d3Links);
 
@@ -147,8 +169,8 @@ export class CharacterGraphEngine {
       )
       .velocityDecay(GRAPH_CONFIG.VELOCITY_DECAY);
 
-    // Reduced motion check
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (this.reducedMotion) {
       this.simulation.stop();
       // Run simulation synchronously to static state
       this.simulation.tick(GRAPH_CONFIG.STATIC_TICKS);

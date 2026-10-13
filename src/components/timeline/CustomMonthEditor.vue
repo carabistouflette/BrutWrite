@@ -41,8 +41,10 @@ function updateMonth(index: number, key: keyof MonthConfig, value: string | numb
           type="number"
           :value="month.days"
           placeholder="Days"
+          min="1"
+          step="1"
           class="month-days"
-          @input="(e) => updateMonth(idx, 'days', parseInt((e.target as HTMLInputElement).value))"
+          @input="(e) => updateMonth(idx, 'days', Number((e.target as HTMLInputElement).value))"
         />
         <button class="remove-btn" title="Remove" @click="removeMonth(idx)">&times;</button>
       </div>

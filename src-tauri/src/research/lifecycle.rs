@@ -53,18 +53,21 @@ fn reconcile_index(
 ) -> std::collections::HashMap<String, Arc<ResearchArtifact>> {
     let mut current_artifacts = std::collections::HashMap::new();
 
-    // Build lookup map for O(1) access (Path -> ID)
-    let path_to_id: std::collections::HashMap<String, String> = index
+    // Research files are flat; filenames remain stable when a project is copied or moved.
+    let filename_to_id: std::collections::HashMap<String, String> = index
         .iter()
-        .map(|(k, v)| (v.path.clone(), k.clone()))
+        .filter_map(|(id, artifact)| {
+            let name = std::path::Path::new(&artifact.path).file_name()?.to_str()?;
+            Some((name.to_owned(), id.clone()))
+        })
         .collect();
 
     for (file_path, file_name) in disk_files {
-        // O(1) lookup
-        let existing_id = path_to_id.get(&file_path);
+        let existing_id = filename_to_id.get(&file_name);
 
         if let Some(id) = existing_id {
             if let Some(mut artifact) = index.remove(id) {
+                artifact.path = file_path;
                 artifact.name = file_name;
                 current_artifacts.insert(id.clone(), Arc::new(artifact));
             }
@@ -126,5 +129,43 @@ mod tests {
         let id2 = inner.path_map.get(&path2).expect("Path2 should exist");
         let artifact2 = inner.artifacts.get(id2).expect("Artifact2 should exist");
         assert_eq!(artifact2.path, path2);
+    }
+
+    #[tokio::test]
+    async fn relocated_project_preserves_research_ids_and_tags() -> crate::errors::Result<()> {
+        let source = tempdir()?;
+        let destination = tempdir()?;
+        let original_state = ResearchState::new();
+        original_state
+            .initialize(source.path().to_path_buf())
+            .await?;
+        let note = original_state.create_note("Reference".to_string()).await?;
+        original_state
+            .update_tags(note.id.clone(), vec!["archive".to_string()])
+            .await?;
+        tokio::fs::copy(&note.path, destination.path().join(&note.name)).await?;
+        tokio::fs::copy(
+            source.path().join(".research-index.json"),
+            destination.path().join(".research-index.json"),
+        )
+        .await?;
+
+        let relocated_state = ResearchState::new();
+        relocated_state
+            .initialize(destination.path().to_path_buf())
+            .await?;
+        let artifacts = relocated_state.get_all().await;
+        let relocated = artifacts
+            .iter()
+            .find(|artifact| artifact.id == note.id)
+            .unwrap();
+        assert_eq!(relocated.tags, vec!["archive"]);
+        assert_eq!(
+            relocated.path,
+            destination.path().join(&note.name).to_string_lossy()
+        );
+        let persisted = crate::storage::load_index(destination.path()).await;
+        assert_eq!(persisted[&note.id].path, relocated.path);
+        Ok(())
     }
 }

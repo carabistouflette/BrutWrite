@@ -2,7 +2,7 @@
   "characters": [
     {
       "name": "Cipher",
-      "role": "Protagonist",
+      "role": "protagonist",
       "description": "A rogue hacker with a neural shunt.",
       "archetype": "The Outlaw",
       "physical_features": "Cybernetic eye, leather jacket",
@@ -11,7 +11,7 @@
     },
     {
       "name": "The Architect",
-      "role": "Antagonist",
+      "role": "antagonist",
       "description": "An AI construct controlling the city grid.",
       "archetype": "The Ruler",
       "physical_features": "Holographic projection",
@@ -20,7 +20,7 @@
     },
     {
       "name": "Glitch",
-      "role": "Secondary",
+      "role": "secondary",
       "description": "Street urchin and informant.",
       "archetype": "The Jester",
       "physical_features": "Neon tattoos",
@@ -29,7 +29,7 @@
     },
     {
       "name": "Echo",
-      "role": "Secondary",
+      "role": "secondary",
       "description": "Memory broker.",
       "archetype": "The Sage",
       "physical_features": "Masked",
@@ -38,7 +38,7 @@
     },
     {
       "name": "Neon",
-      "role": "Extra",
+      "role": "extra",
       "description": "Bartender at The Void.",
       "archetype": "Everyman",
       "physical_features": "Robot arm",

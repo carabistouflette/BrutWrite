@@ -17,16 +17,16 @@ export const researchApi = {
     return invoke('add_research_files', { paths });
   },
 
-  updateArtifact: async (artifact: ResearchArtifact): Promise<void> => {
-    return invoke('update_research_artifact', { artifact });
+  updateTags: async (id: string, tags: string[]): Promise<void> => {
+    return invoke('update_research_artifact_tags', { id, tags });
   },
 
   createNote: async (name: string): Promise<ResearchArtifact> => {
     return invoke<ResearchArtifact>('create_research_note', { name });
   },
 
-  saveNoteContent: async (id: string, content: string): Promise<void> => {
-    return invoke('update_note_content', { id, content });
+  saveNoteContent: async (id: string, expectedPath: string, content: string): Promise<void> => {
+    return invoke('update_note_content', { id, expectedPath, content });
   },
 
   renameArtifact: async (id: string, newName: string): Promise<void> => {

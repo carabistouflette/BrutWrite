@@ -13,7 +13,7 @@ BrutWrite is a desktop novel-writing application built with Tauri 2, Vue 3, Type
 - Keep research files and notes beside a project, including PDF, image, Markdown, and text references.
 - Track daily writing progress and a project word-count target.
 
-PDF previews request PDF.js worker, font, and character-map assets from jsDelivr. The current Tauri Content Security Policy does not allow those cross-origin requests, so PDF rendering may fail in the desktop app; do not rely on it being available offline.
+PDF previews bundle their worker, standard fonts, and character maps locally, so rendering does not depend on CDN access and works within the desktop app's existing Content Security Policy.
 
 ## Frontend stack
 

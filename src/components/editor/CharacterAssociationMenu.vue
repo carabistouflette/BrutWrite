@@ -8,6 +8,8 @@ const props = defineProps<{
   y: number;
   selectedText: string;
   characters: Character[];
+  hasCharacterMark: boolean;
+  markedCharacterId: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -19,13 +21,20 @@ const emit = defineEmits<{
 // State for sub-menu navigation
 const mode = ref<'main' | 'list'>('main');
 
-// Check if current text is already associated with any character
-const existingAssociation = computed(() => {
+const existingAliasAssociation = computed(() => {
   const norm = props.selectedText.trim().toLowerCase();
-  return props.characters.find((c) => (c.aliases || []).some((a) => a.toLowerCase() === norm));
+  return props.characters.find((character) =>
+    (character.aliases || []).some((alias) => alias.trim().toLowerCase() === norm)
+  );
 });
 
-const isAssociated = computed(() => !!existingAssociation.value);
+const markedCharacter = computed(() =>
+  props.characters.find((character) => character.id === props.markedCharacterId)
+);
+
+const existingAssociation = computed(() => existingAliasAssociation.value || markedCharacter.value);
+
+const isAssociated = computed(() => !!existingAliasAssociation.value || props.hasCharacterMark);
 
 const handleAssociateClick = () => {
   mode.value = 'list';

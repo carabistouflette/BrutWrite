@@ -9,6 +9,7 @@ export function useVisTimelineOptions(
   const options = {
     orientation: { axis: 'top', item: 'top' },
     stack: true,
+    dataAttributes: ['id'],
     showCurrentTime: false,
     zoomable: true,
     moveable: true,

@@ -19,6 +19,8 @@ const {
   showUnsavedConfirm,
   attemptClose,
   forceClose,
+  cancelUnsavedChanges,
+  requestSelectCharacter,
   createCharacter,
   saveCurrent,
   requestDelete,
@@ -50,7 +52,7 @@ const {
           <CharacterList
             :characters="characters"
             :selected-id="selectedId"
-            @select="(id) => (selectedId = id)"
+            @select="requestSelectCharacter"
             @create="createCharacter"
           />
 
@@ -101,10 +103,10 @@ const {
   <ConfirmationModal
     :show="showUnsavedConfirm"
     title="Unsaved Changes"
-    message="You have unsaved changes. Are you sure you want to close without saving?"
+    message="You have unsaved changes. Discard them and continue?"
     confirm-label="Discard Changes"
     :is-destructive="true"
-    @close="showUnsavedConfirm = false"
+    @close="cancelUnsavedChanges"
     @confirm="forceClose"
   />
 </template>

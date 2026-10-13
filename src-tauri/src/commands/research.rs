@@ -31,9 +31,22 @@ pub async fn create_research_note(
 pub async fn update_note_content(
     state: State<'_, AppState>,
     id: String,
+    expected_path: String,
     content: String,
 ) -> crate::errors::Result<()> {
-    state.research.update_content(id, content).await
+    state
+        .research
+        .update_content(id, expected_path, content)
+        .await
+}
+
+#[tauri::command]
+pub async fn update_research_artifact_tags(
+    state: State<'_, AppState>,
+    id: String,
+    tags: Vec<String>,
+) -> crate::errors::Result<()> {
+    state.research.update_tags(id, tags).await
 }
 
 #[tauri::command]

@@ -24,10 +24,10 @@ defineExpose({
   <svg v-if="showNarrativeConnectors" class="narrative-overlay" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-        <path d="M0,0 L0,6 L6,3 z" fill="var(--color-primary)" />
+        <path d="M0,0 L0,6 L6,3 z" fill="var(--color-accent)" />
       </marker>
       <marker id="arrow-flashback" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-        <path d="M0,0 L0,6 L6,3 z" fill="var(--color-warning)" />
+        <path d="M0,0 L0,6 L6,3 z" fill="var(--color-danger)" />
       </marker>
     </defs>
     <path

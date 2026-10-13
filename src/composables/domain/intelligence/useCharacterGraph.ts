@@ -1,5 +1,5 @@
 import { defineStore, storeToRefs } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { intelligenceApi } from '../../../api/intelligence';
 import type { CharacterGraphPayload, GraphNode, GraphAlert } from '../../../types/intelligence';
 import { useProjectStore } from '../../../stores/project';
@@ -22,7 +22,7 @@ export const useCharacterGraph = defineStore('character-graph', () => {
     error: null,
   });
 
-  const lastAnalysisTime = ref(0);
+  let analysisSequence = 0;
 
   const projectStore = useProjectStore();
   const settingsStore = useSettingsStore();
@@ -68,43 +68,50 @@ export const useCharacterGraph = defineStore('character-graph', () => {
       return;
     }
 
-    // Rate limiting: prevent spamming
-    const cooldown = 500;
-    const now = Date.now();
-    if (now - lastAnalysisTime.value < cooldown) {
-      return;
-    }
-
+    const sequence = ++analysisSequence;
     state.value.isLoading = true;
     state.value.error = null;
 
     try {
       const { proximityWindow, pruneThreshold } = settings.value.intelligence;
-
       const payload = await intelligenceApi.getCharacterGraph(projectId, {
         proximityWindow,
         pruneThreshold,
         chapterIds,
       });
+
+      if (sequence !== analysisSequence || projectStore.projectId !== projectId) return;
+
       state.value.payload = payload;
       state.value.lastAnalyzedAt = new Date().toISOString();
-      lastAnalysisTime.value = now;
     } catch (err) {
-      state.value.error = err instanceof Error ? err.message : String(err);
+      if (sequence === analysisSequence && projectStore.projectId === projectId) {
+        state.value.error = err instanceof Error ? err.message : String(err);
+      }
     } finally {
-      state.value.isLoading = false;
+      if (sequence === analysisSequence) {
+        state.value.isLoading = false;
+      }
     }
   }
 
   function clear(): void {
+    analysisSequence += 1;
     state.value = {
       payload: null,
       isLoading: false,
       lastAnalyzedAt: null,
       error: null,
     };
-    lastAnalysisTime.value = 0;
   }
+
+  watch(
+    () => projectStore.projectId,
+    (projectId, previousProjectId) => {
+      if (projectId !== previousProjectId) clear();
+    },
+    { flush: 'sync' }
+  );
 
   const payload = computed(() => state.value.payload);
   const isLoading = computed(() => state.value.isLoading);
