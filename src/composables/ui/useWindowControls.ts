@@ -1,8 +1,56 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { onBeforeUnmount, onMounted } from 'vue';
+import type { UnlistenFn } from '@tauri-apps/api/event';
+import { useProjectStore } from '../../stores/project';
+import { useProjectSync } from '../domain/project/useProjectSync';
+import { flushChapterSessions } from '../domain/project/useChapterSession';
+import { useAppStatus } from './useAppStatus';
 
 export function useWindowControls() {
   // Check if running in Tauri environment
   const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+  const projectStore = useProjectStore();
+  const { flush } = useProjectSync();
+  const { notifyError } = useAppStatus();
+  let unlistenClose: UnlistenFn | undefined;
+  let disposed = false;
+  let closing = false;
+
+  onMounted(async () => {
+    if (!isTauri) return;
+    try {
+      const unlisten = await getCurrentWindow().onCloseRequested(async (event) => {
+        if (closing) {
+          event.preventDefault();
+          return;
+        }
+        closing = true;
+        const projectId = projectStore.projectId;
+        const appRoot = document.getElementById('app');
+        const wasInert = appRoot?.inert ?? false;
+        if (appRoot) appRoot.inert = true;
+        try {
+          await flushChapterSessions(projectStore);
+          await flush(projectId);
+        } catch (error) {
+          if (appRoot) appRoot.inert = wasInert;
+          event.preventDefault();
+          notifyError('Failed to save the project before closing', error);
+        } finally {
+          closing = false;
+        }
+      });
+      if (disposed) unlisten();
+      else unlistenClose = unlisten;
+    } catch (error) {
+      notifyError('Failed to register the save-before-close handler', error);
+    }
+  });
+
+  onBeforeUnmount(() => {
+    disposed = true;
+    unlistenClose?.();
+  });
 
   const minimize = () => {
     if (isTauri) {

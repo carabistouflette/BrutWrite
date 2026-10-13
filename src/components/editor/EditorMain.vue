@@ -134,30 +134,37 @@ const handleResearchClick = (e: MouseEvent) => {
   }
 };
 
-// --- Editor Logic ---
-const { editor, isDirty, setContent, focus } = useTiptapEditor((payload) => {
-  emit('content-change', payload.delta);
-  emit('update:content', payload.html);
-});
+const { editor, isDirty, setContent, focus } = useTiptapEditor(
+  ({ delta }) => emit('content-change', delta),
+  (html) => emit('update:content', html)
+);
 
-watch(isDirty, (newVal) => {
-  isDirtyModel.value = newVal;
-});
-
-watch(isDirtyModel, (newVal) => {
-  if (newVal === false) {
-    isDirty.value = false;
-  }
-});
-
-// Initialize content when editor is ready or initialContent changes
 watch(
-  [() => props.initialContent, editor],
-  ([newContent, pEd]) => {
-    if (pEd && newContent !== undefined) {
-      setContent(newContent);
+  isDirty,
+  (newVal) => {
+    isDirtyModel.value = newVal;
+  },
+  { flush: 'sync' }
+);
 
-      // Focus editor after load
+watch(
+  isDirtyModel,
+  (newVal) => {
+    if (newVal === false) {
+      isDirty.value = false;
+    }
+  },
+  { flush: 'sync' }
+);
+
+// Initial content is consumed once when the editor instance is created. Parent echoes of
+// document changes must not replace the live editor state or clear its dirty flag.
+watch(
+  editor,
+  (pEd) => {
+    if (pEd && props.initialContent !== undefined) {
+      setContent(props.initialContent);
+
       setTimeout(() => {
         pEd.commands.focus();
       }, 50);

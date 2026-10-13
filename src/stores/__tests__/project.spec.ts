@@ -1,46 +1,55 @@
+import { computed } from 'vue';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useProjectStore } from '../project';
 
-describe('useProjectStore', () => {
+describe('project chapter indexes', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
   });
 
-  it('initializes with empty state', () => {
-    const store = useProjectStore();
-    expect(store.nodes).toEqual([]);
-    expect(store.activeId).toBeUndefined();
-    expect(store.projectId).toBeUndefined();
-  });
+  it.each(['load', 'replace structure'])(
+    'keeps cached editor and timeline views reactive after %s',
+    (operation) => {
+      const store = useProjectStore();
+      const nodes = [
+        {
+          id: 'parent',
+          name: 'Parent',
+          filename: 'parent.md',
+          word_count: 2,
+          children: [{ id: 'child', name: 'Scene', filename: 'child.md', word_count: 0 }],
+        },
+      ];
+      if (operation === 'load') {
+        store.setProjectData('project', '/project', nodes, {
+          daily_target: 500,
+          word_target: 50000,
+        });
+      } else {
+        store.updateStructure(nodes);
+      }
+      store.setActiveId('child');
 
-  it('sets project data correctly', () => {
-    const store = useProjectStore();
-    const mockNodes = [{ id: '1', name: 'Chapter 1', type: 'file' as const }];
-    const mockSettings = {
-      project: { name: 'Test Project', created: '', last_modified: '' },
-      editor: {
-        fontFamily: 'serif' as const,
-        fontSize: 16,
-        lineHeight: 1.6,
-        maxWidth: 800,
-        focusMode: false,
-        typewriterMode: false,
-      },
-      general: {
-        theme: 'system' as const,
-        accentColor: 'default',
-        reducedMotion: false,
-        autoSaveInterval: 30,
-      },
-      daily_target: 500,
-      word_target: 50000,
-    };
+      const title = computed(() => store.activeChapter?.name);
+      const sceneDate = computed(
+        () => store.flatNodes.find((node) => node.id === 'child')?.chronological_date
+      );
+      const indexedWords = computed(() =>
+        store.flatNodes.reduce((total, node) => total + (node.word_count || 0), 0)
+      );
+      expect(title.value).toBe('Scene');
+      expect(sceneDate.value).toBeUndefined();
+      expect(indexedWords.value).toBe(2);
 
-    store.setProjectData('proj-123', '/mock/path', mockNodes, mockSettings);
+      store.renameNodeAction('child', 'Revised scene');
+      store.updateNodeMetadataAction('child', { chronological_date: '2026-01-02T00:00:00Z' });
+      store.updateNodeStatsAction('child', 3);
 
-    expect(store.projectId).toBe('proj-123');
-    expect(store.nodes).toHaveLength(1);
-    expect(store.settings).toEqual(mockSettings);
-  });
+      expect(title.value).toBe('Revised scene');
+      expect(sceneDate.value).toBe('2026-01-02T00:00:00Z');
+      expect(indexedWords.value).toBe(5);
+      expect(store.totalWordCount).toBe(5);
+    }
+  );
 });

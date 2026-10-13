@@ -134,9 +134,8 @@ const handleOpenProject = async () => {
 const handleNewProject = async () => {
   try {
     const selected = await save({
-      title: 'Create New Project',
-      filters: [{ name: 'BrutWrite Project', extensions: ['json'] }],
-      defaultPath: 'MyStory.json',
+      title: 'Create Project Folder',
+      defaultPath: 'MyStory',
     });
 
     if (selected && typeof selected === 'string') {
@@ -154,9 +153,8 @@ const handleNewProject = async () => {
 const handleDemoProject = async () => {
   try {
     const selected = await save({
-      title: 'Create Example Project',
-      filters: [{ name: 'BrutWrite Project', extensions: ['json'] }],
-      defaultPath: 'TheAlgorithmsOfBetrayal.json',
+      title: 'Create Example Project Folder',
+      defaultPath: 'TheAlgorithmsOfBetrayal',
     });
 
     if (selected && typeof selected === 'string') {

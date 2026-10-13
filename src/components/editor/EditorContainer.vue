@@ -33,8 +33,8 @@ const {
 const onRestore = async (_content: string, filename: string) => {
   showSnapshotManager.value = false;
   const newContent = await restoreSnapshot(filename);
-  if (newContent && editorRef.value) {
-    editorRef.value.setContent(newContent);
+  if (newContent !== undefined) {
+    editorRef.value?.setContent(newContent);
   }
 };
 
@@ -42,6 +42,11 @@ const onBranch = async (_content: string, filename: string) => {
   showSnapshotManager.value = false;
   await branchSnapshot(filename);
 };
+
+function handleContentUpdate(content: string) {
+  isDirty.value = true;
+  currentHtml.value = content;
+}
 </script>
 
 <template>
@@ -60,7 +65,7 @@ const onBranch = async (_content: string, filename: string) => {
     :initial-word-count="activeChapter.word_count"
     :editor-settings="settings.editor"
     @update:title="handleRename"
-    @update:content="(val) => (currentHtml = val)"
+    @update:content="handleContentUpdate"
     @content-change="handleContentChange"
     @save="handleSave"
     @research-link-click="openResearchArtifact"

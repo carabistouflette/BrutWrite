@@ -3,23 +3,39 @@ import { invoke } from '@tauri-apps/api/core';
 import { useCharacters } from '../characters/useCharacters';
 import { useRecentProjects } from './useRecentProjects';
 import { useProjectSession } from './useProjectSession';
+import { flushChapterSessions } from './useChapterSession';
+import { useProjectSync } from './useProjectSync';
 import { projectApi } from '../../../api/project';
 import { chaptersApi } from '../../../api/chapters';
 import { reconstructHierarchy } from '../../../utils/tree';
+import { normalizeProjectPath } from '../../../utils/paths';
 import type { ProjectSettings, Plotline } from '../../../types';
 
 export function useProjectLoader() {
   const projectStore = useProjectStore();
   const { setCharacters } = useCharacters();
   const { addRecentProject } = useRecentProjects();
-  const { saveToCache } = useProjectSession();
+  const { saveToCache, saveCurrentSessionToCache } = useProjectSession();
+
+  const { flush: flushProjectSync } = useProjectSync();
+  const flushBeforeTransition = async () => {
+    await flushChapterSessions(projectStore);
+    await flushProjectSync();
+    saveCurrentSessionToCache();
+  };
 
   /**
    * Load a project from a path and populate all stores
    */
   const loadProject = async (projectPath: string) => {
+    const canonicalPath = normalizeProjectPath(projectPath);
+    const previousProjectId = projectStore.projectId;
+    const previousPath = projectStore.path;
+    const previousActiveId = projectStore.activeId;
+    await flushBeforeTransition();
     // 1. Load Metadata
-    const metadata = await projectApi.load(projectPath);
+    const metadata = await projectApi.load(canonicalPath);
+    await flushBeforeTransition();
 
     // 2. Sync characters
     setCharacters(metadata.characters);
@@ -28,20 +44,28 @@ export function useProjectLoader() {
     const hierarchy = reconstructHierarchy(metadata.manifest.chapters);
 
     // 4. Set project data in store
-    projectStore.setProjectData(metadata.id, projectPath, hierarchy, metadata.settings);
+    projectStore.setProjectData(metadata.id, canonicalPath, hierarchy, metadata.settings);
     projectStore.setPlotlines(metadata.plotlines);
 
     // 5. Side effects
-    localStorage.setItem('last_opened_project_path', projectPath);
-    addRecentProject(projectPath);
+    localStorage.setItem('last_opened_project_path', canonicalPath);
+    addRecentProject(canonicalPath);
 
     // 6. Set active ID
-    if (projectStore.nodes.length > 0 && !projectStore.activeId) {
-      projectStore.setActiveId(projectStore.nodes[0].id);
+    if (hierarchy.length > 0) {
+      const restoreActiveId =
+        previousProjectId === metadata.id && previousPath === canonicalPath
+          ? previousActiveId
+          : undefined;
+      projectStore.setActiveId(
+        restoreActiveId && projectStore.nodeMap.has(restoreActiveId)
+          ? restoreActiveId
+          : hierarchy[0].id
+      );
     }
 
     // 7. Update Cache
-    saveToCache(projectPath, {
+    saveToCache(canonicalPath, {
       id: metadata.id,
       nodes: hierarchy,
       settings: metadata.settings,
@@ -55,6 +79,7 @@ export function useProjectLoader() {
    * Create a new project and populate stores
    */
   const createProject = async (projectPath: string, name: string, author: string) => {
+    await flushBeforeTransition();
     // 1. Create on Backend
     const metadata = await projectApi.create(projectPath, name, author);
 
@@ -110,6 +135,7 @@ export function useProjectLoader() {
    * Create and seed a demo project
    */
   const createDemoProject = async (projectPath: string) => {
+    await flushBeforeTransition();
     // 1. Seed on backend
     await invoke('seed_demo_project', { path: projectPath });
     // 2. Load it

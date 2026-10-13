@@ -137,4 +137,49 @@ describe('useProjectSession Auto-Save', () => {
       expect.stringContaining('"activeId":"n1"')
     );
   });
+
+  it('can flush lightweight session state immediately before project transitions', () => {
+    const projectStore = useProjectStore();
+    const { saveCurrentSessionToCache } = useProjectSession();
+
+    projectStore.setProjectData(
+      'p1',
+      '/path/to/p1',
+      [{ id: 'n1', name: 'Chapter', children: [] }],
+      { daily_target: 0, word_target: 0 }
+    );
+    projectStore.setActiveId('n1');
+
+    saveCurrentSessionToCache();
+
+    const expectedKey = `${APP_CONSTANTS.CACHE.KEY_PREFIX}/path/to/p1`;
+    expect(setItemSpy).toHaveBeenCalledWith(expectedKey, expect.any(String));
+    expect(JSON.parse(setItemSpy.mock.calls[0][1])).toMatchObject({
+      id: 'p1',
+      activeId: 'n1',
+    });
+    expect(JSON.parse(setItemSpy.mock.calls[0][1]).nodes).toBeUndefined();
+  });
+
+  it('restores the session cache from a previously selected project.json manifest path', () => {
+    const projectStore = useProjectStore();
+    const legacyPath = '/path/to/project.json';
+    const legacyKey = `${APP_CONSTANTS.CACHE.KEY_PREFIX}${legacyPath}`;
+    setItemSpy(
+      legacyKey,
+      JSON.stringify({
+        id: 'p1',
+        settings: { daily_target: 0, word_target: 0 },
+        plotlines: [],
+        characters: [],
+        activeId: 'chapter-1',
+        timestamp: Date.now(),
+      })
+    );
+
+    const { restoreSession } = useProjectSession();
+    expect(restoreSession(legacyPath)).toBe(true);
+    expect(projectStore.path).toBe('/path/to');
+    expect(projectStore.activeId).toBe('chapter-1');
+  });
 });

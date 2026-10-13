@@ -84,6 +84,25 @@ impl FileRepository for MockFileRepository {
         Ok(())
     }
 
+    async fn remove_dir(&self, path: &Path) -> Result<()> {
+        if self
+            .files
+            .lock()
+            .expect("mutex poisoned")
+            .keys()
+            .any(|file| file.starts_with(path))
+        {
+            return Err(crate::errors::Error::Validation(
+                "Cannot remove a nonempty mock directory".to_string(),
+            ));
+        }
+        self.exists_override
+            .lock()
+            .expect("mutex poisoned")
+            .remove(path);
+        Ok(())
+    }
+
     async fn create_dir_all(&self, _path: &Path) -> Result<()> {
         Ok(())
     }

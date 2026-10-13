@@ -40,6 +40,17 @@ export interface Chapter {
   pov_character_id?: string;
 }
 
+export type NullableChapterMetadataField =
+  | 'chronological_date'
+  | 'abstract_timeframe'
+  | 'duration'
+  | 'plotline_tag'
+  | 'depends_on'
+  | 'pov_character_id';
+
+export type ChapterMetadataUpdate = Omit<Partial<Chapter>, NullableChapterMetadataField> &
+  Partial<Record<NullableChapterMetadataField, string | null>>;
+
 export interface Character {
   id: string;
   name: string;

@@ -4,6 +4,10 @@ import GamificationStatus from '../gamification/GamificationStatus.vue';
 import SidebarController from './SidebarController.vue';
 import { useLayoutController } from '../../composables/ui/useLayoutController';
 import { useProjectStore } from '../../stores/project';
+import { flushChapterSessions } from '../../composables/domain/project/useChapterSession';
+import { useProjectSync } from '../../composables/domain/project/useProjectSync';
+import { useAppStatus } from '../../composables/ui/useAppStatus';
+import { useProjectSession } from '../../composables/domain/project/useProjectSession';
 
 const ResearchPanel = defineAsyncComponent(() => import('../research/ResearchPanel.vue'));
 const SettingsModal = defineAsyncComponent(() => import('../settings/SettingsModal.vue'));
@@ -30,27 +34,62 @@ const {
 
 const projectStore = useProjectStore();
 const { closeProject } = projectStore;
+const { flush: flushProjectSync } = useProjectSync();
+const { notifyError } = useAppStatus();
+const { saveCurrentSessionToCache } = useProjectSession();
 
 // --- Local State ---
 const isExiting = ref(false);
+const isPreparingExit = ref(false);
 
 // --- Event Handlers ---
 let exitTimeout: number | undefined;
+let isFinishingExit = false;
 
-const handleChangeProject = () => {
+const finishProjectChange = async () => {
+  if (!isExiting.value || isFinishingExit) return;
+  isFinishingExit = true;
+  clearTimeout(exitTimeout);
+
+  try {
+    await flushChapterSessions(projectStore);
+    await flushProjectSync();
+    saveCurrentSessionToCache();
+  } catch (error) {
+    isExiting.value = false;
+    isFinishingExit = false;
+    notifyError('Failed to save project changes before closing', error);
+    return;
+  }
+
+  isExiting.value = false;
+  isFinishingExit = false;
+  closeProject();
+};
+
+const handleChangeProject = async () => {
+  if (isExiting.value || isPreparingExit.value) return;
+  isPreparingExit.value = true;
+
+  try {
+    await flushChapterSessions(projectStore);
+    await flushProjectSync();
+    saveCurrentSessionToCache();
+  } catch (error) {
+    isPreparingExit.value = false;
+    notifyError('Failed to save project changes before closing', error);
+    return;
+  }
+
+  isPreparingExit.value = false;
+
   isExiting.value = true;
   // Safety fallback in case transitionend fails
-  exitTimeout = setTimeout(() => {
-    closeProject();
-  }, 600);
+  exitTimeout = setTimeout(() => void finishProjectChange(), 600);
 };
 
 const onExited = (e: TransitionEvent) => {
-  // Only trigger if we are explicitly exiting and for the main opacity transition
-  if (isExiting.value && e.propertyName === 'opacity') {
-    clearTimeout(exitTimeout);
-    closeProject();
-  }
+  if (isExiting.value && e.propertyName === 'opacity') void finishProjectChange();
 };
 </script>
 
@@ -58,6 +97,7 @@ const onExited = (e: TransitionEvent) => {
   <div
     class="animate-enter flex flex-1 w-full h-full text-ink font-sans overflow-hidden relative transition-all duration-500"
     :class="{ 'opacity-0 scale-95': isExiting }"
+    :inert="isExiting"
     @transitionend="onExited"
   >
     <!-- Sidebar -->

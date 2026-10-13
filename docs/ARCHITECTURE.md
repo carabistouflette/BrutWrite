@@ -51,7 +51,11 @@ Tailwind CSS 4 runs through `@tailwindcss/vite` in `vite.config.ts`. Theme token
 2. The editor session passes the editor's HTML string to the TypeScript chapter API wrapper.
 3. The wrapper invokes `save_chapter` over Tauri IPC.
 4. The Rust command creates a chapter snapshot, writes the chapter file under `manuscript/`, updates the chapter word count, and saves project metadata.
-5. The command returns updated metadata, which the frontend uses to refresh project state.
+5. The frontend refreshes the saved chapter's word count without replacing the live manuscript tree.
+
+Editor sessions capture project/chapter identities and drain edits made during an in-flight save before switching chapters, restoring snapshots, deleting nodes, changing projects, or closing the native window. Stale loads/restores cannot replace the current chapter. Save failures preserve the dirty session and block the transition.
+
+Manifest and metadata synchronization is queued per project. Explicit flushes serialize queued work and retain failed updates for retry; optional timeline clears become JSON `null`. Project indexes contain Vue-reactive nodes, so cached title, word-count, and timeline views update after granular mutations.
 
 ## Browser limitation
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, watch } from 'vue';
 import { useSnapshotStore } from '../../stores/snapshots';
 import DiffViewer from './DiffViewer.vue';
 import ConfirmationModal from '../base/ConfirmationModal.vue';
@@ -17,26 +17,48 @@ const emit = defineEmits<{
 
 const snapshotStore = useSnapshotStore();
 const selectedSnapshot = ref<string | null>(null);
-const selectedSnapshotContent = ref<string>('');
+const selectedSnapshotContent = ref('');
+const hasLoadedSnapshotContent = ref(false);
 const loadingContent = ref(false);
-
+const loadError = ref<string | null>(null);
 const showRestoreConfirm = ref(false);
 const showBranchConfirm = ref(false);
+let contentRequest = 0;
 
-onMounted(() => {
-  snapshotStore.fetchSnapshots(props.chapterId);
-});
+watch(
+  () => props.chapterId,
+  (chapterId) => {
+    contentRequest++;
+    selectedSnapshot.value = null;
+    selectedSnapshotContent.value = '';
+    hasLoadedSnapshotContent.value = false;
+    loadingContent.value = false;
+    loadError.value = null;
+    void snapshotStore.fetchSnapshots(chapterId);
+  },
+  { immediate: true }
+);
 
 async function selectSnapshot(filename: string) {
+  const request = ++contentRequest;
   selectedSnapshot.value = filename;
+  selectedSnapshotContent.value = '';
+  hasLoadedSnapshotContent.value = false;
+  loadError.value = null;
   loadingContent.value = true;
   try {
-    selectedSnapshotContent.value = await snapshotStore.loadSnapshotContent(
-      props.chapterId,
-      filename
-    );
+    const content = await snapshotStore.loadSnapshotContent(props.chapterId, filename);
+    if (request === contentRequest && selectedSnapshot.value === filename) {
+      selectedSnapshotContent.value = content;
+      hasLoadedSnapshotContent.value = true;
+    }
+  } catch (error) {
+    console.error('Failed to load selected snapshot', error);
+    if (request === contentRequest && selectedSnapshot.value === filename) {
+      loadError.value = 'Could not load this snapshot.';
+    }
   } finally {
-    loadingContent.value = false;
+    if (request === contentRequest) loadingContent.value = false;
   }
 }
 
@@ -57,23 +79,23 @@ function formatDate(filename: string) {
 }
 
 function handleRestore() {
-  if (!selectedSnapshotContent.value) return;
+  if (!selectedSnapshot.value || !hasLoadedSnapshotContent.value || loadingContent.value) return;
   showRestoreConfirm.value = true;
 }
 
 function confirmRestore() {
-  if (!selectedSnapshotContent.value || !selectedSnapshot.value) return;
+  if (!selectedSnapshot.value || !hasLoadedSnapshotContent.value) return;
   emit('restore', selectedSnapshotContent.value, selectedSnapshot.value);
   emit('close');
 }
 
 function handleBranch() {
-  if (!selectedSnapshotContent.value) return;
+  if (!selectedSnapshot.value || !hasLoadedSnapshotContent.value || loadingContent.value) return;
   showBranchConfirm.value = true;
 }
 
 function confirmBranch() {
-  if (!selectedSnapshotContent.value || !selectedSnapshot.value) return;
+  if (!selectedSnapshot.value || !hasLoadedSnapshotContent.value) return;
   emit('branch', selectedSnapshotContent.value, selectedSnapshot.value);
   emit('close');
 }
@@ -128,7 +150,7 @@ function confirmBranch() {
                 ></span>
               </div>
               <div class="text-xs opacity-60 mt-1 truncate font-mono">
-                {{ snap.split('_')[1]?.replace('.md', '') || 'Unknown' }}
+                {{ snap.split('_').pop()?.replace('.md', '') || 'Unknown' }}
               </div>
             </button>
           </div>
@@ -150,13 +172,15 @@ function confirmBranch() {
             <div class="flex items-center gap-2">
               <template v-if="selectedSnapshot">
                 <button
-                  class="px-3 py-1.5 rounded-lg text-sm font-medium text-ink/70 hover:bg-stone/50 hover:text-ink transition-colors"
+                  :disabled="!hasLoadedSnapshotContent || loadingContent"
+                  class="px-3 py-1.5 rounded-lg text-sm font-medium text-ink/70 hover:bg-stone/50 hover:text-ink transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   @click="handleBranch"
                 >
                   Branch
                 </button>
                 <button
-                  class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent text-white shadow-lg shadow-accent/20 hover:bg-accent-dark transition-colors"
+                  :disabled="!hasLoadedSnapshotContent || loadingContent"
+                  class="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent text-white shadow-lg shadow-accent/20 hover:bg-accent-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   @click="handleRestore"
                 >
                   Restore This Version
@@ -207,6 +231,7 @@ function confirmBranch() {
             <div v-else-if="loadingContent" class="flex items-center justify-center h-full">
               <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
             </div>
+            <p v-else-if="loadError" class="text-center text-red-600">{{ loadError }}</p>
             <DiffViewer v-else :original="selectedSnapshotContent" :modified="currentContent" />
           </div>
         </div>

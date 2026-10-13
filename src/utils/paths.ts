@@ -32,3 +32,14 @@ export function formatProjectName(path: string): string {
   // Keeping it simple for now to match legacy behavior but robustly.
   return filename || 'Untitled Project';
 }
+
+/** Accept either a project directory or its selected project.json manifest. */
+export function normalizeProjectPath(path: string): string {
+  const separator = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  if (path.slice(separator + 1).toLowerCase() !== 'project.json') return path;
+  if (separator < 0) return '.';
+  if (separator === 0 || /^[a-z]:$/i.test(path.slice(0, separator))) {
+    return path.slice(0, separator + 1);
+  }
+  return path.slice(0, separator);
+}

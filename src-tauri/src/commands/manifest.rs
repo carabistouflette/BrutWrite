@@ -1,8 +1,24 @@
 use crate::models::{Manifest, NodeMetadataUpdate, ProjectMetadata};
 use crate::storage;
+use crate::validation;
 use crate::AppState;
+use std::path::Path;
 use tauri::State;
 use uuid::Uuid;
+
+fn rollback_failure(
+    root_path: &Path,
+    operation_error: crate::errors::Error,
+    rollback_error: crate::errors::Error,
+) -> crate::errors::Error {
+    crate::errors::Error::InvalidStructure {
+        path: root_path.to_path_buf(),
+        reason: format!(
+            "{}; restoring chapter files also failed: {}",
+            operation_error, rollback_error
+        ),
+    }
+}
 
 #[tauri::command]
 pub async fn update_manifest(
@@ -13,7 +29,7 @@ pub async fn update_manifest(
     state
         .projects
         .mutate_project(project_id, |metadata| {
-            metadata.manifest = manifest;
+            metadata.manifest = metadata.manifest.merge_structure_update(manifest)?;
             Ok(())
         })
         .await
@@ -29,37 +45,39 @@ pub async fn update_node_metadata(
     state
         .projects
         .mutate_project(project_id, |metadata| {
-            if let Some(node) = metadata
+            let Some(index) = metadata
                 .manifest
                 .chapters
-                .iter_mut()
-                .find(|c| c.id == node_id)
-            {
-                if let Some(t) = update.title {
-                    node.title = t;
-                }
-                if let Some(d) = update.chronological_date {
-                    node.chronological_date = Some(d);
-                }
-                if let Some(a) = update.abstract_timeframe {
-                    node.abstract_timeframe = Some(a);
-                }
-                if let Some(dur) = update.duration {
-                    node.duration = Some(dur);
-                }
-                if let Some(p) = update.plotline_tag {
-                    node.plotline_tag = Some(p);
-                }
-                if let Some(dep) = update.depends_on {
-                    node.depends_on = Some(dep);
-                }
-                if let Some(pov) = update.pov_character_id {
-                    node.pov_character_id = Some(pov);
-                }
-                Ok(())
-            } else {
-                Err(crate::errors::Error::ChapterNotFound { id: node_id })
+                .iter()
+                .position(|chapter| chapter.id == node_id)
+            else {
+                return Err(crate::errors::Error::ChapterNotFound { id: node_id });
+            };
+
+            let chapter = &mut metadata.manifest.chapters[index];
+            if let Some(title) = update.title {
+                chapter.title = title;
             }
+            if let Some(date) = update.chronological_date {
+                chapter.chronological_date = date;
+            }
+            if let Some(timeframe) = update.abstract_timeframe {
+                chapter.abstract_timeframe = timeframe;
+            }
+            if let Some(duration) = update.duration {
+                chapter.duration = duration;
+            }
+            if let Some(plotline) = update.plotline_tag {
+                chapter.plotline_tag = plotline;
+            }
+            if let Some(dependency) = update.depends_on {
+                chapter.depends_on = dependency;
+            }
+            if let Some(pov_character_id) = update.pov_character_id {
+                chapter.pov_character_id = pov_character_id;
+            }
+
+            Ok(())
         })
         .await
 }
@@ -71,23 +89,30 @@ pub async fn create_node(
     parent_id: Option<String>,
     name: String,
 ) -> crate::errors::Result<ProjectMetadata> {
+    validation::validate_chapter_title(&name)?;
+
     let (root_path, metadata_arc) = state.projects.get_context(project_id).await?;
     let mut metadata = metadata_arc.lock().await;
 
-    // 1. Create entry in manifest (Domain Logic)
-    let new_chapter = metadata.manifest.create_chapter(parent_id, name);
+    metadata.manifest.validate_parent(parent_id.as_deref())?;
 
-    // 2. Create physical file (Storage Logic)
+    let new_chapter = metadata.manifest.create_chapter(parent_id, name);
+    let mut updated = metadata.clone();
+    updated.manifest.chapters.push(new_chapter.clone());
+    updated.manifest.validate()?;
+    updated.updated_at = chrono::Utc::now();
+
     let repo = storage::LocalFileRepository;
     storage::write_chapter_file(&repo, &root_path, &new_chapter.filename, "").await?;
+    if let Err(save_error) = storage::save_project_metadata(&root_path, &updated).await {
+        return match storage::delete_chapter_file(&repo, &root_path, &new_chapter.filename).await {
+            Ok(()) => Err(save_error),
+            Err(rollback_error) => Err(rollback_failure(&root_path, save_error, rollback_error)),
+        };
+    }
 
-    // 3. Save Metadata
-    metadata.manifest.chapters.push(new_chapter);
-
-    metadata.updated_at = chrono::Utc::now();
-    storage::save_project_metadata(&root_path, &metadata).await?;
-
-    Ok(metadata.clone())
+    *metadata = updated.clone();
+    Ok(updated)
 }
 
 #[tauri::command]
@@ -96,25 +121,37 @@ pub async fn delete_node(
     project_id: Uuid,
     id: String,
 ) -> crate::errors::Result<ProjectMetadata> {
-    let (root_path, _) = state.projects.get_context(project_id).await?;
+    let (root_path, metadata_arc) = state.projects.get_context(project_id).await?;
+    let mut metadata = metadata_arc.lock().await;
 
-    let mut filenames = Vec::new();
+    let mut updated = metadata.clone();
+    let removed = updated.manifest.remove_node_recursively(&id)?;
+    updated.updated_at = chrono::Utc::now();
 
-    // 1. Remove from manifest recursively and get filenames
-    let new_metadata = state
-        .projects
-        .mutate_project(project_id, |metadata| {
-            filenames = metadata.manifest.remove_node_recursively(id);
-            Ok(())
-        })
-        .await?;
+    storage::save_project_metadata(&root_path, &updated).await?;
+    *metadata = updated.clone();
 
-    // 2. Delete files from disk (Async)
     let repo = storage::LocalFileRepository;
-    for filename in filenames {
-        // Ignore errors during deletion (logging would be good here)
-        let _ = storage::delete_chapter_file(&repo, &root_path, &filename).await;
+    let mut cleanup_failures = Vec::new();
+    for (chapter_id, filename) in removed {
+        if let Err(error) = storage::delete_chapter_file(&repo, &root_path, &filename).await {
+            cleanup_failures.push(format!("chapter file {filename}: {error}"));
+        }
+        if let Err(error) = storage::delete_chapter_snapshots(&repo, &root_path, &chapter_id).await
+        {
+            cleanup_failures.push(format!("snapshots for {chapter_id}: {error}"));
+        }
     }
 
-    Ok(new_metadata)
+    if !cleanup_failures.is_empty() {
+        return Err(crate::errors::Error::InvalidStructure {
+            path: root_path,
+            reason: format!(
+                "Chapter tree was saved, but filesystem cleanup failed: {}",
+                cleanup_failures.join("; ")
+            ),
+        });
+    }
+
+    Ok(updated)
 }

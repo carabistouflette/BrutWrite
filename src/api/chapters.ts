@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { ProjectMetadata, Chapter } from '../types';
+import type { ChapterMetadataUpdate, ProjectMetadata } from '../types';
 
 export const chaptersApi = {
   loadContent: async (projectId: string, chapterId: string): Promise<string> => {
@@ -37,7 +37,7 @@ export const chaptersApi = {
   updateNodeMetadata: async (
     projectId: string,
     nodeId: string,
-    update: Partial<Chapter>
+    update: ChapterMetadataUpdate
   ): Promise<ProjectMetadata> => {
     return invoke<ProjectMetadata>('update_node_metadata', {
       projectId,

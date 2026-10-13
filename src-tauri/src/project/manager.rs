@@ -55,13 +55,13 @@ impl ProjectManager {
         let (root_path, metadata_arc) = self.get_context(project_id).await?;
 
         let mut metadata = metadata_arc.lock().await;
+        let mut updated = metadata.clone();
 
-        mutation(&mut metadata)?;
+        mutation(&mut updated)?;
+        updated.updated_at = chrono::Utc::now();
+        storage::save_project_metadata(&root_path, &updated).await?;
 
-        metadata.updated_at = chrono::Utc::now();
-
-        storage::save_project_metadata(&root_path, &metadata).await?;
-
+        *metadata = updated;
         Ok(metadata.clone())
     }
 
@@ -166,5 +166,27 @@ mod tests {
 
         let result = manager.get_context(project_id).await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn failed_persistence_does_not_commit_mutated_metadata_in_memory() {
+        let directory = tempfile::tempdir().unwrap();
+        let project_id = Uuid::new_v4();
+        let metadata = models::ProjectMetadata::new("Original".to_string(), "Tester".to_string());
+        let manager = ProjectManager::new();
+        manager
+            .register_project(project_id, directory.path().join("missing"), metadata)
+            .await;
+
+        let result = manager
+            .mutate_project(project_id, |metadata| {
+                metadata.title = "Changed".to_string();
+                Ok(())
+            })
+            .await;
+
+        assert!(result.is_err());
+        let (_, metadata_arc) = manager.get_context(project_id).await.unwrap();
+        assert_eq!(metadata_arc.lock().await.title, "Original");
     }
 }

@@ -10,20 +10,20 @@ pub fn resolve_chapter_path_from_filename<P: AsRef<Path>>(
     filename: &str,
 ) -> Result<PathBuf> {
     let root = root_path.as_ref();
+    crate::validation::validate_name(filename)?;
+    if filename.contains('/') || filename.contains('\\') {
+        return Err(Error::ChapterNotFound {
+            id: format!("Invalid filename: {}", filename),
+        });
+    }
     let path = Path::new(filename);
-
-    // Security: Strictly validate components to prevent traversal or absolute path injection
-    for component in path.components() {
-        match component {
-            std::path::Component::Normal(_) => {}
-            std::path::Component::CurDir => {} // "." is fine
-            _ => {
-                // ParentDir (..), RootDir (/), or Prefix (C:) are not allowed
-                return Err(Error::ChapterNotFound {
-                    id: format!("Invalid filename: {}", filename),
-                });
-            }
-        }
+    let mut components = path.components();
+    if !matches!(components.next(), Some(std::path::Component::Normal(_)))
+        || components.next().is_some()
+    {
+        return Err(Error::ChapterNotFound {
+            id: format!("Invalid filename: {}", filename),
+        });
     }
     Ok(root.join(MANUSCRIPT_DIR).join(path))
 }
@@ -71,13 +71,15 @@ pub async fn write_chapter_file<R: FileRepository>(
     filename: &str,
     content: &str,
 ) -> Result<()> {
-    let manuscript_dir = root_path.join(MANUSCRIPT_DIR);
+    let file_path = resolve_chapter_path_from_filename(root_path, filename)?;
+    let manuscript_dir = file_path.parent().ok_or_else(|| Error::ChapterNotFound {
+        id: format!("Invalid filename: {}", filename),
+    })?;
 
-    if !repo.exists(&manuscript_dir).await? {
-        repo.create_dir_all(&manuscript_dir).await?;
+    if !repo.exists(manuscript_dir).await? {
+        repo.create_dir_all(manuscript_dir).await?;
     }
 
-    let file_path = manuscript_dir.join(filename);
     repo.write_file(&file_path, content).await
 }
 
@@ -86,13 +88,32 @@ pub async fn delete_chapter_file<R: FileRepository>(
     root_path: &Path,
     filename: &str,
 ) -> Result<()> {
-    let file_path = root_path.join(MANUSCRIPT_DIR).join(filename);
-    /*
-       Note: The original implementation unwrapped try_exists error.
-       The trait returns Result<bool>, propagating error is better.
-    */
+    let file_path = resolve_chapter_path_from_filename(root_path, filename)?;
     if repo.exists(&file_path).await? {
         repo.delete(&file_path).await?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn chapter_filename_rejects_path_traversal_and_absolute_paths() {
+        assert!(resolve_chapter_path_from_filename("/project", "../chapter.md").is_err());
+        assert!(resolve_chapter_path_from_filename("/project", "/chapter.md").is_err());
+        assert!(resolve_chapter_path_from_filename("/project", "nested/chapter.md").is_err());
+    }
+
+    #[test]
+    fn chapter_filename_resolves_within_manuscript_directory() {
+        let path = resolve_chapter_path_from_filename("/project", "chapter.md").unwrap();
+        assert_eq!(
+            path,
+            PathBuf::from("/project")
+                .join(MANUSCRIPT_DIR)
+                .join("chapter.md")
+        );
+    }
 }

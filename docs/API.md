@@ -20,12 +20,18 @@ The Rust commands below are registered in `src-tauri/src/lib.rs` and called by t
 
 ## Chapter tree (`commands/manifest.rs`)
 
-| Command                | Arguments                                                           | Return value      | Description                                          |
-| ---------------------- | ------------------------------------------------------------------- | ----------------- | ---------------------------------------------------- |
-| `update_manifest`      | `projectId: string`, `manifest: Manifest`                           | `ProjectMetadata` | Replaces the project's manifest.                     |
-| `create_node`          | `projectId: string`, `parentId: string \| null`, `name: string`     | `ProjectMetadata` | Adds a chapter to the manifest and creates its file. |
-| `delete_node`          | `projectId: string`, `id: string`                                   | `ProjectMetadata` | Deletes a chapter-tree node.                         |
-| `update_node_metadata` | `projectId: string`, `nodeId: string`, `update: NodeMetadataUpdate` | `ProjectMetadata` | Updates chapter title or timeline metadata.          |
+| Command                | Arguments                                                           | Return value      | Description                                                                    |
+| ---------------------- | ------------------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------ |
+| `update_manifest`      | `projectId: string`, `manifest: Manifest`                           | `ProjectMetadata` | Reorders/reparents existing chapters; IDs and filenames must remain unchanged. |
+| `create_node`          | `projectId: string`, `parentId: string \| null`, `name: string`     | `ProjectMetadata` | Adds a chapter and its file; a non-null parent must exist.                     |
+| `delete_node`          | `projectId: string`, `id: string`                                   | `ProjectMetadata` | Deletes the full subtree, its files and snapshots, and incoming dependencies.  |
+| `update_node_metadata` | `projectId: string`, `nodeId: string`, `update: NodeMetadataUpdate` | `ProjectMetadata` | Updates chapter title or timeline metadata.                                    |
+
+Manifest updates reject missing/duplicate IDs, invalid parents, cycles, dangling dependencies, and duplicate sibling orders. They preserve saved word counts and omitted timeline metadata; creation and deletion use their dedicated commands.
+
+For optional timeline fields in `NodeMetadataUpdate`, an omitted key preserves the existing value, `null` clears it, and a string sets it. Chapter titles are display text, not filenames: punctuation such as `:`, `/`, and `?` is allowed; blank titles, control characters, and titles exceeding 256 UTF-8 bytes are rejected.
+
+Metadata is published in memory only after `project.json` has been saved through a temporary file and rename. Deletion commits the manifest before removing subtree files; a subsequent cleanup failure is reported explicitly rather than hidden.
 
 ## Characters (`commands/characters.rs`)
 
@@ -54,6 +60,8 @@ The Rust commands below are registered in `src-tauri/src/lib.rs` and called by t
 | `create_snapshot`       | `projectId: string`, `chapterId: string`, `content: string`                  | `void`            | Creates a snapshot if its content differs from the latest snapshot. |
 | `restore_snapshot`      | `projectId: string`, `chapterId: string`, `snapshotFilename: string`         | `string`          | Restores a snapshot and returns its content.                        |
 | `branch_snapshot`       | `projectId: string`, `snapshotChapterId: string`, `snapshotFilename: string` | `ProjectMetadata` | Creates a new sibling chapter from a snapshot.                      |
+
+Snapshot filenames are validated against the chapter's snapshot directory. Empty content is a valid restored version. A branch is a new sibling with its own ID/file, word count, and copied scene metadata; the frontend inserts it into the live tree before subsequent reorder operations.
 
 ## Character graph (`commands/intelligence.rs`)
 

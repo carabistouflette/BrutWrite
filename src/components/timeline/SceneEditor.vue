@@ -25,25 +25,30 @@ watch(
   scene,
   (newScene) => {
     if (newScene) {
-      editDate.value = newScene.chronological_date || '';
+      if (newScene.chronological_date) {
+        const date = new Date(newScene.chronological_date);
+        const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+        editDate.value = localDate.toISOString().slice(0, -1);
+      } else {
+        editDate.value = '';
+      }
       editDuration.value = newScene.duration || '';
     }
   },
   { immediate: true }
 );
 
-async function saveChanges() {
+async function saveChanges(field: 'date' | 'duration') {
   if (!props.sceneId) return;
-  await updateNodeTemporal(props.sceneId, {
-    chronological_date: editDate.value,
-    duration: editDuration.value,
-  });
-  // Optional: emit close or show success? For now, stays open to allow more edits.
+  await updateNodeTemporal(
+    props.sceneId,
+    field === 'date'
+      ? {
+          chronological_date: editDate.value ? new Date(editDate.value).toISOString() : undefined,
+        }
+      : { duration: editDuration.value || undefined }
+  );
 }
-
-// ... (existing imports moved or kept as needed, assuming this block replaces the script setup body appropriately or I insert carefully)
-// Wait, I need to be careful not to break existing imports.
-// Let's replace the whole script setup block to be safe or insert modal logic.
 
 // Modal State
 const showConfirm = ref(false);
@@ -62,7 +67,8 @@ const onConfirm = () => {
 };
 
 async function handleUnschedule() {
-  if (!props.sceneId) return;
+  const sceneId = props.sceneId;
+  if (!sceneId) return;
 
   showConfirm.value = true;
   const confirmed = await new Promise<boolean>((resolve) => {
@@ -70,8 +76,9 @@ async function handleUnschedule() {
   });
 
   if (confirmed) {
-    await updateNodeTemporal(props.sceneId, {
+    await updateNodeTemporal(sceneId, {
       chronological_date: undefined,
+      abstract_timeframe: undefined,
       plotline_tag: undefined,
     });
     emit('close');
@@ -89,7 +96,12 @@ async function handleUnschedule() {
     <div class="editor-body">
       <div class="form-group">
         <label>Start Date (ISO)</label>
-        <input v-model="editDate" type="datetime-local" class="brut-input" @change="saveChanges" />
+        <input
+          v-model="editDate"
+          type="datetime-local"
+          class="brut-input"
+          @change="saveChanges('date')"
+        />
       </div>
 
       <div class="form-group">
@@ -99,7 +111,7 @@ async function handleUnschedule() {
           type="text"
           placeholder="e.g. 2 hours, 3 days"
           class="brut-input"
-          @change="saveChanges"
+          @change="saveChanges('duration')"
         />
         <small class="hint">Natural language supported</small>
       </div>

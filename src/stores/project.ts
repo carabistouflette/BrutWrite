@@ -97,7 +97,7 @@ export const useProjectStore = defineStore('project', () => {
     // Deep reactive assignment
     nodes.value = fileNodes;
 
-    rebuildAll(fileNodes); // Full rebuild on load
+    rebuildAll(nodes.value);
 
     settings.value = projectSettingsData;
     activeId.value = undefined;
@@ -109,7 +109,7 @@ export const useProjectStore = defineStore('project', () => {
 
   function updateStructure(newNodes: FileNode[]) {
     nodes.value = [...newNodes];
-    rebuildAll(newNodes);
+    rebuildAll(nodes.value);
   }
 
   function closeProject() {
@@ -134,7 +134,6 @@ export const useProjectStore = defineStore('project', () => {
     const node = nodeMap.value.get(id);
     if (node) {
       node.name = name;
-      triggerRef(nodes);
     }
   }
 
@@ -144,7 +143,6 @@ export const useProjectStore = defineStore('project', () => {
       const diff = wordCount - (node.word_count || 0);
       node.word_count = wordCount;
       totalWordCount.value += diff;
-      triggerRef(nodes);
     }
   }
 
@@ -152,7 +150,6 @@ export const useProjectStore = defineStore('project', () => {
     const node = nodeMap.value.get(id);
     if (node) {
       Object.assign(node, updates);
-      triggerRef(nodes);
     }
   }
 

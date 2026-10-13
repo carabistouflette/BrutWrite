@@ -46,7 +46,7 @@ pub fn validate_path(path: &str) -> crate::errors::Result<()> {
     Ok(())
 }
 
-/// Validate a name field (project name, author name, chapter title, etc.)
+/// Validate a filesystem-safe name field (project names, author names, etc.).
 ///
 /// # Arguments
 /// * `name` - The name to validate
@@ -88,6 +88,30 @@ pub fn validate_name(name: &str) -> crate::errors::Result<()> {
     if name != name.trim() {
         return Err(crate::errors::Error::Validation(
             "Name cannot start or end with whitespace".into(),
+        ));
+    }
+
+    Ok(())
+}
+
+/// Validate a chapter title without applying filesystem filename restrictions.
+pub fn validate_chapter_title(title: &str) -> crate::errors::Result<()> {
+    if title.trim().is_empty() {
+        return Err(crate::errors::Error::Validation(
+            "Chapter title cannot be empty".into(),
+        ));
+    }
+
+    if title.len() > MAX_NAME_LENGTH {
+        return Err(crate::errors::Error::Validation(format!(
+            "Chapter title exceeds maximum length of {} characters",
+            MAX_NAME_LENGTH
+        )));
+    }
+
+    if title.chars().any(|character| character.is_control()) {
+        return Err(crate::errors::Error::Validation(
+            "Chapter title contains invalid control characters".into(),
         ));
     }
 
@@ -167,6 +191,18 @@ mod tests {
         assert!(validate_name("trailing  ").is_err());
         assert!(validate_name("  both  ").is_err());
         assert!(validate_name("internal spaces ok").is_ok());
+    }
+
+    #[test]
+    fn chapter_titles_allow_filename_punctuation() {
+        assert!(validate_chapter_title("Chapter: /? <the unknown>|*").is_ok());
+    }
+
+    #[test]
+    fn chapter_titles_reject_empty_control_and_overlong_values() {
+        assert!(validate_chapter_title(" \t ").is_err());
+        assert!(validate_chapter_title("line\nbreak").is_err());
+        assert!(validate_chapter_title(&"a".repeat(MAX_NAME_LENGTH + 1)).is_err());
     }
 
     #[test]

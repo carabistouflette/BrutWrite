@@ -28,6 +28,13 @@ impl FileRepository for LocalFileRepository {
         Ok(())
     }
 
+    async fn remove_dir(&self, path: &Path) -> Result<()> {
+        if self.exists(path).await? {
+            tokio::fs::remove_dir(path).await?;
+        }
+        Ok(())
+    }
+
     async fn create_dir_all(&self, path: &Path) -> Result<()> {
         tokio::fs::create_dir_all(path).await?;
         Ok(())

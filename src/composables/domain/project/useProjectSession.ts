@@ -4,6 +4,7 @@ import { useProjectStore } from '../../../stores/project';
 import { useCharacters } from '../characters/useCharacters';
 import type { FileNode, ProjectSettings, Plotline, Character } from '../../../types';
 import { APP_CONSTANTS } from '../../../config/constants';
+import { normalizeProjectPath } from '../../../utils/paths';
 
 export interface SessionData {
   id: string;
@@ -37,15 +38,34 @@ export function useProjectSession() {
         timestamp: Date.now(),
       };
 
-      localStorage.setItem(getCacheKey(path), JSON.stringify(lightweightCache));
+      localStorage.setItem(
+        getCacheKey(normalizeProjectPath(path)),
+        JSON.stringify(lightweightCache)
+      );
     } catch (e) {
       console.warn('Failed to cache project session', e);
     }
   };
 
+  const saveCurrentSessionToCache = () => {
+    if (!projectStore.projectId || !projectStore.path) return;
+    saveToCache(projectStore.path, {
+      id: projectStore.projectId,
+      nodes: projectStore.nodes,
+      settings: projectStore.settings || { daily_target: 0, word_target: 0 },
+      plotlines: projectStore.plotlines,
+      characters: projectStore.characters,
+      activeId: projectStore.activeId,
+    });
+  };
+
   const restoreSession = (path: string): boolean => {
     try {
-      const cached = localStorage.getItem(getCacheKey(path));
+      const canonicalPath = normalizeProjectPath(path);
+      const canonicalKey = getCacheKey(canonicalPath);
+      const requestedKey = getCacheKey(path);
+      const cacheKey = localStorage.getItem(canonicalKey) !== null ? canonicalKey : requestedKey;
+      const cached = localStorage.getItem(cacheKey);
       if (!cached) return false;
 
       const data = JSON.parse(cached) as SessionData & { timestamp: number };
@@ -53,7 +73,7 @@ export function useProjectSession() {
 
       // Optional: Check if cache is too old
       if (Date.now() - data.timestamp > expiryMs) {
-        localStorage.removeItem(getCacheKey(path));
+        localStorage.removeItem(cacheKey);
         return false;
       }
 
@@ -66,7 +86,7 @@ export function useProjectSession() {
       // 2. Restore Project Data (BUT NOT NODES - they come from disk via loadProject)
       // We only restore the ID and path here as a hint that this project was open.
       projectStore.projectId = data.id;
-      projectStore.path = path;
+      projectStore.path = canonicalPath;
 
       // 3. Restore Plotlines
       if (data.plotlines) projectPlotlines.value = data.plotlines;
@@ -92,23 +112,9 @@ export function useProjectSession() {
     let unsubscribeActions: (() => void) | null = null;
 
     const triggerSave = () => {
-      // Debounce
-      if (timeout) clearTimeout(timeout);
-
+      clearTimeout(timeout ?? undefined);
       timeout = setTimeout(() => {
-        // Guard: Only save if we have a valid open project and path
-        if (!projectStore.projectId || !projectStore.path) return;
-
-        saveToCache(projectStore.path, {
-          id: projectStore.projectId,
-          nodes: projectStore.nodes, // This is NOT saved to localStorage (see saveToCache)
-          settings: projectStore.settings || { daily_target: 0, word_target: 0 },
-          plotlines: projectStore.plotlines,
-          characters: projectStore.characters,
-          activeId: projectStore.activeId,
-        });
-
-        // Session auto-saved
+        saveCurrentSessionToCache();
       }, APP_CONSTANTS.CACHE.DEBOUNCE_MS);
     };
 
@@ -136,11 +142,10 @@ export function useProjectSession() {
     // but good practice is to use actions.
     watch([plotlines, characters], triggerSave);
 
-    // Cleanup if used in a component
     if (getCurrentInstance()) {
       onUnmounted(() => {
-        if (timeout) clearTimeout(timeout);
-        if (unsubscribeActions) unsubscribeActions();
+        clearTimeout(timeout ?? undefined);
+        unsubscribeActions?.();
       });
     }
   };
@@ -148,6 +153,7 @@ export function useProjectSession() {
   return {
     saveToCache,
     restoreSession,
+    saveCurrentSessionToCache,
     setupAutoSave,
   };
 }

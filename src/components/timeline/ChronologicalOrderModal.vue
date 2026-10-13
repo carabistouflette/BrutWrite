@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import ConfirmationModal from '../base/ConfirmationModal.vue';
-import { useProjectStore } from '../../stores/project';
-import { useProjectNodeOperations } from '../../composables/domain/project/useProjectNodeOperations';
-import { storeToRefs } from 'pinia';
 import { useTimeline } from '../../composables/timeline/useTimeline';
+import {
+  compareChronologicalOrder,
+  useTimelineSort,
+} from '../../composables/timeline/useTimelineSort';
 
-const projectStore = useProjectStore();
-const { nodeMap } = storeToRefs(projectStore);
-const { updateStructure } = useProjectNodeOperations();
 const { assignedScenes } = useTimeline();
+const { applyChronologicalSort } = useTimelineSort();
+const sortedAssignedScenes = computed(() =>
+  [...assignedScenes.value].sort(compareChronologicalOrder)
+);
 
 const showModal = ref(false);
 const isApplying = ref(false);
@@ -25,32 +27,10 @@ function close() {
 async function applyChronologicalOrder() {
   isApplying.value = true;
   try {
-    // Sort assigned scenes by chronological date
-    const sorted = [...assignedScenes.value].sort((a, b) => {
-      const aTime = a.chronological_date || a.abstract_timeframe || '';
-      const bTime = b.chronological_date || b.abstract_timeframe || '';
-      return aTime.localeCompare(bTime);
-    });
-
-    // Rebuild project data in chronological order
-    // We use the nodeMap to get the full node data
-    const reorderedData = sorted.map((scene) => {
-      const fullNode = nodeMap.value.get(scene.id);
-      return (
-        fullNode || {
-          id: scene.id,
-          name: scene.title,
-          children: [],
-          filename: `${scene.id}.md`,
-          word_count: 0,
-        }
-      );
-    });
-
-    await updateStructure(reorderedData);
+    await applyChronologicalSort();
     close();
-  } catch (e) {
-    console.error('Failed to apply chronological order:', e);
+  } catch (error) {
+    console.error('Failed to apply chronological order:', error);
   } finally {
     isApplying.value = false;
   }
@@ -93,16 +73,20 @@ defineExpose({ open });
       </p>
 
       <div class="preview-section">
-        <h4 class="preview-title">Preview: New Order ({{ assignedScenes.length }} scenes)</h4>
+        <h4 class="preview-title">Preview: New Order ({{ sortedAssignedScenes.length }} scenes)</h4>
         <ol class="preview-list">
-          <li v-for="scene in assignedScenes.slice(0, 5)" :key="scene.id" class="preview-item">
+          <li
+            v-for="scene in sortedAssignedScenes.slice(0, 5)"
+            :key="scene.id"
+            class="preview-item"
+          >
             <span class="scene-name">{{ scene.title }}</span>
             <span class="scene-time">{{
               scene.chronological_date || scene.abstract_timeframe
             }}</span>
           </li>
-          <li v-if="assignedScenes.length > 5" class="preview-more">
-            ... and {{ assignedScenes.length - 5 }} more scenes
+          <li v-if="sortedAssignedScenes.length > 5" class="preview-more">
+            ... and {{ sortedAssignedScenes.length - 5 }} more scenes
           </li>
         </ol>
       </div>

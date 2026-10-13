@@ -1,4 +1,14 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+fn deserialize_nullable<'de, D, T>(
+    deserializer: D,
+) -> std::result::Result<Option<Option<T>>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    Option::<T>::deserialize(deserializer).map(Some)
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
@@ -32,12 +42,43 @@ pub struct Chapter {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
+/// `None` means omitted; `Some(None)` means explicit JSON null for nullable values.
 pub struct NodeMetadataUpdate {
+    #[serde(default)]
     pub title: Option<String>,
-    pub chronological_date: Option<String>,
-    pub abstract_timeframe: Option<String>,
-    pub duration: Option<String>,
-    pub plotline_tag: Option<String>,
-    pub depends_on: Option<String>,
-    pub pov_character_id: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_nullable")]
+    pub chronological_date: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable")]
+    pub abstract_timeframe: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable")]
+    pub duration: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable")]
+    pub plotline_tag: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable")]
+    pub depends_on: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_nullable")]
+    pub pov_character_id: Option<Option<String>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::NodeMetadataUpdate;
+
+    #[test]
+    fn nullable_metadata_distinguishes_omitted_null_and_value() {
+        let omitted: NodeMetadataUpdate = serde_json::from_str("{}").unwrap();
+        assert_eq!(omitted.chronological_date, None);
+
+        let cleared: NodeMetadataUpdate =
+            serde_json::from_str(r#"{"chronological_date":null}"#).unwrap();
+        assert_eq!(cleared.chronological_date, Some(None));
+
+        let dependency_clear: NodeMetadataUpdate =
+            serde_json::from_str(r#"{"depends_on":null}"#).unwrap();
+        assert_eq!(dependency_clear.depends_on, Some(None));
+
+        let set: NodeMetadataUpdate =
+            serde_json::from_str(r#"{"chronological_date":"2040-01-02"}"#).unwrap();
+        assert_eq!(set.chronological_date, Some(Some("2040-01-02".to_string())));
+    }
 }

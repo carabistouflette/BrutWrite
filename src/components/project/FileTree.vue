@@ -77,8 +77,9 @@ watch(
 );
 
 const handleRenameSubmit = (id: string) => {
-  if (editName.value.trim()) {
-    emit('submit-rename', { id, name: editName.value });
+  const name = editName.value.trim();
+  if (name) {
+    emit('submit-rename', { id, name });
   } else {
     emit('cancel-rename');
   }
@@ -89,6 +90,7 @@ const handleRenameSubmit = (id: string) => {
   <VueDraggableNext
     :model-value="localList"
     group="files"
+    item-key="id"
     :animation="200"
     ghost-class="ghost"
     :force-fallback="true"

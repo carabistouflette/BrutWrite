@@ -19,7 +19,9 @@ export function traverse(
   callback: (node: FileNode, parentId?: string) => void,
   parentId?: string
 ) {
-  const stack: { node: FileNode; pid?: string }[] = nodes.map((n) => ({ node: n, pid: parentId }));
+  const stack: { node: FileNode; pid?: string }[] = nodes
+    .map((n) => ({ node: n, pid: parentId }))
+    .reverse();
   while (stack.length > 0) {
     const { node, pid } = stack.pop()!;
     callback(node, pid);

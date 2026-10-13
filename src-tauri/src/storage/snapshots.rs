@@ -1,24 +1,58 @@
 use super::traits::FileRepository;
 use crate::errors::Result;
 use sha2::{Digest, Sha256};
-use std::path::Path;
+use std::path::{Component, Path};
 
 const SNAPSHOTS_DIR: &str = ".snapshots";
 /// Maximum number of snapshots to keep per chapter
 const MAX_SNAPSHOTS_PER_CHAPTER: usize = 50;
 
+fn validate_chapter_id(chapter_id: &str) -> Result<()> {
+    let path = Path::new(chapter_id);
+    let mut components = path.components();
+    if !matches!(components.next(), Some(Component::Normal(_)))
+        || components.next().is_some()
+        || path.file_name().and_then(|name| name.to_str()) != Some(chapter_id)
+    {
+        return Err(crate::errors::Error::Validation(
+            "Invalid snapshot chapter ID".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_snapshot_filename(filename: &str) -> Result<()> {
+    let path = Path::new(filename);
+    let mut components = path.components();
+    if !matches!(components.next(), Some(Component::Normal(_)))
+        || components.next().is_some()
+        || path.file_name().and_then(|name| name.to_str()) != Some(filename)
+        || path.extension().and_then(|extension| extension.to_str()) != Some("md")
+    {
+        return Err(crate::errors::Error::Validation(
+            "Invalid snapshot filename".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+fn snapshot_directory(root_path: &Path, chapter_id: &str) -> Result<std::path::PathBuf> {
+    validate_chapter_id(chapter_id)?;
+    Ok(root_path
+        .join(super::consts::MANUSCRIPT_DIR)
+        .join(SNAPSHOTS_DIR)
+        .join(chapter_id))
+}
+
 /// Cleans up old snapshots, keeping only the most recent MAX_SNAPSHOTS_PER_CHAPTER.
 /// This prevents disk space exhaustion over time.
 async fn cleanup_old_snapshots<R: FileRepository>(
     repo: &R,
-    _snapshots_dir: &Path, // Kept for future logging if needed
     entries: &[std::path::PathBuf],
 ) -> Result<()> {
     if entries.len() > MAX_SNAPSHOTS_PER_CHAPTER {
         let to_delete = entries.len() - MAX_SNAPSHOTS_PER_CHAPTER;
-        // Entries are sorted oldest first, so delete from the beginning
         for path in entries.iter().take(to_delete) {
-            // Ignore errors during deletion - best effort cleanup
             let _ = repo.delete(path).await;
         }
     }
@@ -35,17 +69,8 @@ pub async fn create_snapshot<R: FileRepository>(
     chapter_id: &str,
     content: &str,
 ) -> Result<Option<String>> {
-    // 1. Setup paths
-    // Structure: <root>/manuscript/.snapshots/<chapter_id>/
-    // Note: We use "manuscript" as base because chapters are there?
-    // Let's verify where chapters are. MANUSCRIPT_DIR.
-    // Ideally .snapshots should be adjacent or inside.
-    // Let's go with <root>/manuscript/<chapter_id>/.snapshots is not possible because chapter is a file.
-    // So <root>/manuscript/.snapshots/<chapter_id>/
-    let snapshots_dir = root_path
-        .join(super::consts::MANUSCRIPT_DIR)
-        .join(SNAPSHOTS_DIR)
-        .join(chapter_id);
+    let snapshots_dir = snapshot_directory(root_path, chapter_id)?;
+    crate::validation::validate_content_size(content)?;
 
     if !repo.exists(&snapshots_dir).await? {
         repo.create_dir_all(&snapshots_dir).await?;
@@ -73,7 +98,7 @@ pub async fn create_snapshot<R: FileRepository>(
         if let Some(filename) = last_entry.file_name() {
             let filename_str = filename.to_string_lossy();
             // Check if filename ends with hash
-            if filename_str.contains(&format!("_{}.md", short_hash)) {
+            if filename_str.ends_with(&format!("_{}.md", short_hash)) {
                 // Content matches, dedupe
                 return Ok(None);
             }
@@ -82,8 +107,15 @@ pub async fn create_snapshot<R: FileRepository>(
 
     // 4. Create new snapshot
     let timestamp = chrono::Utc::now().format("%Y-%m-%dT%H%M%S");
-    let filename = format!("{}_{}.md", timestamp, short_hash);
-    let path = snapshots_dir.join(&filename);
+    let mut sequence = 0_u64;
+    let (filename, path) = loop {
+        let filename = format!("{}_z{:08}_{}.md", timestamp, sequence, short_hash);
+        let path = snapshots_dir.join(&filename);
+        if !repo.exists(&path).await? {
+            break (filename, path);
+        }
+        sequence += 1;
+    };
 
     repo.write_file(&path, content).await?;
 
@@ -92,7 +124,7 @@ pub async fn create_snapshot<R: FileRepository>(
     let mut updated_entries = repo.read_dir(&snapshots_dir).await?;
     updated_entries.retain(|e| e.extension().is_some_and(|ext| ext == "md"));
     updated_entries.sort();
-    cleanup_old_snapshots(repo, &snapshots_dir, &updated_entries).await?;
+    cleanup_old_snapshots(repo, &updated_entries).await?;
 
     Ok(Some(filename))
 }
@@ -102,11 +134,7 @@ pub async fn list_snapshots<R: FileRepository>(
     root_path: &Path,
     chapter_id: &str,
 ) -> Result<Vec<String>> {
-    let snapshots_dir = root_path
-        .join(super::consts::MANUSCRIPT_DIR)
-        .join(SNAPSHOTS_DIR)
-        .join(chapter_id);
-
+    let snapshots_dir = snapshot_directory(root_path, chapter_id)?;
     if !repo.exists(&snapshots_dir).await? {
         return Ok(Vec::new());
     }
@@ -122,19 +150,41 @@ pub async fn list_snapshots<R: FileRepository>(
         .collect())
 }
 
+pub async fn delete_chapter_snapshots<R: FileRepository>(
+    repo: &R,
+    root_path: &Path,
+    chapter_id: &str,
+) -> Result<()> {
+    let snapshots_dir = snapshot_directory(root_path, chapter_id)?;
+    if !repo.exists(&snapshots_dir).await? {
+        return Ok(());
+    }
+
+    let entries = repo.read_dir(&snapshots_dir).await?;
+    for entry in entries {
+        if entry.parent() == Some(snapshots_dir.as_path())
+            && entry.extension().is_some_and(|extension| extension == "md")
+        {
+            repo.delete(&entry).await?;
+        }
+    }
+
+    repo.remove_dir(&snapshots_dir).await
+}
+
 pub async fn read_snapshot_content<R: FileRepository>(
     repo: &R,
     root_path: &Path,
     chapter_id: &str,
     filename: &str,
 ) -> Result<String> {
-    let path = root_path
-        .join(super::consts::MANUSCRIPT_DIR)
-        .join(SNAPSHOTS_DIR)
-        .join(chapter_id)
-        .join(filename);
+    let snapshots_dir = snapshot_directory(root_path, chapter_id)?;
+    validate_snapshot_filename(filename)?;
+    let path = snapshots_dir.join(filename);
 
-    repo.read_file(&path).await
+    let content = repo.read_file(&path).await?;
+    crate::validation::validate_content_size(&content)?;
+    Ok(content)
 }
 
 pub async fn restore_snapshot<R: FileRepository>(
@@ -145,6 +195,9 @@ pub async fn restore_snapshot<R: FileRepository>(
     current_content: &str,
     chapter_filename: &str,
 ) -> Result<String> {
+    validate_chapter_id(chapter_id)?;
+    validate_snapshot_filename(snapshot_filename)?;
+
     // 1. Create safety snapshot of current state
     create_snapshot(repo, root_path, chapter_id, current_content).await?;
 
@@ -159,4 +212,123 @@ pub async fn restore_snapshot<R: FileRepository>(
     repo.write_file(&chapter_path, &content).await?;
 
     Ok(content)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::MockFileRepository;
+
+    fn snapshots_dir(root: &Path, chapter_id: &str) -> std::path::PathBuf {
+        root.join(super::super::consts::MANUSCRIPT_DIR)
+            .join(SNAPSHOTS_DIR)
+            .join(chapter_id)
+    }
+
+    #[tokio::test]
+    async fn rejects_snapshot_path_traversal() {
+        let repo = MockFileRepository::new();
+        let root = Path::new("/project");
+
+        assert!(
+            read_snapshot_content(&repo, root, "../private", "secret.md")
+                .await
+                .is_err()
+        );
+        assert!(
+            read_snapshot_content(&repo, root, "chapter-1", "../../secret.md")
+                .await
+                .is_err()
+        );
+        assert!(create_snapshot(&repo, root, "../private", "draft")
+            .await
+            .is_err());
+    }
+
+    #[tokio::test]
+    async fn restoring_an_empty_snapshot_writes_empty_content() {
+        let repo = MockFileRepository::new();
+        let root = Path::new("/project");
+        let chapter_id = "chapter-1";
+        let directory = snapshots_dir(root, chapter_id);
+        let filename = "2024-01-01T000000_00000000_e3b0c442.md";
+        repo.set_exists(directory.clone(), true);
+        repo.set_content(directory.join(filename), String::new());
+
+        let restored = restore_snapshot(
+            &repo,
+            root,
+            chapter_id,
+            filename,
+            "<p>Current draft</p>",
+            "chapter-1.md",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(restored, "");
+        assert_eq!(
+            repo.get_content(
+                &root
+                    .join(super::super::consts::MANUSCRIPT_DIR)
+                    .join("chapter-1.md")
+            )
+            .as_deref(),
+            Some("")
+        );
+    }
+
+    #[tokio::test]
+    async fn retention_keeps_only_the_latest_snapshot_limit() {
+        let repo = MockFileRepository::new();
+        let root = Path::new("/project");
+        let directory = snapshots_dir(root, "chapter-1");
+        repo.set_exists(directory, true);
+
+        for index in 0..=MAX_SNAPSHOTS_PER_CHAPTER {
+            create_snapshot(&repo, root, "chapter-1", &format!("Draft version {index}"))
+                .await
+                .unwrap();
+        }
+
+        let snapshots = list_snapshots(&repo, root, "chapter-1").await.unwrap();
+        assert_eq!(snapshots.len(), MAX_SNAPSHOTS_PER_CHAPTER);
+    }
+
+    #[tokio::test]
+    async fn retention_deletes_entries_in_oldest_first_order() {
+        let repo = MockFileRepository::new();
+        let root = Path::new("/project");
+        let directory = snapshots_dir(root, "chapter-1");
+        let entries: Vec<_> = (0..=MAX_SNAPSHOTS_PER_CHAPTER)
+            .map(|index| {
+                let path = directory.join(format!("2020-01-01T000000_{index:08}.md"));
+                repo.set_content(path.clone(), format!("Draft version {index}"));
+                path
+            })
+            .collect();
+
+        cleanup_old_snapshots(&repo, &entries).await.unwrap();
+
+        assert_eq!(repo.get_content(&entries[0]), None);
+        assert!(entries[1..]
+            .iter()
+            .all(|entry| repo.get_content(entry).is_some()));
+    }
+    #[tokio::test]
+    async fn deleting_chapter_snapshots_removes_files_and_directory() {
+        let repo = MockFileRepository::new();
+        let root = Path::new("/project");
+        let directory = snapshots_dir(root, "chapter-1");
+        let snapshot = directory.join("snapshot.md");
+        repo.set_exists(directory.clone(), true);
+        repo.set_content(snapshot.clone(), "History".to_string());
+
+        delete_chapter_snapshots(&repo, root, "chapter-1")
+            .await
+            .unwrap();
+
+        assert_eq!(repo.get_content(&snapshot), None);
+        assert!(!repo.exists(&directory).await.unwrap());
+    }
 }
