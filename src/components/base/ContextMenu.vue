@@ -63,7 +63,7 @@ const handleClose = () => {
   </Teleport>
 </template>
 
-<style scoped lang="postcss">
+<style scoped>
 @reference "../../style.css";
 
 .context-menu-glass {

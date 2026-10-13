@@ -41,6 +41,7 @@ docs(readme): clarify native development setup
 - Use PascalCase for Vue component filenames and the `use` prefix for composables.
 - Use Pinia for shared application state and keep TypeScript types in `src/types/` or next to the code that uses them.
 - Follow the existing component styling patterns: scoped styles for component-specific CSS, shared styles in `src/style.css`, and utility classes where already used.
+- Use plain `<style scoped>` blocks, not `lang="postcss"`. Tailwind runs through `@tailwindcss/vite`; use `@reference` to `src/style.css` when a scoped block needs theme tokens or `@apply`. Keep theme tokens in the shared CSS `@theme` block.
 
 ## Checks
 
@@ -60,7 +61,7 @@ For UI changes, also run `pnpm tauri dev` and verify the affected flow in the na
 
 Keep direct npm dependencies on stable releases. This dependency set keeps TypeScript at `~6.0.3`, the only direct dependency not on the latest stable release, because `typescript-eslint` currently declares the peer range `>=4.8.4 <6.1`.
 
-The pnpm overrides for `source-map-js`, `uuid`, `moment`, and `postcss-selector-parser` target transitive dependencies with security advisories. Reassess or remove an override when upstream dependency updates resolve the issue. The dependency refresh was checked with `pnpm audit`, which reported no advisories.
+The pnpm overrides for `source-map-js`, `uuid`, and `moment` target transitive dependencies with security advisories. Reassess or remove an override when upstream dependency updates resolve the issue. The dependency refresh was checked with `pnpm audit`, which reported no advisories.
 
 CI currently uses `actions/checkout@v7.0.1`, `actions/setup-node@v7.1.0`, `actions/upload-artifact@v7.0.2`, and `pnpm/action-setup@v6.1.0`. Keep `pnpm-lock.yaml` excluded from Prettier; regenerate it with pnpm when dependency manifests change.
 

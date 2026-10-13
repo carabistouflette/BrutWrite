@@ -149,7 +149,7 @@ const handleRenameSubmit = (id: string) => {
   </VueDraggableNext>
 </template>
 
-<style scoped lang="postcss">
+<style scoped>
 @reference "../../style.css";
 
 .ghost {

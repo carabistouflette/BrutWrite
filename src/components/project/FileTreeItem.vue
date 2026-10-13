@@ -139,7 +139,7 @@ defineExpose({
   </div>
 </template>
 
-<style scoped lang="postcss">
+<style scoped>
 @keyframes spring-pop {
   0% {
     transform: scale(1);

@@ -15,6 +15,14 @@ BrutWrite is a desktop novel-writing application built with Tauri 2, Vue 3, Type
 
 PDF previews request PDF.js worker, font, and character-map assets from jsDelivr. The current Tauri Content Security Policy does not allow those cross-origin requests, so PDF rendering may fail in the desktop app; do not rely on it being available offline.
 
+## Frontend stack
+
+- **Vue 3 + TypeScript** for the interface, **Pinia** for shared state, and **Tiptap** for rich-text editing.
+- **Vite 8** builds a static SPA consumed by the Tauri WebView; no Node.js server or SSR framework runs in the packaged app.
+- **Tailwind CSS 4** uses its native Vite plugin. Design tokens live in `src/style.css`, without a separate Tailwind or PostCSS configuration.
+
+This follows [Tauri's recommended Vite integration](https://v2.tauri.app/start/frontend/). Vue is retained to preserve the existing component and editor integrations rather than replace them with manual DOM management.
+
 ## Requirements
 
 - Node.js 24 LTS.

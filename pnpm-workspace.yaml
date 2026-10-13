@@ -5,4 +5,3 @@ overrides:
   'source-map-js@<1.2.2': ^1.2.2
   'uuid@>=13.0.0 <13.0.1': ^13.0.2
   'moment@<2.31.0': ^2.31.0
-  'postcss-selector-parser@<7.1.6': ^7.1.6

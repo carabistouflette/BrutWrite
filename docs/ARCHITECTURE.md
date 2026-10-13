@@ -22,6 +22,10 @@ flowchart LR
 
 The frontend is a Vite single-page application mounted by `src/main.ts`. It uses Pinia; the project does not use Vue Router.
 
+Vite builds static frontend assets for the Tauri WebView; Rust remains the application backend. There is no production Node.js server or SSR layer. Vue is retained for component lifecycles and reactive UI state, with Tiptap's Vue integration for the editor.
+
+Tailwind CSS 4 runs through `@tailwindcss/vite` in `vite.config.ts`. Theme tokens are defined with `@theme` in `src/style.css`. Components use plain `<style scoped>` blocks; those needing Tailwind directives reference `src/style.css` with `@reference`. There is no separate `tailwind.config.js` or `postcss.config.js`.
+
 - **`src/api/`**: TypeScript wrappers that call registered Rust commands with `invoke`.
 - **`src/stores/`**: Pinia stores for project, research, settings, snapshots, dialogs, and UI state.
 - **`src/composables/`**: Reusable editor, project, timeline, character, intelligence, and UI logic.
