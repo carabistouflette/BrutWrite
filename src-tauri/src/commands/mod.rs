@@ -13,5 +13,7 @@ pub use manifest::*;
 pub use project::*;
 pub use research::*;
 pub use snapshots::*;
+#[cfg(debug_assertions)]
 pub mod debug;
+#[cfg(debug_assertions)]
 pub use debug::*;

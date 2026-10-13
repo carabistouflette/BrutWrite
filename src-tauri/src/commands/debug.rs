@@ -35,7 +35,6 @@ struct DemoChapter {
 }
 
 #[tauri::command]
-#[cfg(debug_assertions)]
 pub async fn seed_demo_project(
     app: tauri::AppHandle,
     state: State<'_, AppState>,

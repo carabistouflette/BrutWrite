@@ -18,7 +18,7 @@ export function useRecentProjects() {
     // We reload to ensure we have the latest if multiple tabs/windows (though unlikely in Tauri)
     // or just to be safe.
     const recentStr = localStorage.getItem(STORAGE_KEY) || '[]';
-    let current: string[] = [];
+    let current: string[];
     try {
       current = JSON.parse(recentStr);
     } catch {
@@ -34,7 +34,7 @@ export function useRecentProjects() {
 
   const removeRecentProject = (path: string) => {
     const recentStr = localStorage.getItem(STORAGE_KEY) || '[]';
-    let current: string[] = [];
+    let current: string[];
     try {
       current = JSON.parse(recentStr);
     } catch {

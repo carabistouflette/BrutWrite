@@ -1,6 +1,6 @@
 import { Extension, Mark, mergeAttributes } from '@tiptap/core';
 import { PluginKey } from '@tiptap/pm/state';
-import Suggestion from '@tiptap/suggestion';
+import Suggestion, { type SuggestionOptions } from '@tiptap/suggestion';
 import { VueRenderer } from '@tiptap/vue-3';
 import tippy, { type Instance } from 'tippy.js';
 import { useCharacters } from '../../composables/domain/characters/useCharacters';
@@ -23,6 +23,10 @@ interface SuggestionProps {
   command: (props: MentionItem) => void;
   range: { from: number; to: number };
   clientRect?: (() => DOMRect | null) | null;
+}
+
+interface MentionOptions {
+  suggestion: Partial<SuggestionOptions<MentionItem>>;
 }
 
 // --- Custom Mark for Character Mentions ---
@@ -68,7 +72,7 @@ export function useTiptapMentions() {
    * 1. Character Suggestions
    * Inserts text with the CharacterMention mark.
    */
-  const CharacterSuggestion = Extension.create({
+  const CharacterSuggestion = Extension.create<MentionOptions>({
     name: 'characterSuggestion',
 
     addOptions() {
@@ -127,7 +131,7 @@ export function useTiptapMentions() {
    * Configuration for Suggestions
    */
   const suggestionOptions = {
-    items: ({ query }: { query: string }) => {
+    items: ({ query }: { query: string }): MentionItem[] => {
       return characters.value
         .filter((item) => item.name.toLowerCase().startsWith(query.toLowerCase()))
         .slice(0, 5)
@@ -181,7 +185,7 @@ export function useTiptapMentions() {
   /*
    * Research Suggestions (Keep as Link logic)
    */
-  const ResearchSuggestion = Extension.create({
+  const ResearchSuggestion = Extension.create<MentionOptions>({
     name: 'researchSuggestion',
 
     addOptions() {

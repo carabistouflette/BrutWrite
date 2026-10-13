@@ -1,16 +1,17 @@
-name: Build and Release
+name: Build
 
 on:
   push:
     branches:
       - '**'
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Install system dependencies
         run: |
@@ -29,26 +30,33 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 9
+        uses: pnpm/action-setup@v6.1.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.1.0
         with:
-          node-version: 'lts/*'
+          node-version: '24'
           cache: 'pnpm'
 
       - name: Install frontend dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: Check frontend
+        run: |
+          pnpm lint
+          pnpm test:run
+
+      - name: Test backend
+        working-directory: src-tauri
+        run: cargo test --locked
 
       - name: Build
         run: pnpm tauri build
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: app-binary
           path: |
             src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/rpm/*.rpm

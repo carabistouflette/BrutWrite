@@ -1,78 +1,54 @@
 # System Architecture
 
-BrutWrite follows a standard hybrid architecture using **Tauri**, which bridges a **Rust** backend with a **Vue 3/TypeScript** frontend.
+BrutWrite is a desktop application built with Tauri 2. A Vue 3 and TypeScript frontend runs in the native WebView and calls a Rust backend through Tauri's IPC.
 
-## High-Level Overview
+## High-level overview
 
 ```mermaid
-graph TD
-    User[User Interface] <--> WebView[WebView (Frontend)]
-    WebView <-->|IPC| Core[Tauri Core (Backend)]
-    Core <--> FS[File System]
-
-    subgraph Frontend [Frontend (Vue 3 + TS)]
-        Store[Pinia Stores]
-        Composables[Composables]
-        Components[Vue Components]
-        Router[Vue Router]
-    end
-
-    subgraph Backend [Backend (Rust)]
-        Commands[Tauri Commands]
-        State[App State]
-        Logic[Domain Logic]
-        IO[Storage / IO]
-    end
-
-    WebView --- Frontend
-    Core --- Backend
+flowchart LR
+    User --> UI[Vue components]
+    UI --> State[Pinia stores and composables]
+    State --> API[TypeScript API wrappers]
+    API -->|Tauri IPC| Commands[Rust Tauri commands]
+    Commands --> AppState[AppState]
+    AppState --> Projects[ProjectManager]
+    Projects --> Storage[Filesystem storage]
+    AppState --> Research[ResearchState]
+    Research --> Watcher[Research filesystem watcher]
+    AppState --> Intelligence[IntelligenceService]
 ```
 
-## Frontend Structure (`src/`)
+## Frontend (`src/`)
 
-The frontend is a Single Page Application (SPA) built with Vite.
+The frontend is a Vite single-page application mounted by `src/main.ts`. It uses Pinia; the project does not use Vue Router.
 
-- **`src/api/`**: TypeScript wrappers for Tauri commands. Acts as the anti-corruption layer between frontend and backend.
-- **`src/stores/`**: Pinia stores for state management (e.g., `project.ts`, `editor.ts`).
-- **`src/composables/`**: Reusable stateful logic (Vue Composition API).
-- **`src/components/`**: UI components.
-  - **`atoms/`**: Basic building blocks (Buttons, Inputs).
-  - **`molecules/`**: Combinations of atoms.
-  - **`organisms/`**: Complex sections.
-- **`src/views/`** (if applicable) or **`router/`**: Page definitions.
+- **`src/api/`**: TypeScript wrappers that call registered Rust commands with `invoke`.
+- **`src/stores/`**: Pinia stores for project, research, settings, snapshots, dialogs, and UI state.
+- **`src/composables/`**: Reusable editor, project, timeline, character, intelligence, and UI logic.
+- **`src/components/`**: Vue UI grouped by areas such as editor, characters, research, timeline, settings, and snapshots.
+- **`src/config/`**, **`src/types/`**, and **`src/utils/`**: application defaults and constants, shared types, and utility logic.
+- **`src/style.css`**: application-wide styling.
 
-## Backend Structure (`src-tauri/src/`)
+## Rust backend (`src-tauri/src/`)
 
-The backend handles heavy lifting, file operations, and business logic validation.
+- **`lib.rs`**: constructs the Tauri application, registers plugins, manages `AppState`, and exposes commands through `invoke_handler`.
+- **`commands/`**: IPC entry points for projects, chapters, characters, research, snapshots, and character-graph analysis.
+- **`models/`**: serializable project, chapter, character, and research data structures.
+- **`project/`**: manages loaded project metadata and project lifecycle.
+- **`storage/`**: reads and writes project metadata, chapter content, research indexes, and snapshots.
+- **`research/`** and **`integrations/research_watcher.rs`**: maintain research state and watch a project's research directory for filesystem changes.
+- **`intelligence/`**: scans manuscript chapters and builds character-interaction graph data.
 
-- **`lib.rs`**: Entry point. Sets up the Tauri application, menus, and state.
-- **`commands/`**: The public API exposed to the frontend. Each function here is a `#[tauri::command]`. It delegates work to the Logic layer.
-- **`models/`**: shared data structures (Structs, Enums). Many are serialized to JSON for the frontend.
-- **`storage/`**: Handles direct file system I/O (Read/Write files, JSON serialization).
-- **`research/`**: Specific logic for the Research module.
-- **`integrations/`**: External tool integrations or watchers (e.g., File Watchers).
-- **`state.rs`** (or in `lib.rs`): Defines the `AppState` struct managed by Tauri.
+`AppState` holds the project manager, research state, and intelligence service. Project metadata is loaded into the backend while a project is open and persisted to the project's `project.json` file.
 
-## Data Flow
+## Chapter save flow
 
-1. **User Action**: User clicks "Save Chapter".
-2. **Frontend**:
-   - Component calls a store action `projectStore.saveChapter()`.
-   - Store calls API wrapper `api.chapters.save()`.
-3. **IPC**: Tauri bridges the call to Rust.
-4. **Backend**:
-   - `commands::chapters::save_chapter` is invoked.
-   - It acquires a lock on `AppState`.
-   - It calls `storage::write_chapter_file`.
-   - It updates the in-memory `ProjectMetadata` (word count, etc.).
-   - It returns the updated metadata.
-5. **Frontend**:
-   - Promise resolves with new metadata.
-   - Store updates reactive state.
-   - UI re-renders.
+1. A Vue editor component updates its editor session and Pinia-backed UI state.
+2. The editor session passes the editor's HTML string to the TypeScript chapter API wrapper.
+3. The wrapper invokes `save_chapter` over Tauri IPC.
+4. The Rust command creates a chapter snapshot, writes the chapter file under `manuscript/`, updates the chapter word count, and saves project metadata.
+5. The command returns updated metadata, which the frontend uses to refresh project state.
 
-## State Management
+## Browser limitation
 
-- **Frontend**: **Pinia** is the source of truth for the UI. It mirrors the state from the backend.
-- **Backend**: **`AppState`** (Mutex-protected) holds the authoritative state of the open project.
-- **Synchronization**: The frontend pulls state on load and updates it after every command that modifies data.
+`pnpm dev` starts the Vite frontend without a Tauri host. The application calls Tauri commands and uses native dialog and filesystem plugins directly; a browser preview therefore cannot create, load, or manage projects. Use `pnpm tauri dev` to run the supported desktop application.

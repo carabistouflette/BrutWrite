@@ -30,15 +30,17 @@ export default defineConfig(async () => ({
     },
   },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          'vendor-core': ['vue', 'pinia'],
-          'vendor-markdown': ['marked'],
-          'vendor-timeline': ['vis-timeline', 'vis-data'],
-          'vendor-pdf': ['pdfjs-dist'],
-          'vendor-editor': ['@tiptap/vue-3', '@tiptap/starter-kit'],
-          'vendor-d3': ['d3'],
+        codeSplitting: {
+          groups: [
+            { name: 'vendor-core', test: /node_modules\/(?:@vue\/|vue\/|pinia\/)/ },
+            { name: 'vendor-markdown', test: /node_modules\/marked\// },
+            { name: 'vendor-timeline', test: /node_modules\/vis-(?:timeline|data)\// },
+            { name: 'vendor-pdf', test: /node_modules\/pdfjs-dist\// },
+            { name: 'vendor-editor', test: /node_modules\/@tiptap\// },
+            { name: 'vendor-d3', test: /node_modules\/d3(?:-[^/]+)?\// },
+          ],
         },
       },
     },

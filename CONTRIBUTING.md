@@ -1,64 +1,72 @@
 # Contributing to BrutWrite
 
-Thank you for your interest in contributing! To ensure a high quality and maintainable codebase, please follow these guidelines.
+Thank you for contributing. Install the prerequisites and dependencies described in the [README](./README.md), then work from the repository root.
 
-## 1. Commit Strategy
+## Commit messages
 
-We follow the **Conventional Commits** specification. This allows us to automatically generate changelogs and version bumps.
+Use a Conventional Commit-style subject to make the history easy to scan. This format does not by itself generate changelogs or version bumps.
 
-**Format**: `<type>(<scope>): <subject>`
+**Format:** `<type>(<scope>): <subject>`
 
-### Types
+Common types include:
 
-- **feat**: A new feature
-- **fix**: A bug fix
-- **docs**: Documentation only changes
-- **style**: Changes that do not affect the meaning of the code (white-space, formatting, etc)
-- **refactor**: A code change that neither fixes a bug nor adds a feature
-- **perf**: A code change that improves performance
-- **test**: Adding missing tests or correcting existing tests
-- **chore**: Changes to the build process or auxiliary tools and libraries such as documentation generation
+- **feat**: a new feature
+- **fix**: a bug fix
+- **docs**: documentation changes
+- **style**: changes that do not affect program behavior
+- **refactor**: a code change that neither fixes a bug nor adds a feature
+- **perf**: a performance improvement
+- **test**: adding or updating tests
+- **chore**: build or maintenance work
 
-### Example
+Examples:
 
-```bash
-feat(backend): implement project management commands
-fix(ui): resolve overlap in sidebar menu
-docs(readme): add installation instructions
+```text
+feat(editor): add chapter snapshots
+fix(research): refresh the artifact list after import
+docs(readme): clarify native development setup
 ```
 
-## 2. Code Quality & Architecture
+## Code conventions
 
-### Backend (Rust)
+### Rust backend
 
-- **Style**: We use standard `rustfmt` and `clippy`. Please run `cargo clippy` and `cargo fmt` before submitting.
-- **Separation of Concerns**:
-  - **Logic Layer** (`storage.rs`, `models.rs`): Must be pure Rust. **Do not imports `tauri` here.** This layer should be testable in isolation.
-  - **Interface Layer** (`lib.rs`, `commands/`): Handles `[tauri::command]`, `AppHandle`, and State management. This is the only place where Tauri dependencies should interact with your logic.
-- **Testing**: All backend logic must be covered by **unit tests**. Run `cargo test` in `src-tauri` before committing.
+- Keep Tauri command entry points and application-state access in `src-tauri/src/commands/`; keep serialized domain types in `models/` and filesystem persistence in `storage/`.
+- Follow `rustfmt` and Clippy conventions. For Rust changes, check formatting with `cargo +stable fmt --manifest-path src-tauri/Cargo.toml -- --check` and run `cargo +stable clippy --manifest-path src-tauri/Cargo.toml --all-targets`.
+- Add or update focused tests for changed Rust behavior. Run backend tests with `cargo +stable test --locked --manifest-path src-tauri/Cargo.toml`.
 
-### Frontend (Vue 3 + TypeScript)
+### Frontend
 
-- **Composition API**: Use `<script setup lang="ts">` for all components.
-- **Naming**:
-  - Components: generic names (e.g., `Button.vue`), or specific (e.g., `ProjectList.vue`). PascalCase.
-  - Composables: `use` prefix (e.g., `useProject.ts`).
-- **State Management**: Use **Pinia** for global state. Avoid deeply nested props.
-- **Typing**: Strict TypeScript. Avoid `any`. Define interfaces in `src/types/` or co-located if specific.
-- **Styling**:
-  - Use `<style scoped>` within Single File Components (.vue).
-  - Do NOT create separate `.css` files for components.
-  - Use `:deep()` selector for overriding child component styles or 3rd party libraries (like vis-timeline).
+- Use Vue's Composition API and `<script setup lang="ts">` for components.
+- Use PascalCase for Vue component filenames and the `use` prefix for composables.
+- Use Pinia for shared application state and keep TypeScript types in `src/types/` or next to the code that uses them.
+- Follow the existing component styling patterns: scoped styles for component-specific CSS, shared styles in `src/style.css`, and utility classes where already used.
 
-## 3. Pull Request Workflow
+## Checks
 
-1.  **Fork & Clone**: Fork the repository and clone it locally.
-2.  **Branch**: Create a branch for your feature (`feat/my-feature`).
-3.  **Implement**: Make your changes.
-4.  **Verify**:
-    - Run `pnpm type-check` (frontend).
-    - Run `cargo test` (backend).
-    - Run linter/formatter.
-5.  **Commit**: Use the conventional format.
-6.  **Push & PR**: Push to your fork and open a Pull Request.
-7.  **Review**: Wait for a maintainer to review your code. Address any feedback.
+Run the project checks from the repository root before opening a pull request:
+
+```bash
+pnpm type-check
+pnpm lint
+pnpm format:check
+pnpm test:run
+cargo +stable test --locked --manifest-path src-tauri/Cargo.toml
+```
+
+For UI changes, also run `pnpm tauri dev` and verify the affected flow in the native application. `pnpm dev` starts only the Vite frontend; native Tauri commands and file dialogs are unavailable in that browser-only session.
+
+## Dependency maintenance
+
+Keep direct npm dependencies on stable releases. This dependency set keeps TypeScript at `~6.0.3`, the only direct dependency not on the latest stable release, because `typescript-eslint` currently declares the peer range `>=4.8.4 <6.1`.
+
+The pnpm overrides for `source-map-js`, `uuid`, `moment`, and `postcss-selector-parser` target transitive dependencies with security advisories. Reassess or remove an override when upstream dependency updates resolve the issue. The dependency refresh was checked with `pnpm audit`, which reported no advisories.
+
+CI currently uses `actions/checkout@v7.0.1`, `actions/setup-node@v7.1.0`, `actions/upload-artifact@v7.0.2`, and `pnpm/action-setup@v6.1.0`. Keep `pnpm-lock.yaml` excluded from Prettier; regenerate it with pnpm when dependency manifests change.
+
+## Pull request workflow
+
+1. Fork the repository and create a branch for your change, for example `feat/chapter-history`.
+2. Make the change and update relevant existing documentation when behavior or setup changes.
+3. Run the checks above and describe the behavior changed in your pull request.
+4. Push your branch and open a pull request. Address review feedback from maintainers.

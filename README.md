@@ -1,56 +1,82 @@
 # BrutWrite
 
-> **The Brutalist Novel Writing Tool**
+> The Brutalist Novel Writing Tool
 
-BrutWrite is a distraction-free, privacy-focused application for writers who want to focus on their words, not the tool. Built with Tauri, Vue 3, and Rust, it combines the performance of a native app with the flexibility of web technologies.
+BrutWrite is a desktop novel-writing application built with Tauri 2, Vue 3, TypeScript, and Rust. Project files are stored on the local filesystem, and project and file-management features use the native Tauri backend.
 
-![App Screenshot](docs/assets/screenshot_placeholder.png)
-_(Screenshot placeholder - to be added)_
+## Features
 
-## ✨ Features
+- Organize a manuscript as a hierarchical chapter tree.
+- Write in a rich-text editor with configurable interval auto-save and per-chapter snapshots that can be restored or branched.
+- Maintain character sheets, associate character aliases with manuscript text, and analyze character interactions across chapters.
+- Plan narrative timelines using dates or abstract timeframes, plotlines, durations, and dependencies; inspect warnings and reorder chapters chronologically.
+- Keep research files and notes beside a project, including PDF, image, Markdown, and text references.
+- Track daily writing progress and a project word-count target.
 
-- **Project Management**: Organize your novel with a structured chapter hierarchy.
-- **Character Sheets**: Keep track of your cast with detailed profiles.
-- **Research Hub**: Manage images, notes, and references alongside your manuscript.
-- **Distraction-Free Editor**: A clean, brutalist interface that puts your text front and center.
-- **Local First**: Your data lives on your machine in standard file formats (Markdown, JSON). No proprietary lock-in.
-- **Fast**: Built on Rust and Tauri for blazing fast performance.
+PDF previews request PDF.js worker, font, and character-map assets from jsDelivr. The current Tauri Content Security Policy does not allow those cross-origin requests, so PDF rendering may fail in the desktop app; do not rely on it being available offline.
 
-## 🚀 Installation
+## Requirements
 
-### Prerequisites
+- Node.js 24 LTS.
+- pnpm 11.28.5.
+- The stable Rust toolchain, installed with [rustup](https://rustup.rs/).
+- The platform-specific system dependencies required by Tauri 2. See the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
 
-- **Node.js** & **pnpm**: For the frontend.
-- **Rust Toolchain**: For the backend.
+On Debian or Ubuntu, install Tauri's Linux development dependencies:
 
-### Setup
+```bash
+sudo apt update
+sudo apt install \
+  libwebkit2gtk-4.1-dev \
+  build-essential \
+  curl \
+  wget \
+  file \
+  libxdo-dev \
+  libssl-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev
+```
 
-1. **Clone the repository**
+For macOS, install Xcode Command Line Tools. For Windows, install Microsoft C++ Build Tools with the Desktop development with C++ workload and the WebView2 Runtime. Consult Tauri's prerequisites for current platform-specific instructions.
 
-   ```bash
-   git clone https://github.com/your-username/BrutWrite.git
-   cd BrutWrite
-   ```
+## Development setup
 
-2. **Install dependencies**
+```bash
+git clone git@github.com:carabistouflette/BrutWrite.git
+cd BrutWrite
+npm install --global pnpm@11.28.5
+pnpm install
+pnpm tauri dev
+```
 
-   ```bash
-   pnpm install
-   ```
+`pnpm tauri dev` launches the Vite frontend in the native Tauri window. The frontend-only `pnpm dev` command can serve the interface in a browser, but it does not provide Tauri IPC, native file access, or native dialogs; it is not a supported way to create or manage projects.
 
-3. **Run in Development Mode**
-   ```bash
-   # Starts the Vue dev server and the Tauri window
-   pnpm tauri dev
-   ```
+## Development commands
 
-## 🛠️ Development
+Run these from the repository root:
 
-- **Frontend**: Vue 3 + TypeScript + Vite. Located in `src/`.
-- **Backend**: Rust + Tauri. Located in `src-tauri/`.
+```bash
+pnpm build
+pnpm type-check
+pnpm lint
+pnpm format:check
+pnpm test:run
+cargo +stable test --locked --manifest-path src-tauri/Cargo.toml
+```
 
-For detailed architecture documentation, see [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+To build the desktop application and Linux installation packages:
 
-## 📄 License
+```bash
+pnpm tauri build
+```
 
-MIT License. See [LICENSE](./LICENSE) for details.
+The current bundle configuration produces `.deb` and `.rpm` packages under
+`src-tauri/target/release/bundle/`. Packaging targets for macOS and Windows must
+be configured before building installers for those platforms.
+
+See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md), [`docs/API.md`](./docs/API.md), and [`docs/PROJECT_FORMAT.md`](./docs/PROJECT_FORMAT.md) for implementation details.
+
+## License
+
+BrutWrite is licensed under the GNU General Public License v3.0. See [`LICENSE`](./LICENSE).

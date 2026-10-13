@@ -1,8 +1,7 @@
 [package]
 name = "brutwrite"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "The Brutalist Novel Writing Tool"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -29,13 +28,13 @@ tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 regex = "1.12.2"
 tokio = { version = "1.48.0", features = ["full"] }
-notify = "6.1.1"
+notify = "8.2"
 async-trait = "0.1.89"
-sha2 = "0.10.9"
+sha2 = "0.11"
 hex = "0.4.3"
 log = "0.4"
 aho-corasick = "1.1.4"
-html-escape = "0.2.13"
+html-escape = "0.3"
 sanitize-filename = "0.6.0"
 
 [dev-dependencies]
